@@ -37,7 +37,7 @@ export function Calendar() {
   };
 
   return (
-    <div className='bg-white rounded-2xl p-4 sm:p-6 card-shadow transition-all duration-300 hover:shadow-lg'>
+    <div className='bg-white rounded-2xl p-4 sm:p-6 card-shadow transition-all duration-300 hover:shadow-lg h-full'>
       {/* Header */}
       <div className='flex items-center justify-between mb-6'>
         <h3 className='text-lg font-semibold text-gray-800'>

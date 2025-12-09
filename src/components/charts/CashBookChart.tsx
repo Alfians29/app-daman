@@ -3,8 +3,8 @@
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import {
-  AreaChart,
-  Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -44,24 +44,10 @@ function CashBookChartContent({ data = cashFlowData }: CashBookChartProps) {
   return (
     <div className='w-full h-[300px]'>
       <ResponsiveContainer width='100%' height='100%'>
-        <AreaChart
+        <LineChart
           data={data}
           margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
         >
-          <defs>
-            <linearGradient id='colorMasuk' x1='0' y1='0' x2='0' y2='1'>
-              <stop offset='5%' stopColor='#4CAF50' stopOpacity={0.3} />
-              <stop offset='95%' stopColor='#4CAF50' stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id='colorKeluar' x1='0' y1='0' x2='0' y2='1'>
-              <stop offset='5%' stopColor='#E57373' stopOpacity={0.3} />
-              <stop offset='95%' stopColor='#E57373' stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id='colorSaldo' x1='0' y1='0' x2='0' y2='1'>
-              <stop offset='5%' stopColor='#2196F3' stopOpacity={0.3} />
-              <stop offset='95%' stopColor='#2196F3' stopOpacity={0} />
-            </linearGradient>
-          </defs>
           <CartesianGrid strokeDasharray='3 3' stroke='#f0f0f0' />
           <XAxis
             dataKey='name'
@@ -92,34 +78,31 @@ function CashBookChartContent({ data = cashFlowData }: CashBookChartProps) {
             ]}
           />
           <Legend />
-          <Area
+          <Line
             type='monotone'
             dataKey='masuk'
             name='Kas Masuk'
             stroke='#4CAF50'
             strokeWidth={2}
-            fillOpacity={1}
-            fill='url(#colorMasuk)'
+            dot={false}
           />
-          <Area
+          <Line
             type='monotone'
             dataKey='keluar'
             name='Kas Keluar'
             stroke='#E57373'
             strokeWidth={2}
-            fillOpacity={1}
-            fill='url(#colorKeluar)'
+            dot={false}
           />
-          <Area
+          <Line
             type='monotone'
             dataKey='saldo'
             name='Saldo'
             stroke='#2196F3'
             strokeWidth={2}
-            fillOpacity={1}
-            fill='url(#colorSaldo)'
+            dot={false}
           />
-        </AreaChart>
+        </LineChart>
       </ResponsiveContainer>
     </div>
   );

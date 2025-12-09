@@ -25,14 +25,14 @@ export default function AttendancePage() {
 
   // Work model counts
   const workModelCounts = {
-    Pagi: attendanceRecords.filter((r) => r.workModel === 'Pagi').length,
-    Malam: attendanceRecords.filter((r) => r.workModel === 'Malam').length,
-    'Shift Pagi': attendanceRecords.filter((r) => r.workModel === 'Shift Pagi')
+    Pagi: attendanceRecords.filter((r) => r.keterangan === 'Pagi').length,
+    Malam: attendanceRecords.filter((r) => r.keterangan === 'Malam').length,
+    'Piket Pagi': attendanceRecords.filter((r) => r.keterangan === 'Piket Pagi')
       .length,
-    'Shift Malam': attendanceRecords.filter(
-      (r) => r.workModel === 'Shift Malam'
+    'Piket Malam': attendanceRecords.filter(
+      (r) => r.keterangan === 'Piket Malam'
     ).length,
-    Libur: attendanceRecords.filter((r) => r.workModel === 'Libur').length,
+    Libur: attendanceRecords.filter((r) => r.keterangan === 'Libur').length,
   };
 
   // Attendance percentage (minimum 22 days)
@@ -88,9 +88,9 @@ export default function AttendancePage() {
     },
     {
       key: 'workModel',
-      header: 'Model Kerja',
+      header: 'Keterangan',
       render: (record: AttendanceRecord) => (
-        <WorkModelBadge model={record.workModel} />
+        <WorkModelBadge model={record.keterangan} />
       ),
     },
   ];
@@ -123,9 +123,9 @@ export default function AttendancePage() {
                 <p>Pagi: {workModelCounts['Pagi']}</p>
                 <p>Malam: {workModelCounts['Malam']}</p>
                 <p>
-                  Shift:{' '}
-                  {workModelCounts['Shift Pagi'] +
-                    workModelCounts['Shift Malam']}
+                  Piket:{' '}
+                  {workModelCounts['Piket Pagi'] +
+                    workModelCounts['Piket Malam']}
                 </p>
               </div>
             </div>

@@ -20,7 +20,7 @@ export function AttendanceList() {
   }));
 
   return (
-    <div className='bg-white rounded-2xl p-4 sm:p-6 card-shadow transition-all duration-300 hover:shadow-lg'>
+    <div className='bg-white rounded-2xl p-4 sm:p-6 card-shadow transition-all duration-300 hover:shadow-lg h-full flex flex-col'>
       <div className='flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3'>
         <div>
           <h3 className='text-lg font-semibold text-gray-800'>
@@ -33,7 +33,7 @@ export function AttendanceList() {
         )}
       </div>
 
-      <div className='space-y-2'>
+      <div className='space-y-2 flex-1 overflow-auto'>
         {todayRecords.length === 0 ? (
           <p className='text-center text-gray-500 py-4'>
             Tidak ada data kehadiran
@@ -60,7 +60,7 @@ export function AttendanceList() {
                 <p className='text-xs text-gray-500'>{record.position}</p>
               </div>
               <div className='text-right flex flex-col items-end gap-1'>
-                <WorkModelBadge model={record.workModel} />
+                <WorkModelBadge model={record.keterangan} />
                 <span className='text-xs text-gray-400'>{record.jamAbsen}</span>
               </div>
             </div>

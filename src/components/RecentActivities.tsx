@@ -35,7 +35,7 @@ export function RecentActivities() {
   };
 
   return (
-    <div className='bg-white rounded-2xl p-4 sm:p-6 card-shadow transition-all duration-300 hover:shadow-lg'>
+    <div className='bg-white rounded-2xl p-4 sm:p-6 card-shadow transition-all duration-300 hover:shadow-lg h-full flex flex-col'>
       <div className='flex items-center gap-3 mb-6'>
         <div className='w-10 h-10 rounded-xl bg-[#FFF0F0] flex items-center justify-center transition-transform duration-300 hover:scale-110'>
           <Activity className='w-5 h-5 text-[#E57373]' />
@@ -48,7 +48,7 @@ export function RecentActivities() {
         </div>
       </div>
 
-      <div className='space-y-3'>
+      <div className='space-y-3 flex-1 overflow-auto'>
         {recentActivities.slice(0, 6).map((activity, index) => (
           <div
             key={activity.id}

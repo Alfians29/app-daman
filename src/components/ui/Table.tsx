@@ -102,16 +102,16 @@ export function StatusBadge({ status, variant = 'neutral' }: StatusBadgeProps) {
 }
 
 interface WorkModelBadgeProps {
-  model: 'Pagi' | 'Malam' | 'Shift Pagi' | 'Shift Malam' | 'Libur' | string;
+  model: 'Pagi' | 'Malam' | 'Piket Pagi' | 'Piket Malam' | 'Libur' | string;
 }
 
 export function WorkModelBadge({ model }: WorkModelBadgeProps) {
   const modelClasses: Record<string, string> = {
-    Pagi: 'bg-amber-100 text-amber-700',
-    Malam: 'bg-indigo-100 text-indigo-700',
-    'Shift Pagi': 'bg-orange-100 text-orange-700',
-    'Shift Malam': 'bg-purple-100 text-purple-700',
-    Libur: 'bg-gray-100 text-gray-600',
+    Pagi: 'bg-blue-100 text-blue-700',
+    Malam: 'bg-gray-100 text-gray-700',
+    'Piket Pagi': 'bg-green-100 text-green-700',
+    'Piket Malam': 'bg-purple-100 text-purple-700',
+    Libur: 'bg-red-100 text-red-700',
   };
 
   return (

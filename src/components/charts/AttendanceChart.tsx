@@ -3,8 +3,8 @@
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import {
-  AreaChart,
-  Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -45,24 +45,10 @@ function AttendanceChartContent({
   return (
     <div className='w-full h-[300px]'>
       <ResponsiveContainer width='100%' height='100%'>
-        <AreaChart
+        <LineChart
           data={filteredData}
           margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
         >
-          <defs>
-            <linearGradient id='colorHadir' x1='0' y1='0' x2='0' y2='1'>
-              <stop offset='5%' stopColor='#E57373' stopOpacity={0.3} />
-              <stop offset='95%' stopColor='#E57373' stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id='colorIzin' x1='0' y1='0' x2='0' y2='1'>
-              <stop offset='5%' stopColor='#FFA726' stopOpacity={0.3} />
-              <stop offset='95%' stopColor='#FFA726' stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id='colorSakit' x1='0' y1='0' x2='0' y2='1'>
-              <stop offset='5%' stopColor='#42A5F5' stopOpacity={0.3} />
-              <stop offset='95%' stopColor='#42A5F5' stopOpacity={0} />
-            </linearGradient>
-          </defs>
           <CartesianGrid strokeDasharray='3 3' stroke='#f0f0f0' />
           <XAxis
             dataKey='name'
@@ -84,34 +70,47 @@ function AttendanceChartContent({
             }}
           />
           <Legend />
-          <Area
+          <Line
             type='monotone'
-            dataKey='hadir'
-            name='Hadir'
-            stroke='#E57373'
+            dataKey='pagi'
+            name='Pagi'
+            stroke='#3B82F6'
             strokeWidth={2}
-            fillOpacity={1}
-            fill='url(#colorHadir)'
+            dot={false}
           />
-          <Area
+          <Line
             type='monotone'
-            dataKey='izin'
-            name='Izin'
-            stroke='#FFA726'
+            dataKey='malam'
+            name='Malam'
+            stroke='#6B7280'
             strokeWidth={2}
-            fillOpacity={1}
-            fill='url(#colorIzin)'
+            dot={false}
           />
-          <Area
+          <Line
             type='monotone'
-            dataKey='sakit'
-            name='Sakit'
-            stroke='#42A5F5'
+            dataKey='piketPagi'
+            name='Piket Pagi'
+            stroke='#10B981'
             strokeWidth={2}
-            fillOpacity={1}
-            fill='url(#colorSakit)'
+            dot={false}
           />
-        </AreaChart>
+          <Line
+            type='monotone'
+            dataKey='piketMalam'
+            name='Piket Malam'
+            stroke='#8B5CF6'
+            strokeWidth={2}
+            dot={false}
+          />
+          <Line
+            type='monotone'
+            dataKey='libur'
+            name='Libur'
+            stroke='#EF4444'
+            strokeWidth={2}
+            dot={false}
+          />
+        </LineChart>
       </ResponsiveContainer>
     </div>
   );

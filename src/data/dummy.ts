@@ -20,7 +20,7 @@ export interface AttendanceRecord {
   position: string;
   tanggal: string;
   jamAbsen: string;
-  workModel: 'Pagi' | 'Malam' | 'Shift Pagi' | 'Shift Malam' | 'Libur';
+  keterangan: 'Pagi' | 'Malam' | 'Piket Pagi' | 'Piket Malam' | 'Libur';
 }
 
 export interface CashEntry {
@@ -204,11 +204,11 @@ export const teamMembers: TeamMember[] = [
 // Generate attendance records for the current month
 const generateAttendanceRecords = (): AttendanceRecord[] => {
   const records: AttendanceRecord[] = [];
-  const workModels: AttendanceRecord['workModel'][] = [
+  const workModels: AttendanceRecord['keterangan'][] = [
     'Pagi',
     'Malam',
-    'Shift Pagi',
-    'Shift Malam',
+    'Piket Pagi',
+    'Piket Malam',
     'Libur',
   ];
 
@@ -221,7 +221,7 @@ const generateAttendanceRecords = (): AttendanceRecord[] => {
       const date = new Date(year, month, day);
       if (date.getDay() === 0) continue; // Skip Sundays
 
-      const workModel = workModels[(memberIndex + day) % workModels.length];
+      const keterangan = workModels[(memberIndex + day) % workModels.length];
       const hour = 7 + Math.floor(Math.random() * 2);
       const minute = Math.floor(Math.random() * 60);
 
@@ -235,7 +235,7 @@ const generateAttendanceRecords = (): AttendanceRecord[] => {
           day
         ).padStart(2, '0')}`,
         jamAbsen: `0${hour}:${String(minute).padStart(2, '0')}`,
-        workModel,
+        keterangan,
       });
     }
   });
@@ -395,20 +395,20 @@ export const recentActivities: Activity[] = [
   },
 ];
 
-// Chart data
+// Chart data - Monthly attendance by keterangan type
 export const monthlyAttendanceData = [
-  { name: 'Jan', hadir: 92, izin: 5, sakit: 2, alpha: 1 },
-  { name: 'Feb', hadir: 88, izin: 7, sakit: 3, alpha: 2 },
-  { name: 'Mar', hadir: 95, izin: 3, sakit: 1, alpha: 1 },
-  { name: 'Apr', hadir: 90, izin: 6, sakit: 2, alpha: 2 },
-  { name: 'Mei', hadir: 93, izin: 4, sakit: 2, alpha: 1 },
-  { name: 'Jun', hadir: 89, izin: 6, sakit: 3, alpha: 2 },
-  { name: 'Jul', hadir: 94, izin: 4, sakit: 1, alpha: 1 },
-  { name: 'Agu', hadir: 91, izin: 5, sakit: 2, alpha: 2 },
-  { name: 'Sep', hadir: 96, izin: 2, sakit: 1, alpha: 1 },
-  { name: 'Okt', hadir: 92, izin: 5, sakit: 2, alpha: 1 },
-  { name: 'Nov', hadir: 90, izin: 6, sakit: 2, alpha: 2 },
-  { name: 'Des', hadir: 87, izin: 7, sakit: 4, alpha: 2 },
+  { name: 'Jan', pagi: 45, malam: 30, piketPagi: 15, piketMalam: 8, libur: 2 },
+  { name: 'Feb', pagi: 42, malam: 28, piketPagi: 18, piketMalam: 10, libur: 2 },
+  { name: 'Mar', pagi: 48, malam: 32, piketPagi: 12, piketMalam: 6, libur: 2 },
+  { name: 'Apr', pagi: 44, malam: 29, piketPagi: 16, piketMalam: 9, libur: 2 },
+  { name: 'Mei', pagi: 46, malam: 31, piketPagi: 14, piketMalam: 7, libur: 2 },
+  { name: 'Jun', pagi: 43, malam: 27, piketPagi: 17, piketMalam: 11, libur: 2 },
+  { name: 'Jul', pagi: 47, malam: 33, piketPagi: 13, piketMalam: 5, libur: 2 },
+  { name: 'Agu', pagi: 44, malam: 30, piketPagi: 15, piketMalam: 9, libur: 2 },
+  { name: 'Sep', pagi: 49, malam: 34, piketPagi: 11, piketMalam: 4, libur: 2 },
+  { name: 'Okt', pagi: 45, malam: 31, piketPagi: 14, piketMalam: 8, libur: 2 },
+  { name: 'Nov', pagi: 43, malam: 28, piketPagi: 16, piketMalam: 10, libur: 3 },
+  { name: 'Des', pagi: 40, malam: 25, piketPagi: 18, piketMalam: 12, libur: 5 },
 ];
 
 export const cashFlowData = [
