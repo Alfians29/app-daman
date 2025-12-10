@@ -1,4 +1,8 @@
+'use client';
+
 import Sidebar from '@/components/Sidebar';
+import { Toaster } from 'react-hot-toast';
+import { SettingsProvider } from '@/context/SettingsContext';
 
 export default function MainLayout({
   children,
@@ -6,11 +10,43 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className='flex min-h-screen'>
-      <Sidebar />
-      <main className='flex-1 lg:ml-64 p-6 lg:p-8'>
-        <div className='max-w-[1440px] mx-auto'>{children}</div>
-      </main>
-    </div>
+    <SettingsProvider>
+      <div className='flex min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300'>
+        <Sidebar />
+        <main className='flex-1 lg:ml-64 p-6 lg:p-8'>
+          <div className='max-w-[1440px] mx-auto'>{children}</div>
+        </main>
+        <Toaster
+          position='bottom-right'
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#333',
+              color: '#fff',
+              borderRadius: '12px',
+              padding: '12px 16px',
+            },
+            success: {
+              iconTheme: {
+                primary: '#10B981',
+                secondary: '#fff',
+              },
+              style: {
+                background: '#10B981',
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: '#EF4444',
+                secondary: '#fff',
+              },
+              style: {
+                background: '#EF4444',
+              },
+            },
+          }}
+        />
+      </div>
+    </SettingsProvider>
   );
 }

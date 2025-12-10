@@ -5,6 +5,7 @@ interface CardProps {
   className?: string;
   hover?: boolean;
   animate?: boolean;
+  onClick?: () => void;
 }
 
 export function Card({
@@ -12,16 +13,19 @@ export function Card({
   className = '',
   hover = false,
   animate = true,
+  onClick,
 }: CardProps) {
   return (
     <div
       className={`
-        bg-white rounded-2xl p-6 card-shadow
+        bg-white dark:bg-gray-800 rounded-2xl p-6 card-shadow
         transition-all duration-300 ease-out
         ${hover ? 'hover:card-shadow-hover hover:-translate-y-1' : ''}
         ${animate ? 'animate-fade-in' : ''}
+        ${onClick ? 'cursor-pointer' : ''}
         ${className}
       `}
+      onClick={onClick}
     >
       {children}
     </div>
@@ -62,7 +66,7 @@ export function SummaryCard({
   return (
     <div
       className={`
-        bg-white rounded-2xl p-6 card-shadow relative overflow-hidden
+        bg-white dark:bg-gray-800 rounded-2xl p-6 card-shadow relative overflow-hidden
         transition-all duration-300 ease-out
         hover:card-shadow-hover hover:-translate-y-1
         animate-fade-in-up opacity-0
@@ -72,9 +76,17 @@ export function SummaryCard({
     >
       <div className='flex items-start justify-between'>
         <div className='flex-1'>
-          <p className='text-sm font-medium text-gray-500'>{title}</p>
-          <p className='text-2xl font-bold text-gray-800 mt-1'>{value}</p>
-          {subtitle && <p className='text-xs text-gray-400 mt-1'>{subtitle}</p>}
+          <p className='text-sm font-medium text-gray-500 dark:text-gray-400'>
+            {title}
+          </p>
+          <p className='text-2xl font-bold text-gray-800 dark:text-white mt-1'>
+            {value}
+          </p>
+          {subtitle && (
+            <p className='text-xs text-gray-400 dark:text-gray-500 mt-1'>
+              {subtitle}
+            </p>
+          )}
           {trend && (
             <div
               className={`flex items-center gap-1 mt-2 text-sm ${
@@ -85,7 +97,9 @@ export function SummaryCard({
                 {trend.isPositive ? '↑' : '↓'}
               </span>
               <span>{Math.abs(trend.value)}%</span>
-              <span className='text-gray-400'>dari bulan lalu</span>
+              <span className='text-gray-400 dark:text-gray-500'>
+                dari bulan lalu
+              </span>
             </div>
           )}
         </div>
@@ -98,7 +112,7 @@ export function SummaryCard({
 
       {/* Decorative element */}
       <div
-        className={`absolute -right-8 -bottom-8 w-24 h-24 rounded-full bg-gradient-to-br ${colorClasses[color]} opacity-10 transition-transform duration-500 hover:scale-150`}
+        className={`absolute -right-8 -bottom-8 w-24 h-24 rounded-full bg-gradient-to-br ${colorClasses[color]} opacity-10 dark:opacity-20 transition-transform duration-500 hover:scale-150`}
       />
     </div>
   );

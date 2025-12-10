@@ -11,20 +11,52 @@ import {
   LogOut,
   Menu,
   X,
+  Banknote,
+  ClipboardList,
+  CalendarDays,
+  CalendarCog,
+  Shield,
+  ScrollText,
+  ChevronRight,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { teamMembers } from '@/data/dummy';
+import { Avatar } from './ui/Avatar';
+
+// Simulasi role admin (ganti dengan auth context nanti)
+const isAdmin = true;
+const isSuperAdmin = true;
+const currentUser = teamMembers[1]; // Muhammad Alfian
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/attendance', label: 'Absensi', icon: UserCheck },
+  { href: '/schedule', label: 'Jadwal', icon: CalendarDays },
   { href: '/dashboard/cashbook', label: 'Kas', icon: Wallet },
   { href: '/dashboard/about', label: 'Tentang Tim', icon: Users },
   { href: '/dashboard/profile', label: 'Profil', icon: User },
 ];
 
+const adminNavItems = [
+  { href: '/admin/team', label: 'Kelola Tim', icon: Users },
+  { href: '/admin/schedule', label: 'Kelola Jadwal', icon: CalendarCog },
+  { href: '/admin/cash', label: 'Kelola Kas', icon: Banknote },
+  { href: '/admin/attendance', label: 'Kelola Kehadiran', icon: ClipboardList },
+];
+
+const superAdminNavItems = [
+  { href: '/superadmin/manage-roles', label: 'Manajemen Role', icon: Shield },
+  { href: '/superadmin/audit-log', label: 'Audit Log', icon: ScrollText },
+];
+
 export default function Sidebar() {
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  const isActive = (href: string) => {
+    if (href === '/') return pathname === '/';
+    return pathname.startsWith(href);
+  };
 
   // Close sidebar on route change
   useEffect(() => {
@@ -43,121 +75,142 @@ export default function Sidebar() {
     };
   }, [isMobileOpen]);
 
-  const isActive = (href: string) => {
-    if (href === '/') return pathname === '/';
-    return pathname.startsWith(href);
+  const NavLink = ({
+    item,
+  }: {
+    item: { href: string; label: string; icon: React.ElementType };
+  }) => {
+    const Icon = item.icon;
+    const active = isActive(item.href);
+
+    return (
+      <Link
+        href={item.href}
+        className={`
+          group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200
+          ${
+            active
+              ? 'bg-[#E57373] text-white shadow-md'
+              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+          }
+        `}
+      >
+        <Icon
+          size={20}
+          className={active ? '' : 'group-hover:scale-110 transition-transform'}
+        />
+        <span className='font-medium text-sm flex-1'>{item.label}</span>
+        {active && <ChevronRight size={16} className='opacity-70' />}
+      </Link>
+    );
   };
+
+  const SectionDivider = ({ label }: { label: string }) => (
+    <div className='pt-5 pb-2'>
+      <div className='flex items-center gap-3 px-4'>
+        <span className='text-[10px] font-bold uppercase tracking-wider text-[#E57373]'>
+          {label}
+        </span>
+        <div className='h-px flex-1 bg-gray-100' />
+      </div>
+    </div>
+  );
 
   return (
     <>
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className='lg:hidden fixed top-4 right-4 z-50 p-2.5 rounded-xl bg-white shadow-lg hover:bg-gray-50 transition-all duration-300 active:scale-95'
+        className='lg:hidden fixed top-4 right-4 z-50 p-2.5 rounded-xl bg-white shadow-lg hover:bg-gray-50 active:scale-95 transition-transform duration-150'
         aria-label='Toggle menu'
       >
-        <div className='relative w-6 h-6'>
-          <Menu
-            size={24}
-            className={`absolute inset-0 transition-all duration-300 ${
-              isMobileOpen ? 'opacity-0 rotate-90' : 'opacity-100 rotate-0'
-            }`}
-          />
-          <X
-            size={24}
-            className={`absolute inset-0 transition-all duration-300 ${
-              isMobileOpen ? 'opacity-100 rotate-0' : 'opacity-0 -rotate-90'
-            }`}
-          />
-        </div>
+        {isMobileOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
       {/* Mobile Overlay */}
-      <div
-        className={`lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-30 transition-opacity duration-300 ${
-          isMobileOpen
-            ? 'opacity-100 pointer-events-auto'
-            : 'opacity-0 pointer-events-none'
-        }`}
-        onClick={() => setIsMobileOpen(false)}
-      />
+      {isMobileOpen && (
+        <div
+          className='lg:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-30'
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
 
       {/* Sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-40
-          transform transition-all duration-300 ease-out
-          lg:translate-x-0 shadow-xl lg:shadow-none
-          ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
+          fixed top-0 left-0 h-full w-64 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700 z-40
+          flex flex-col transition-transform duration-300 ease-out
+          lg:translate-x-0
+          ${isMobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
         `}
       >
         {/* Logo */}
-        <div className='h-16 flex items-center justify-center border-b border-gray-100'>
-          <div className='flex items-center gap-2'>
-            <div className='w-10 h-10 rounded-xl bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center transition-transform duration-300 hover:scale-110 hover:rotate-3'>
-              <Users className='w-6 h-6 text-white' />
+        <div className='h-16 flex items-center px-5 border-b border-gray-100 dark:border-gray-700'>
+          <div className='flex items-center gap-3'>
+            <div className='w-10 h-10 rounded-xl bg-[#E57373] flex items-center justify-center shadow-lg shadow-red-200/50'>
+              <span className='text-lg font-bold text-white'>D</span>
             </div>
             <div>
-              <h1 className='text-lg font-bold text-gray-800'>Daman</h1>
-              <p className='text-xs text-gray-500'>Management System</p>
+              <h1 className='text-lg font-bold text-gray-800 dark:text-white'>
+                Daman
+              </h1>
+              <p className='text-[10px] text-gray-400 uppercase tracking-wider'>
+                Management System
+              </p>
             </div>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className='flex-1 p-4 space-y-1'>
-          {navItems.map((item, index) => {
-            const Icon = item.icon;
-            const active = isActive(item.href);
+        <nav className='flex-1 p-3 space-y-1 overflow-y-auto'>
+          {/* Main Menu */}
+          <div className='space-y-1'>
+            {navItems.map((item) => (
+              <NavLink key={item.href} item={item} />
+            ))}
+          </div>
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`
-                  flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
-                  animate-fade-in-left group
-                  ${
-                    active
-                      ? 'bg-gradient-to-r from-[#E57373] to-[#EF5350] text-white shadow-lg shadow-red-200/50'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 hover:translate-x-1'
-                  }
-                `}
-                style={{
-                  animationDelay: `${index * 50}ms`,
-                  animationFillMode: 'forwards',
-                }}
-              >
-                <Icon
-                  size={20}
-                  className={`transition-transform duration-200 ${
-                    active ? '' : 'group-hover:scale-110'
-                  }`}
-                />
-                <span className='font-medium'>{item.label}</span>
-                {active && (
-                  <div className='ml-auto w-2 h-2 rounded-full bg-white/50 animate-pulse' />
-                )}
-              </Link>
-            );
-          })}
+          {/* Admin Section */}
+          {isAdmin && (
+            <>
+              <SectionDivider label='Admin' />
+              <div className='space-y-1'>
+                {adminNavItems.map((item) => (
+                  <NavLink key={item.href} item={item} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Superadmin Section */}
+          {isSuperAdmin && (
+            <>
+              <SectionDivider label='Superadmin' />
+              <div className='space-y-1'>
+                {superAdminNavItems.map((item) => (
+                  <NavLink key={item.href} item={item} />
+                ))}
+              </div>
+            </>
+          )}
         </nav>
 
         {/* User Info */}
-        <div className='absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100'>
-          <div className='flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-all duration-200 group'>
-            <div className='w-10 h-10 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center text-white font-semibold ring-2 ring-white shadow-md transition-transform duration-300 group-hover:scale-105'>
-              AF
-            </div>
+        <div className='p-3 border-t border-gray-100 dark:border-gray-700'>
+          <div className='flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-200'>
+            <Avatar src={currentUser.image} name={currentUser.name} size='md' />
             <div className='flex-1 min-w-0'>
-              <p className='text-sm font-medium text-gray-800 truncate'>
-                Ahmad Fauzi
+              <p className='text-sm font-semibold text-gray-800 dark:text-white truncate'>
+                {currentUser.nickname}
               </p>
-              <p className='text-xs text-gray-500 truncate'>Manager</p>
+              <p className='text-xs text-gray-500 dark:text-gray-400 truncate'>
+                {currentUser.position}
+              </p>
             </div>
             <Link
               href='/sign-in/login'
-              className='p-2 text-gray-400 hover:text-[#E57373] hover:bg-white rounded-lg transition-all duration-200 hover:scale-110 hover:shadow-md'
+              className='p-2 text-gray-400 hover:text-[#E57373] hover:bg-white dark:hover:bg-gray-500 rounded-lg transition-colors duration-200'
+              title='Logout'
             >
               <LogOut size={18} />
             </Link>

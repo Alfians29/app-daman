@@ -31,7 +31,7 @@ function AttendanceChartContent({
 
   if (!mounted) {
     return (
-      <div className='w-full h-[300px] bg-gray-50 animate-pulse rounded-xl' />
+      <div className='w-full h-[300px] bg-gray-50 dark:bg-gray-700 animate-pulse rounded-xl' />
     );
   }
 
@@ -121,7 +121,7 @@ export const AttendanceChart = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className='w-full h-[300px] bg-gray-50 animate-pulse rounded-xl' />
+      <div className='w-full h-[300px] bg-gray-50 dark:bg-gray-700 animate-pulse rounded-xl' />
     ),
   }
 );

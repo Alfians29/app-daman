@@ -2,13 +2,15 @@
 
 export interface TeamMember {
   id: string;
-  nip: string;
+  nik: string;
+  username: string;
   name: string;
+  nickname: string;
   email: string;
   position: string;
   department: string;
-  avatar: string;
-  joinDate: string;
+  image: string;
+  usernameTelegram: string;
   phone: string;
 }
 
@@ -21,6 +23,15 @@ export interface AttendanceRecord {
   tanggal: string;
   jamAbsen: string;
   keterangan: 'Pagi' | 'Malam' | 'Piket Pagi' | 'Piket Malam' | 'Libur';
+  status: 'Ontime' | 'Telat';
+}
+
+export interface ScheduleEntry {
+  id: string;
+  memberId: string;
+  memberName: string;
+  tanggal: string;
+  keterangan: 'Pagi' | 'Malam' | 'Piket Pagi' | 'Piket Malam' | 'Libur';
 }
 
 export interface CashEntry {
@@ -29,6 +40,7 @@ export interface CashEntry {
   description: string;
   category: 'income' | 'expense';
   amount: number;
+  transactionCategory?: string;
   memberId?: string;
   memberName?: string;
 }
@@ -57,147 +69,94 @@ export interface Activity {
 export const teamMembers: TeamMember[] = [
   {
     id: '1',
-    nip: '198501012010011001',
-    name: 'Ahmad Fauzi',
-    email: 'ahmad.fauzi@company.com',
-    position: 'Manager',
-    department: 'Operasional',
-    avatar:
-      'https://ui-avatars.com/api/?name=Ahmad+Fauzi&background=E57373&color=fff',
-    joinDate: '2010-01-01',
+    nik: 'nik_123',
+    username: 'andrew.nugroho',
+    name: 'Andrew Nugroho Prihantono',
+    nickname: 'Andrew',
+    email: 'andrew.nugroho.prihantono@company.com',
+    position: 'Team Leader',
+    department: 'Data Management',
+    image: '',
+    usernameTelegram: '@andrewnugrohoo',
     phone: '081234567890',
   },
   {
     id: '2',
-    nip: '199002152015022001',
-    name: 'Siti Rahayu',
-    email: 'siti.rahayu@company.com',
-    position: 'Supervisor',
-    department: 'Keuangan',
-    avatar:
-      'https://ui-avatars.com/api/?name=Siti+Rahayu&background=E57373&color=fff',
-    joinDate: '2015-02-15',
+    nik: 'nik_124',
+    username: 'muhammad.alfian',
+    name: 'Muhammad Alfian',
+    nickname: 'Alfian',
+    email: 'muhammad.alfian@company.com',
+    position: 'Member',
+    department: 'Data Management',
+    image: '',
+    usernameTelegram: '@alfiyyann',
     phone: '081234567891',
   },
   {
     id: '3',
-    nip: '199203202018031001',
-    name: 'Budi Santoso',
-    email: 'budi.santoso@company.com',
-    position: 'Staff',
-    department: 'IT',
-    avatar:
-      'https://ui-avatars.com/api/?name=Budi+Santoso&background=E57373&color=fff',
-    joinDate: '2018-03-20',
+    nik: 'nik_125',
+    username: 'rahardian.arta',
+    name: 'Rahardian Arta Putra',
+    nickname: 'Rahardian',
+    email: 'rahardian.artha.putra@company.com',
+    position: 'Member',
+    department: 'Data Management',
+    image: '',
+    usernameTelegram: '@Rahar_D_ian',
     phone: '081234567892',
   },
   {
     id: '4',
-    nip: '199405102019041001',
-    name: 'Dewi Lestari',
-    email: 'dewi.lestari@company.com',
-    position: 'Staff',
-    department: 'HR',
-    avatar:
-      'https://ui-avatars.com/api/?name=Dewi+Lestari&background=E57373&color=fff',
-    joinDate: '2019-04-10',
+    nik: 'nik_126',
+    username: 'afrida.triana',
+    name: 'Afrida Triana',
+    nickname: 'Afrida',
+    email: 'afrida.triana@company.com',
+    position: 'Member',
+    department: 'Data Management',
+    image: '',
+    usernameTelegram: '@afridatriana',
     phone: '081234567893',
   },
   {
     id: '5',
-    nip: '199106252017051001',
-    name: 'Eko Prasetyo',
-    email: 'eko.prasetyo@company.com',
-    position: 'Supervisor',
-    department: 'Operasional',
-    avatar:
-      'https://ui-avatars.com/api/?name=Eko+Prasetyo&background=E57373&color=fff',
-    joinDate: '2017-05-25',
+    nik: 'nik_127',
+    username: 'istiqfar.nada',
+    name: 'Istiqfar Nada Maduwangi',
+    nickname: 'Nada',
+    email: 'istiqfar.nada.maduwangi@company.com',
+    position: 'Member',
+    department: 'Data Management',
+    image: '',
+    usernameTelegram: '@istiqfarnada',
     phone: '081234567894',
   },
   {
     id: '6',
-    nip: '199308152020061001',
-    name: 'Fitri Handayani',
-    email: 'fitri.handayani@company.com',
-    position: 'Staff',
-    department: 'Keuangan',
-    avatar:
-      'https://ui-avatars.com/api/?name=Fitri+Handayani&background=E57373&color=fff',
-    joinDate: '2020-06-15',
+    nik: 'nik_128',
+    username: 'maharani.anggita',
+    name: 'Maharani Anggita Putri',
+    nickname: 'Rani',
+    email: 'maharani.anggita.putri@company.com',
+    position: 'Member',
+    department: 'Data Management',
+    image: '',
+    usernameTelegram: '@mhrn_ap',
     phone: '081234567895',
   },
   {
     id: '7',
-    nip: '198807302016071001',
-    name: 'Gunawan Wibowo',
-    email: 'gunawan.wibowo@company.com',
-    position: 'Staff',
-    department: 'IT',
-    avatar:
-      'https://ui-avatars.com/api/?name=Gunawan+Wibowo&background=E57373&color=fff',
-    joinDate: '2016-07-30',
+    nik: 'nik_129',
+    username: 'vira.sinthya',
+    name: 'Vira Sinthya Berlianti',
+    nickname: 'Vira',
+    email: 'vira.sinthya.berlianti@company.com',
+    position: 'Member',
+    department: 'Data Management',
+    image: '',
+    usernameTelegram: '@virasinthyab',
     phone: '081234567896',
-  },
-  {
-    id: '8',
-    nip: '199509102021081001',
-    name: 'Hana Permata',
-    email: 'hana.permata@company.com',
-    position: 'Staff',
-    department: 'Marketing',
-    avatar:
-      'https://ui-avatars.com/api/?name=Hana+Permata&background=E57373&color=fff',
-    joinDate: '2021-08-10',
-    phone: '081234567897',
-  },
-  {
-    id: '9',
-    nip: '199012052014091001',
-    name: 'Irfan Hakim',
-    email: 'irfan.hakim@company.com',
-    position: 'Supervisor',
-    department: 'Marketing',
-    avatar:
-      'https://ui-avatars.com/api/?name=Irfan+Hakim&background=E57373&color=fff',
-    joinDate: '2014-09-05',
-    phone: '081234567898',
-  },
-  {
-    id: '10',
-    nip: '199704202022101001',
-    name: 'Jasmine Putri',
-    email: 'jasmine.putri@company.com',
-    position: 'Staff',
-    department: 'HR',
-    avatar:
-      'https://ui-avatars.com/api/?name=Jasmine+Putri&background=E57373&color=fff',
-    joinDate: '2022-10-20',
-    phone: '081234567899',
-  },
-  {
-    id: '11',
-    nip: '198602152012111001',
-    name: 'Kurniawan Adi',
-    email: 'kurniawan.adi@company.com',
-    position: 'Manager',
-    department: 'IT',
-    avatar:
-      'https://ui-avatars.com/api/?name=Kurniawan+Adi&background=E57373&color=fff',
-    joinDate: '2012-11-15',
-    phone: '081234567800',
-  },
-  {
-    id: '12',
-    nip: '199201302019121001',
-    name: 'Linda Sari',
-    email: 'linda.sari@company.com',
-    position: 'Staff',
-    department: 'Operasional',
-    avatar:
-      'https://ui-avatars.com/api/?name=Linda+Sari&background=E57373&color=fff',
-    joinDate: '2019-12-30',
-    phone: '081234567801',
   },
 ];
 
@@ -224,6 +183,8 @@ const generateAttendanceRecords = (): AttendanceRecord[] => {
       const keterangan = workModels[(memberIndex + day) % workModels.length];
       const hour = 7 + Math.floor(Math.random() * 2);
       const minute = Math.floor(Math.random() * 60);
+      // Status: Ontime jika jam < 08:00, Telat jika jam >= 08:00
+      const status: 'Ontime' | 'Telat' = hour < 8 ? 'Ontime' : 'Telat';
 
       records.push({
         id: `att-${member.id}-${day}`,
@@ -236,6 +197,7 @@ const generateAttendanceRecords = (): AttendanceRecord[] => {
         ).padStart(2, '0')}`,
         jamAbsen: `0${hour}:${String(minute).padStart(2, '0')}`,
         keterangan,
+        status,
       });
     }
   });
@@ -283,7 +245,7 @@ export const cashEntries: CashEntry[] = [
     description: 'Donasi anggota',
     category: 'income',
     amount: 300000,
-    memberName: 'Ahmad Fauzi',
+    memberName: 'Andrew Nugroho Prihantono',
   },
   {
     id: 'cash-6',
@@ -314,15 +276,10 @@ export const payrollEntries: PayrollEntry[] = teamMembers.map(
     id: `pay-${member.id}`,
     memberId: member.id,
     memberName: member.name,
-    memberAvatar: member.avatar,
+    memberAvatar: member.image,
     position: member.position,
     date: '2024-12-01',
-    totalPay:
-      member.position === 'Manager'
-        ? 15000000
-        : member.position === 'Supervisor'
-        ? 10000000
-        : 7500000,
+    totalPay: member.position === 'Team Leader' ? 15000000 : 7500000,
     status: index % 3 === 0 ? 'Belum Lunas' : 'Lunas',
   })
 );
@@ -333,7 +290,7 @@ export const recentActivities: Activity[] = [
     id: 'act-1',
     action: 'menambahkan',
     target: 'data kehadiran',
-    user: 'Ahmad Fauzi',
+    user: 'Andrew Nugroho Prihantono',
     timestamp: '2024-12-09 08:30',
     type: 'create',
   },
@@ -341,7 +298,7 @@ export const recentActivities: Activity[] = [
     id: 'act-2',
     action: 'mengubah',
     target: 'profil anggota',
-    user: 'Siti Rahayu',
+    user: 'Muhammad Alfian',
     timestamp: '2024-12-09 09:15',
     type: 'update',
   },
@@ -349,49 +306,9 @@ export const recentActivities: Activity[] = [
     id: 'act-3',
     action: 'login ke',
     target: 'sistem',
-    user: 'Budi Santoso',
+    user: 'Rahardian Arta Putra',
     timestamp: '2024-12-09 07:45',
     type: 'login',
-  },
-  {
-    id: 'act-4',
-    action: 'menghapus',
-    target: 'catatan kas',
-    user: 'Dewi Lestari',
-    timestamp: '2024-12-08 16:20',
-    type: 'delete',
-  },
-  {
-    id: 'act-5',
-    action: 'menambahkan',
-    target: 'anggota baru',
-    user: 'Ahmad Fauzi',
-    timestamp: '2024-12-08 14:00',
-    type: 'create',
-  },
-  {
-    id: 'act-6',
-    action: 'mengubah',
-    target: 'jadwal shift',
-    user: 'Eko Prasetyo',
-    timestamp: '2024-12-08 11:30',
-    type: 'update',
-  },
-  {
-    id: 'act-7',
-    action: 'login ke',
-    target: 'sistem',
-    user: 'Fitri Handayani',
-    timestamp: '2024-12-08 08:00',
-    type: 'login',
-  },
-  {
-    id: 'act-8',
-    action: 'menambahkan',
-    target: 'kas masuk',
-    user: 'Siti Rahayu',
-    timestamp: '2024-12-07 15:45',
-    type: 'create',
   },
 ];
 
@@ -464,3 +381,278 @@ export const getSummaryStats = () => {
     totalCashOut,
   };
 };
+
+// Schedule Data (from uploaded schedules)
+// Periode Desember 2024 (1-31)
+const generateScheduleData = (): ScheduleEntry[] => {
+  const schedules: ScheduleEntry[] = [];
+
+  // Define specific schedules for each member for December 2024
+  // Struktur: [memberId, day, keterangan]
+  const scheduleMap: {
+    [memberId: string]: {
+      [day: number]: 'Pagi' | 'Malam' | 'Piket Pagi' | 'Piket Malam' | 'Libur';
+    };
+  } = {
+    // Andrew (id: 1)
+    '1': {
+      1: 'Pagi',
+      2: 'Pagi',
+      3: 'Malam',
+      4: 'Malam',
+      5: 'Libur',
+      6: 'Piket Pagi',
+      7: 'Piket Malam',
+      8: 'Pagi',
+      9: 'Pagi',
+      10: 'Malam',
+      11: 'Malam',
+      12: 'Libur',
+      13: 'Pagi',
+      14: 'Pagi',
+      15: 'Malam',
+      16: 'Piket Pagi',
+      17: 'Piket Malam',
+      18: 'Pagi',
+      19: 'Libur',
+      20: 'Malam',
+      21: 'Pagi',
+      22: 'Pagi',
+      23: 'Malam',
+      24: 'Libur',
+      25: 'Libur',
+      26: 'Piket Pagi',
+      27: 'Pagi',
+      28: 'Malam',
+      29: 'Malam',
+      30: 'Pagi',
+      31: 'Libur',
+    },
+    // Alfian (id: 2)
+    '2': {
+      1: 'Malam',
+      2: 'Malam',
+      3: 'Pagi',
+      4: 'Pagi',
+      5: 'Piket Pagi',
+      6: 'Libur',
+      7: 'Pagi',
+      8: 'Malam',
+      9: 'Malam',
+      10: 'Pagi',
+      11: 'Piket Malam',
+      12: 'Pagi',
+      13: 'Malam',
+      14: 'Libur',
+      15: 'Pagi',
+      16: 'Malam',
+      17: 'Pagi',
+      18: 'Piket Pagi',
+      19: 'Malam',
+      20: 'Pagi',
+      21: 'Libur',
+      22: 'Malam',
+      23: 'Pagi',
+      24: 'Malam',
+      25: 'Libur',
+      26: 'Pagi',
+      27: 'Malam',
+      28: 'Piket Malam',
+      29: 'Pagi',
+      30: 'Malam',
+      31: 'Pagi',
+    },
+    // Rahardian (id: 3)
+    '3': {
+      1: 'Piket Pagi',
+      2: 'Libur',
+      3: 'Piket Malam',
+      4: 'Pagi',
+      5: 'Malam',
+      6: 'Pagi',
+      7: 'Malam',
+      8: 'Piket Pagi',
+      9: 'Libur',
+      10: 'Piket Malam',
+      11: 'Pagi',
+      12: 'Malam',
+      13: 'Pagi',
+      14: 'Malam',
+      15: 'Piket Pagi',
+      16: 'Libur',
+      17: 'Malam',
+      18: 'Malam',
+      19: 'Pagi',
+      20: 'Piket Malam',
+      21: 'Malam',
+      22: 'Piket Pagi',
+      23: 'Libur',
+      24: 'Pagi',
+      25: 'Malam',
+      26: 'Malam',
+      27: 'Piket Malam',
+      28: 'Pagi',
+      29: 'Libur',
+      30: 'Piket Pagi',
+      31: 'Malam',
+    },
+    // Rama (id: 4)
+    '4': {
+      1: 'Libur',
+      2: 'Piket Malam',
+      3: 'Pagi',
+      4: 'Malam',
+      5: 'Pagi',
+      6: 'Malam',
+      7: 'Libur',
+      8: 'Libur',
+      9: 'Piket Pagi',
+      10: 'Pagi',
+      11: 'Pagi',
+      12: 'Malam',
+      13: 'Piket Malam',
+      14: 'Pagi',
+      15: 'Libur',
+      16: 'Pagi',
+      17: 'Pagi',
+      18: 'Malam',
+      19: 'Piket Pagi',
+      20: 'Libur',
+      21: 'Piket Malam',
+      22: 'Malam',
+      23: 'Pagi',
+      24: 'Pagi',
+      25: 'Malam',
+      26: 'Libur',
+      27: 'Libur',
+      28: 'Pagi',
+      29: 'Malam',
+      30: 'Piket Malam',
+      31: 'Pagi',
+    },
+    // Abi (id: 5)
+    '5': {
+      1: 'Pagi',
+      2: 'Pagi',
+      3: 'Libur',
+      4: 'Piket Pagi',
+      5: 'Malam',
+      6: 'Malam',
+      7: 'Pagi',
+      8: 'Pagi',
+      9: 'Malam',
+      10: 'Libur',
+      11: 'Piket Pagi',
+      12: 'Piket Malam',
+      13: 'Libur',
+      14: 'Pagi',
+      15: 'Malam',
+      16: 'Malam',
+      17: 'Libur',
+      18: 'Libur',
+      19: 'Pagi',
+      20: 'Pagi',
+      21: 'Malam',
+      22: 'Libur',
+      23: 'Piket Malam',
+      24: 'Piket Pagi',
+      25: 'Pagi',
+      26: 'Malam',
+      27: 'Pagi',
+      28: 'Malam',
+      29: 'Piket Pagi',
+      30: 'Libur',
+      31: 'Malam',
+    },
+    // Faqih (id: 6)
+    '6': {
+      1: 'Malam',
+      2: 'Piket Pagi',
+      3: 'Pagi',
+      4: 'Libur',
+      5: 'Pagi',
+      6: 'Piket Malam',
+      7: 'Piket Pagi',
+      8: 'Malam',
+      9: 'Pagi',
+      10: 'Pagi',
+      11: 'Libur',
+      12: 'Pagi',
+      13: 'Piket Pagi',
+      14: 'Malam',
+      15: 'Malam',
+      16: 'Pagi',
+      17: 'Malam',
+      18: 'Pagi',
+      19: 'Libur',
+      20: 'Piket Pagi',
+      21: 'Pagi',
+      22: 'Pagi',
+      23: 'Malam',
+      24: 'Malam',
+      25: 'Piket Malam',
+      26: 'Pagi',
+      27: 'Libur',
+      28: 'Libur',
+      29: 'Pagi',
+      30: 'Malam',
+      31: 'Piket Pagi',
+    },
+    // Fadil (id: 7)
+    '7': {
+      1: 'Piket Malam',
+      2: 'Malam',
+      3: 'Malam',
+      4: 'Piket Malam',
+      5: 'Piket Pagi',
+      6: 'Pagi',
+      7: 'Pagi',
+      8: 'Libur',
+      9: 'Libur',
+      10: 'Malam',
+      11: 'Malam',
+      12: 'Piket Pagi',
+      13: 'Pagi',
+      14: 'Piket Pagi',
+      15: 'Piket Malam',
+      16: 'Libur',
+      17: 'Piket Pagi',
+      18: 'Malam',
+      19: 'Pagi',
+      20: 'Malam',
+      21: 'Libur',
+      22: 'Libur',
+      23: 'Piket Pagi',
+      24: 'Malam',
+      25: 'Pagi',
+      26: 'Piket Malam',
+      27: 'Malam',
+      28: 'Piket Pagi',
+      29: 'Malam',
+      30: 'Pagi',
+      31: 'Libur',
+    },
+  };
+
+  // Generate schedule entries from the map
+  teamMembers.forEach((member) => {
+    const memberSchedule = scheduleMap[member.id];
+    if (memberSchedule) {
+      for (let day = 1; day <= 31; day++) {
+        if (memberSchedule[day]) {
+          schedules.push({
+            id: `sch-${member.id}-2025-12-${day.toString().padStart(2, '0')}`,
+            memberId: member.id,
+            memberName: member.name,
+            tanggal: `2025-12-${day.toString().padStart(2, '0')}`,
+            keterangan: memberSchedule[day],
+          });
+        }
+      }
+    }
+  });
+
+  return schedules;
+};
+
+export const scheduleEntries: ScheduleEntry[] = generateScheduleData();
