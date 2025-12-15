@@ -8,23 +8,38 @@ import {
   Trash2,
   ArrowUpCircle,
   ArrowDownCircle,
-  X,
   Calendar,
   Download,
   Filter,
+  WalletCards,
+  Wallet,
 } from 'lucide-react';
 import { cashEntries, CashEntry, teamMembers } from '@/data/dummy';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { PageHeader } from '@/components/ui/PageHeader';
+import {
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ConfirmModal,
+} from '@/components/ui/Modal';
+import { Input, Select } from '@/components/ui/Form';
 import toast from 'react-hot-toast';
 
 // Predefined transaction categories
 const transactionCategories = [
-  'Kas Bulanan',
-  'Kebutuhan Kantor',
-  'Belanja Operasional',
-  'Perlengkapan',
-  'Lain-lain',
+  { value: 'Kas Bulanan', label: 'Kas Bulanan' },
+  { value: 'Kebutuhan Kantor', label: 'Kebutuhan Kantor' },
+  { value: 'Belanja Operasional', label: 'Belanja Operasional' },
+  { value: 'Perlengkapan', label: 'Perlengkapan' },
+  { value: 'Lain-lain', label: 'Lain-lain' },
+];
+
+const memberOptions = [
+  { value: '', label: 'Pilih member' },
+  ...teamMembers.map((m) => ({ value: m.id, label: m.name })),
 ];
 
 type TransactionForm = {
@@ -195,7 +210,7 @@ export default function AdminCashPage() {
     setSelectedEntry(entry);
     setFormData({
       date: entry.date,
-      transactionCategory: 'Lain-lain',
+      transactionCategory: entry.transactionCategory || 'Lain-lain',
       description: entry.description,
       category: entry.category,
       amount: entry.amount,
@@ -209,36 +224,42 @@ export default function AdminCashPage() {
     setShowDeleteModal(true);
   };
 
+  const closeModal = () => {
+    setShowAddModal(false);
+    setShowEditModal(false);
+    setSelectedEntry(null);
+    resetForm();
+  };
+
   return (
     <div className='space-y-6'>
       {/* Header */}
-      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
-        <div>
-          <h1 className='text-2xl font-bold text-gray-800'>Kelola Uang Kas</h1>
-          <p className='text-gray-500 text-sm mt-1'>
-            Kelola pemasukan dan pengeluaran kas tim
-          </p>
-        </div>
-        <div className='flex gap-2'>
-          <Button
-            variant='outline'
-            onClick={handleExport}
-            icon={<Download className='w-4 h-4' />}
-          >
-            Download
-          </Button>
-
-          <Button
-            onClick={() => {
-              resetForm();
-              setShowAddModal(true);
-            }}
-            icon={<Plus className='w-4 h-4' />}
-          >
-            Tambah
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title='Kelola Uang Kas'
+        description='Kelola pemasukan dan pengeluaran kas tim'
+        icon={WalletCards}
+        actions={
+          <>
+            <button
+              onClick={handleExport}
+              className='flex items-center gap-2 px-4 py-2 bg-white/20 text-white border border-white/30 rounded-xl font-medium hover:bg-white/30 transition-colors'
+            >
+              <Download className='w-4 h-4' />
+              Download
+            </button>
+            <button
+              onClick={() => {
+                resetForm();
+                setShowAddModal(true);
+              }}
+              className='flex items-center gap-2 px-4 py-2 bg-white text-[#E57373] rounded-xl font-medium hover:bg-white/90 transition-colors'
+            >
+              <Plus className='w-4 h-4' />
+              Tambah
+            </button>
+          </>
+        }
+      />
 
       {/* Summary Cards */}
       <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
@@ -271,7 +292,7 @@ export default function AdminCashPage() {
         <div className='bg-white rounded-xl p-4 border border-gray-100'>
           <div className='flex items-center gap-3'>
             <div className='w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center'>
-              <ArrowUpCircle className='w-5 h-5 text-blue-600' />
+              <Wallet className='w-5 h-5 text-blue-600' />
             </div>
             <div>
               <p className='text-xs text-gray-500'>Saldo</p>
@@ -471,201 +492,130 @@ export default function AdminCashPage() {
       </div>
 
       {/* Add/Edit Modal */}
-      {(showAddModal || showEditModal) && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
-          <Card className='w-full max-w-md mx-4'>
-            <div className='flex items-center justify-between mb-4'>
-              <h3 className='text-lg font-semibold text-gray-800'>
-                {showAddModal ? 'Tambah Transaksi' : 'Edit Transaksi'}
-              </h3>
-              <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setShowEditModal(false);
-                }}
-                className='p-2 hover:bg-gray-100 rounded-lg'
-              >
-                <X className='w-5 h-5 text-gray-500' />
-              </button>
-            </div>
+      <Modal
+        isOpen={showAddModal || showEditModal}
+        onClose={closeModal}
+        size='md'
+      >
+        <ModalHeader
+          title={showAddModal ? 'Tambah Transaksi' : 'Edit Transaksi'}
+          subtitle='Kelola Uang Kas'
+          onClose={closeModal}
+        />
+        <ModalBody>
+          <div className='space-y-4'>
+            <Input
+              label='Tanggal'
+              type='date'
+              value={formData.date}
+              onChange={(e) =>
+                setFormData({ ...formData, date: e.target.value })
+              }
+            />
 
-            <div className='space-y-4'>
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Tanggal
-                </label>
-                <input
-                  type='date'
-                  value={formData.date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, date: e.target.value })
-                  }
-                  className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                />
-              </div>
-
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Kategori
-                </label>
-                <div className='flex gap-2'>
-                  <button
-                    onClick={() =>
-                      setFormData({ ...formData, category: 'income' })
-                    }
-                    className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-                      formData.category === 'income'
-                        ? 'bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    Pemasukan
-                  </button>
-                  <button
-                    onClick={() =>
-                      setFormData({ ...formData, category: 'expense' })
-                    }
-                    className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-                      formData.category === 'expense'
-                        ? 'bg-red-100 text-red-700 ring-2 ring-red-500'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    Pengeluaran
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Kategori Transaksi
-                </label>
-                <select
-                  value={formData.transactionCategory}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      transactionCategory: e.target.value,
-                    })
-                  }
-                  className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                >
-                  {transactionCategories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Deskripsi
-                </label>
-                <input
-                  type='text'
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  placeholder='Contoh: Iuran bulan Desember'
-                  className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                />
-              </div>
-
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Jumlah (Rp)
-                </label>
-                <input
-                  type='number'
-                  value={formData.amount || ''}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      amount: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  placeholder='50000'
-                  className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                />
-              </div>
-
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Member (opsional)
-                </label>
-                <select
-                  value={formData.memberId}
-                  onChange={(e) =>
-                    setFormData({ ...formData, memberId: e.target.value })
-                  }
-                  className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                >
-                  <option value=''>Pilih member</option>
-                  {teamMembers.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className='mt-6 flex gap-3 justify-end'>
-              <Button
-                variant='secondary'
-                onClick={() => {
-                  setShowAddModal(false);
-                  setShowEditModal(false);
-                }}
-              >
-                Batal
-              </Button>
-              <Button
-                onClick={showAddModal ? handleAdd : handleEdit}
-                disabled={!formData.description || !formData.amount}
-              >
-                {showAddModal ? 'Tambah' : 'Simpan'}
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && selectedEntry && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
-          <Card className='w-full max-w-sm mx-4'>
-            <div className='text-center'>
-              <div className='w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4'>
-                <Trash2 className='w-6 h-6 text-red-600' />
-              </div>
-              <h3 className='text-lg font-semibold text-gray-800 mb-2'>
-                Hapus Transaksi?
-              </h3>
-              <p className='text-sm text-gray-500 mb-6'>
-                Transaksi &quot;{selectedEntry.description}&quot; akan dihapus
-                permanen.
-              </p>
-              <div className='flex gap-3 justify-center'>
-                <Button
-                  variant='secondary'
-                  onClick={() => setShowDeleteModal(false)}
-                >
-                  Batal
-                </Button>
+            <div>
+              <label className='block text-xs text-gray-500 mb-1'>
+                Tipe Transaksi
+              </label>
+              <div className='flex gap-2'>
                 <button
-                  onClick={handleDelete}
-                  className='px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors'
+                  type='button'
+                  onClick={() =>
+                    setFormData({ ...formData, category: 'income' })
+                  }
+                  className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                    formData.category === 'income'
+                      ? 'bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
                 >
-                  Hapus
+                  Pemasukan
+                </button>
+                <button
+                  type='button'
+                  onClick={() =>
+                    setFormData({ ...formData, category: 'expense' })
+                  }
+                  className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                    formData.category === 'expense'
+                      ? 'bg-red-100 text-red-700 ring-2 ring-red-500'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Pengeluaran
                 </button>
               </div>
             </div>
-          </Card>
-        </div>
-      )}
+
+            <Select
+              label='Kategori Transaksi'
+              value={formData.transactionCategory}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  transactionCategory: e.target.value,
+                })
+              }
+              options={transactionCategories}
+            />
+
+            <Input
+              label='Deskripsi'
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              placeholder='Contoh: Iuran bulan Desember'
+            />
+
+            <Input
+              label='Jumlah (Rp)'
+              type='number'
+              value={formData.amount || ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  amount: parseInt(e.target.value) || 0,
+                })
+              }
+              placeholder='50000'
+            />
+
+            <Select
+              label='Member (opsional)'
+              value={formData.memberId || ''}
+              onChange={(e) =>
+                setFormData({ ...formData, memberId: e.target.value })
+              }
+              options={memberOptions}
+            />
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant='secondary' onClick={closeModal} className='flex-1'>
+            Batal
+          </Button>
+          <Button
+            onClick={showAddModal ? handleAdd : handleEdit}
+            disabled={!formData.description || !formData.amount}
+            className='flex-1'
+          >
+            {showAddModal ? 'Tambah' : 'Simpan'}
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteModal && !!selectedEntry}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
+        title='Hapus Transaksi?'
+        message={`Transaksi "${selectedEntry?.description}" akan dihapus permanen.`}
+        confirmText='Hapus'
+        cancelText='Batal'
+        variant='danger'
+      />
     </div>
   );
 }

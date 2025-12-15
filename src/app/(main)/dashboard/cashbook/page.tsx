@@ -17,24 +17,132 @@ import {
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { cashEntries, teamMembers, CashEntry } from '@/data/dummy';
 import { formatCurrency } from '@/lib/utils';
 
 // Simulated current user (logged in user)
 const currentUser = teamMembers[1]; // Muhammad Alfian
 
-// Simulated monthly kas payment status per member
+// Simulated monthly kas payment status per member (12 bulan untuk 2025)
 const kasPaymentStatus: {
   [memberId: string]: { month: string; paid: boolean; amount: number }[];
 } = {
-  '1': [{ month: '2025-12', paid: true, amount: 50000 }],
-  '2': [{ month: '2025-12', paid: true, amount: 50000 }],
-  '3': [{ month: '2025-12', paid: true, amount: 50000 }],
-  '4': [{ month: '2025-12', paid: false, amount: 0 }],
-  '5': [{ month: '2025-12', paid: true, amount: 50000 }],
-  '6': [{ month: '2025-12', paid: false, amount: 0 }],
-  '7': [{ month: '2025-12', paid: true, amount: 50000 }],
+  '1': [
+    { month: '2025-01', paid: true, amount: 50000 },
+    { month: '2025-02', paid: true, amount: 50000 },
+    { month: '2025-03', paid: true, amount: 50000 },
+    { month: '2025-04', paid: true, amount: 50000 },
+    { month: '2025-05', paid: true, amount: 50000 },
+    { month: '2025-06', paid: true, amount: 50000 },
+    { month: '2025-07', paid: true, amount: 50000 },
+    { month: '2025-08', paid: true, amount: 50000 },
+    { month: '2025-09', paid: true, amount: 50000 },
+    { month: '2025-10', paid: true, amount: 50000 },
+    { month: '2025-11', paid: true, amount: 50000 },
+    { month: '2025-12', paid: true, amount: 50000 },
+  ],
+  '2': [
+    { month: '2025-01', paid: true, amount: 50000 },
+    { month: '2025-02', paid: true, amount: 50000 },
+    { month: '2025-03', paid: true, amount: 50000 },
+    { month: '2025-04', paid: true, amount: 50000 },
+    { month: '2025-05', paid: true, amount: 50000 },
+    { month: '2025-06', paid: true, amount: 50000 },
+    { month: '2025-07', paid: true, amount: 50000 },
+    { month: '2025-08', paid: true, amount: 50000 },
+    { month: '2025-09', paid: true, amount: 50000 },
+    { month: '2025-10', paid: true, amount: 50000 },
+    { month: '2025-11', paid: true, amount: 50000 },
+    { month: '2025-12', paid: true, amount: 50000 },
+  ],
+  '3': [
+    { month: '2025-01', paid: true, amount: 50000 },
+    { month: '2025-02', paid: true, amount: 50000 },
+    { month: '2025-03', paid: true, amount: 50000 },
+    { month: '2025-04', paid: true, amount: 50000 },
+    { month: '2025-05', paid: true, amount: 50000 },
+    { month: '2025-06', paid: true, amount: 50000 },
+    { month: '2025-07', paid: true, amount: 50000 },
+    { month: '2025-08', paid: true, amount: 50000 },
+    { month: '2025-09', paid: false, amount: 0 },
+    { month: '2025-10', paid: true, amount: 50000 },
+    { month: '2025-11', paid: true, amount: 50000 },
+    { month: '2025-12', paid: true, amount: 50000 },
+  ],
+  '4': [
+    { month: '2025-01', paid: true, amount: 50000 },
+    { month: '2025-02', paid: false, amount: 0 },
+    { month: '2025-03', paid: true, amount: 50000 },
+    { month: '2025-04', paid: true, amount: 50000 },
+    { month: '2025-05', paid: false, amount: 0 },
+    { month: '2025-06', paid: true, amount: 50000 },
+    { month: '2025-07', paid: true, amount: 50000 },
+    { month: '2025-08', paid: false, amount: 0 },
+    { month: '2025-09', paid: true, amount: 50000 },
+    { month: '2025-10', paid: true, amount: 50000 },
+    { month: '2025-11', paid: false, amount: 0 },
+    { month: '2025-12', paid: false, amount: 0 },
+  ],
+  '5': [
+    { month: '2025-01', paid: true, amount: 50000 },
+    { month: '2025-02', paid: true, amount: 50000 },
+    { month: '2025-03', paid: true, amount: 50000 },
+    { month: '2025-04', paid: true, amount: 50000 },
+    { month: '2025-05', paid: true, amount: 50000 },
+    { month: '2025-06', paid: true, amount: 50000 },
+    { month: '2025-07', paid: true, amount: 50000 },
+    { month: '2025-08', paid: true, amount: 50000 },
+    { month: '2025-09', paid: true, amount: 50000 },
+    { month: '2025-10', paid: true, amount: 50000 },
+    { month: '2025-11', paid: true, amount: 50000 },
+    { month: '2025-12', paid: true, amount: 50000 },
+  ],
+  '6': [
+    { month: '2025-01', paid: true, amount: 50000 },
+    { month: '2025-02', paid: true, amount: 50000 },
+    { month: '2025-03', paid: false, amount: 0 },
+    { month: '2025-04', paid: true, amount: 50000 },
+    { month: '2025-05', paid: true, amount: 50000 },
+    { month: '2025-06', paid: false, amount: 0 },
+    { month: '2025-07', paid: true, amount: 50000 },
+    { month: '2025-08', paid: true, amount: 50000 },
+    { month: '2025-09', paid: false, amount: 0 },
+    { month: '2025-10', paid: true, amount: 50000 },
+    { month: '2025-11', paid: true, amount: 50000 },
+    { month: '2025-12', paid: false, amount: 0 },
+  ],
+  '7': [
+    { month: '2025-01', paid: true, amount: 50000 },
+    { month: '2025-02', paid: true, amount: 50000 },
+    { month: '2025-03', paid: true, amount: 50000 },
+    { month: '2025-04', paid: true, amount: 50000 },
+    { month: '2025-05', paid: true, amount: 50000 },
+    { month: '2025-06', paid: true, amount: 50000 },
+    { month: '2025-07', paid: true, amount: 50000 },
+    { month: '2025-08', paid: true, amount: 50000 },
+    { month: '2025-09', paid: true, amount: 50000 },
+    { month: '2025-10', paid: true, amount: 50000 },
+    { month: '2025-11', paid: true, amount: 50000 },
+    { month: '2025-12', paid: true, amount: 50000 },
+  ],
 };
+
+// Nama-nama bulan dalam bahasa Indonesia
+const monthNames = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'Mei',
+  'Jun',
+  'Jul',
+  'Agu',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Des',
+];
 
 export default function CashBookPage() {
   const [showMyContribution, setShowMyContribution] = useState(false);
@@ -43,6 +151,7 @@ export default function CashBookPage() {
   const [dateTo, setDateTo] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   // Filter transactions
@@ -120,6 +229,98 @@ export default function CashBookPage() {
   const paidCount = teamPaymentProgress.filter((p) => p.paid).length;
   const progressPercent = (paidCount / teamMembers.length) * 100;
 
+  // Calculate yearly payment progress (per month)
+  const yearlyPaymentProgress = useMemo(() => {
+    const months = [
+      '2025-01',
+      '2025-02',
+      '2025-03',
+      '2025-04',
+      '2025-05',
+      '2025-06',
+      '2025-07',
+      '2025-08',
+      '2025-09',
+      '2025-10',
+      '2025-11',
+      '2025-12',
+    ];
+
+    return months.map((month, index) => {
+      let paidInMonth = 0;
+      let totalAmount = 0;
+
+      teamMembers.forEach((member) => {
+        const payment = kasPaymentStatus[member.id]?.find(
+          (p) => p.month === month
+        );
+        if (payment?.paid) {
+          paidInMonth++;
+          totalAmount += payment.amount;
+        }
+      });
+
+      return {
+        month: monthNames[index],
+        fullMonth: month,
+        paidCount: paidInMonth,
+        totalMembers: teamMembers.length,
+        percent: Math.round((paidInMonth / teamMembers.length) * 100),
+        totalAmount: totalAmount,
+      };
+    });
+  }, []);
+
+  // Overall yearly stats
+  const yearlyStats = useMemo(() => {
+    const totalPossiblePayments = teamMembers.length * 12; // 12 bulan x jumlah member
+    let totalPaidPayments = 0;
+    let totalAmountCollected = 0;
+
+    teamMembers.forEach((member) => {
+      const payments = kasPaymentStatus[member.id] || [];
+      payments.forEach((p) => {
+        if (p.paid) {
+          totalPaidPayments++;
+          totalAmountCollected += p.amount;
+        }
+      });
+    });
+
+    return {
+      totalPossiblePayments,
+      totalPaidPayments,
+      percentPaid: Math.round(
+        (totalPaidPayments / totalPossiblePayments) * 100
+      ),
+      totalAmountCollected,
+    };
+  }, []);
+
+  // Get payment details for a specific month
+  const getMonthPaymentDetails = (month: string) => {
+    return teamMembers.map((member) => {
+      const payment = kasPaymentStatus[member.id]?.find(
+        (p) => p.month === month
+      );
+      return {
+        member,
+        paid: payment?.paid || false,
+        amount: payment?.amount || 0,
+      };
+    });
+  };
+
+  // Get selected month data
+  const selectedMonthData = selectedMonth
+    ? {
+        month: selectedMonth,
+        monthName: monthNames[parseInt(selectedMonth.split('-')[1]) - 1],
+        year: selectedMonth.split('-')[0],
+        details: getMonthPaymentDetails(selectedMonth),
+      }
+    : null;
+
   const resetFilters = () => {
     setSearchQuery('');
     setDateFrom('');
@@ -138,32 +339,31 @@ export default function CashBookPage() {
   return (
     <div className='space-y-6'>
       {/* Page Header */}
-      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
-        <div>
-          <h1 className='text-2xl font-bold text-gray-800'>Kas</h1>
-          <p className='text-gray-500 text-sm mt-1'>
-            Kelola keuangan dan kas tim
-          </p>
-        </div>
-        <button
-          onClick={() => {
-            setShowMyContribution(!showMyContribution);
-            setCurrentPage(1);
-          }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors ${
-            showMyContribution
-              ? 'bg-[#E57373] text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          {showMyContribution ? (
-            <User className='w-4 h-4' />
-          ) : (
-            <Users className='w-4 h-4' />
-          )}
-          {showMyContribution ? 'Kontribusi Saya' : 'Semua Kas'}
-        </button>
-      </div>
+      <PageHeader
+        title='Kas'
+        description='Kelola keuangan dan kas tim'
+        icon={Wallet}
+        actions={
+          <button
+            onClick={() => {
+              setShowMyContribution(!showMyContribution);
+              setCurrentPage(1);
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors ${
+              showMyContribution
+                ? 'bg-white text-[#E57373]'
+                : 'bg-white/20 text-white hover:bg-white/30'
+            }`}
+          >
+            {showMyContribution ? (
+              <User className='w-4 h-4' />
+            ) : (
+              <Users className='w-4 h-4' />
+            )}
+            {showMyContribution ? 'Kontribusi Saya' : 'Semua Kas'}
+          </button>
+        }
+      />
 
       {/* My Contribution Card - Only show when toggled */}
       {showMyContribution && (
@@ -212,7 +412,7 @@ export default function CashBookPage() {
               <Wallet className='w-6 h-6 text-blue-600' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Total Kas Tim</p>
+              <p className='text-xs text-gray-500'>Total Uang Kas</p>
               <p className='text-xl font-bold text-gray-800'>
                 {formatCurrency(totalCash)}
               </p>
@@ -222,10 +422,10 @@ export default function CashBookPage() {
         <Card>
           <div className='flex items-center gap-3'>
             <div className='w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center'>
-              <ArrowUpCircle className='w-6 h-6 text-emerald-600' />
+              <ArrowDownCircle className='w-6 h-6 text-emerald-600' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Kas Masuk</p>
+              <p className='text-xs text-gray-500'>Uang Masuk</p>
               <p className='text-xl font-bold text-emerald-600'>
                 {formatCurrency(totalCashIn)}
               </p>
@@ -235,10 +435,10 @@ export default function CashBookPage() {
         <Card>
           <div className='flex items-center gap-3'>
             <div className='w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center'>
-              <ArrowDownCircle className='w-6 h-6 text-red-600' />
+              <ArrowUpCircle className='w-6 h-6 text-red-600' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Kas Keluar</p>
+              <p className='text-xs text-gray-500'>Uang Keluar</p>
               <p className='text-xl font-bold text-red-600'>
                 {formatCurrency(totalCashOut)}
               </p>
@@ -260,66 +460,293 @@ export default function CashBookPage() {
         </Card>
       </div>
 
-      {/* Team Payment Progress */}
+      {/* Yearly Payment Progress Chart */}
       <Card>
-        <div className='flex items-center justify-between mb-4'>
+        <div className='flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6'>
           <div>
-            <h3 className='font-semibold text-gray-800'>
-              Progress Pembayaran Kas Desember 2025
+            <h3 className='font-semibold text-gray-800 text-lg'>
+              Progress Pembayaran Kas Tahun 2025
             </h3>
             <p className='text-sm text-gray-500'>
-              {paidCount} dari {teamMembers.length} member sudah bayar
+              {yearlyStats.totalPaidPayments} dari{' '}
+              {yearlyStats.totalPossiblePayments} pembayaran telah diterima
             </p>
           </div>
-          <span className='text-2xl font-bold text-gray-800'>
-            {Math.round(progressPercent)}%
-          </span>
+          <div className='flex items-center gap-4 mt-3 lg:mt-0'>
+            <div className='text-center'>
+              <p className='text-2xl font-bold text-[#E57373]'>
+                {yearlyStats.percentPaid}%
+              </p>
+              <p className='text-xs text-gray-500'>Tercapai</p>
+            </div>
+            {/* <div className='text-center'>
+              <p className='text-lg font-bold text-emerald-600'>
+                {formatCurrency(yearlyStats.totalAmountCollected)}
+              </p>
+              <p className='text-xs text-gray-500'>Terkumpul</p>
+            </div> */}
+          </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className='h-4 bg-gray-100 rounded-full overflow-hidden mb-4'>
+        {/* Overall Yearly Progress Bar */}
+        <div className='h-3 bg-gray-100 rounded-full overflow-hidden mb-6'>
           <div
-            className={`h-full rounded-full transition-all ${
-              progressPercent >= 100 ? 'bg-emerald-500' : 'bg-[#E57373]'
+            className={`h-full rounded-full transition-all duration-500 ${
+              yearlyStats.percentPaid >= 100
+                ? 'bg-emerald-500'
+                : 'bg-gradient-to-r from-[#E57373] to-[#EF5350]'
             }`}
-            style={{ width: `${progressPercent}%` }}
+            style={{ width: `${yearlyStats.percentPaid}%` }}
           />
         </div>
 
-        {/* Member Status Grid */}
-        <div className='grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3'>
-          {teamPaymentProgress.map(({ member, paid, amount }) => (
-            <div
-              key={member.id}
-              className={`flex flex-col items-center p-3 rounded-xl ${
-                paid ? 'bg-emerald-50' : 'bg-gray-50'
-              }`}
-            >
-              <Avatar src={member.image} name={member.name} size='sm' />
-              <p className='text-xs font-medium text-gray-800 mt-1 text-center truncate w-full'>
-                {member.nickname}
-              </p>
-              <div className='flex items-center gap-1 mt-1'>
-                {paid ? (
-                  <>
-                    <CheckCircle className='w-3 h-3 text-emerald-600' />
-                    <span className='text-[10px] text-emerald-600 font-medium'>
-                      Lunas
+        {/* Monthly Progress Chart */}
+        <div className='space-y-3'>
+          <h4 className='text-sm font-medium text-gray-700 mb-3'>
+            Progress Per Bulan
+          </h4>
+          <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-2'>
+            {yearlyPaymentProgress.map((monthData) => (
+              <button
+                key={monthData.fullMonth}
+                onClick={() => setSelectedMonth(monthData.fullMonth)}
+                className={`relative flex flex-col items-center p-3 rounded-xl transition-all cursor-pointer hover:scale-105 hover:shadow-md ${
+                  monthData.percent === 100
+                    ? 'bg-emerald-50 border border-emerald-200 hover:bg-emerald-100'
+                    : monthData.percent >= 50
+                    ? 'bg-amber-50 border border-amber-200 hover:bg-amber-100'
+                    : 'bg-gray-50 border border-gray-100 hover:bg-gray-100'
+                }`}
+              >
+                <p className='text-xs font-semibold text-gray-700'>
+                  {monthData.month}
+                </p>
+
+                {/* Mini circular progress indicator */}
+                <div className='relative w-12 h-12 my-2'>
+                  <svg className='w-12 h-12 transform -rotate-90'>
+                    <circle
+                      cx='24'
+                      cy='24'
+                      r='20'
+                      stroke='#E5E7EB'
+                      strokeWidth='4'
+                      fill='none'
+                    />
+                    <circle
+                      cx='24'
+                      cy='24'
+                      r='20'
+                      stroke={
+                        monthData.percent === 100
+                          ? '#10B981'
+                          : monthData.percent >= 50
+                          ? '#F59E0B'
+                          : '#E57373'
+                      }
+                      strokeWidth='4'
+                      fill='none'
+                      strokeDasharray={`${
+                        (monthData.percent / 100) * 125.6
+                      } 125.6`}
+                      strokeLinecap='round'
+                    />
+                  </svg>
+                  <div className='absolute inset-0 flex items-center justify-center'>
+                    <span
+                      className={`text-xs font-bold ${
+                        monthData.percent === 100
+                          ? 'text-emerald-600'
+                          : monthData.percent >= 50
+                          ? 'text-amber-600'
+                          : 'text-gray-600'
+                      }`}
+                    >
+                      {monthData.percent}%
                     </span>
-                  </>
-                ) : (
-                  <>
-                    <Clock className='w-3 h-3 text-amber-600' />
-                    <span className='text-[10px] text-amber-600 font-medium'>
-                      Belum
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
+                  </div>
+                </div>
+
+                <p className='text-[10px] text-gray-500'>
+                  {monthData.paidCount}/{monthData.totalMembers}
+                </p>
+
+                {/* Click indicator */}
+                <div className='absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity'>
+                  <div className='w-1.5 h-1.5 rounded-full bg-gray-400' />
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Hint */}
+          <p className='text-xs text-gray-400 text-center mt-3'>
+            Klik bulan untuk melihat detail pembayaran
+          </p>
+        </div>
+
+        {/* Legend */}
+        <div className='flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-gray-100'>
+          <div className='flex items-center gap-2'>
+            <div className='w-3 h-3 rounded-full bg-emerald-500' />
+            <span className='text-xs text-gray-600'>100% (Lengkap)</span>
+          </div>
+          <div className='flex items-center gap-2'>
+            <div className='w-3 h-3 rounded-full bg-amber-500' />
+            <span className='text-xs text-gray-600'>≥50% (Sebagian)</span>
+          </div>
+          <div className='flex items-center gap-2'>
+            <div className='w-3 h-3 rounded-full bg-[#E57373]' />
+            <span className='text-xs text-gray-600'>&lt;50% (Kurang)</span>
+          </div>
         </div>
       </Card>
+
+      {/* Month Detail Modal */}
+      {selectedMonth && selectedMonthData && (
+        <>
+          {/* Modal Overlay */}
+          <div
+            className='fixed inset-0 bg-black/50 backdrop-blur-sm z-50 animate-fade-in'
+            onClick={() => setSelectedMonth(null)}
+          />
+
+          {/* Modal Content */}
+          <div
+            className='fixed inset-0 z-[60] flex items-center justify-center p-4'
+            onClick={() => setSelectedMonth(null)}
+          >
+            <div
+              className='bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden animate-fade-in'
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className='flex items-center justify-between p-5 bg-gradient-to-r from-[#E57373] to-[#EF5350]'>
+                <div>
+                  <h3 className='text-lg font-bold text-white'>
+                    Pembayaran Kas {selectedMonthData.monthName}{' '}
+                    {selectedMonthData.year}
+                  </h3>
+                  <p className='text-white/80 text-sm'>
+                    {selectedMonthData.details.filter((d) => d.paid).length}{' '}
+                    dari {selectedMonthData.details.length} member sudah bayar
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedMonth(null)}
+                  className='p-2 hover:bg-white/20 rounded-lg transition-colors'
+                >
+                  <X className='w-5 h-5 text-white' />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className='p-5 overflow-y-auto max-h-[60vh]'>
+                {/* Progress Summary */}
+                <div className='mb-4'>
+                  <div className='flex items-center justify-between mb-2'>
+                    <span className='text-sm text-gray-600'>
+                      Progress Pembayaran
+                    </span>
+                    <span className='text-sm font-bold text-gray-800'>
+                      {Math.round(
+                        (selectedMonthData.details.filter((d) => d.paid)
+                          .length /
+                          selectedMonthData.details.length) *
+                          100
+                      )}
+                      %
+                    </span>
+                  </div>
+                  <div className='h-2 bg-gray-100 rounded-full overflow-hidden'>
+                    <div
+                      className='h-full bg-gradient-to-r from-[#E57373] to-[#EF5350] rounded-full transition-all'
+                      style={{
+                        width: `${
+                          (selectedMonthData.details.filter((d) => d.paid)
+                            .length /
+                            selectedMonthData.details.length) *
+                          100
+                        }%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Member List */}
+                <div className='space-y-2'>
+                  {selectedMonthData.details.map(({ member, paid, amount }) => (
+                    <div
+                      key={member.id}
+                      className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
+                        paid ? 'bg-emerald-50' : 'bg-gray-50'
+                      }`}
+                    >
+                      <Avatar src={member.image} name={member.name} size='sm' />
+                      <div className='flex-1 min-w-0'>
+                        <p className='text-sm font-medium text-gray-800 truncate'>
+                          {member.name}
+                        </p>
+                        <p className='text-xs text-gray-500'>
+                          {member.position}
+                        </p>
+                      </div>
+                      <div className='flex items-center gap-2'>
+                        {paid ? (
+                          <>
+                            <span className='text-sm font-semibold text-emerald-600'>
+                              {formatCurrency(amount)}
+                            </span>
+                            <div className='flex items-center gap-1 px-2 py-1 bg-emerald-100 rounded-lg'>
+                              <CheckCircle className='w-3.5 h-3.5 text-emerald-600' />
+                              <span className='text-xs font-medium text-emerald-600'>
+                                Lunas
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className='flex items-center gap-1 px-2 py-1 bg-amber-100 rounded-lg'>
+                            <Clock className='w-3.5 h-3.5 text-amber-600' />
+                            <span className='text-xs font-medium text-amber-600'>
+                              Belum Bayar
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Total Summary */}
+                <div className='mt-4 pt-4 border-t border-gray-100'>
+                  <div className='flex items-center justify-between'>
+                    <span className='text-sm text-gray-600'>
+                      Total Terkumpul
+                    </span>
+                    <span className='text-lg font-bold text-emerald-600'>
+                      {formatCurrency(
+                        selectedMonthData.details
+                          .filter((d) => d.paid)
+                          .reduce((sum, d) => sum + d.amount, 0)
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className='p-4 bg-gray-50'>
+                <button
+                  onClick={() => setSelectedMonth(null)}
+                  className='w-full py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-xl transition-colors'
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Filters */}
       <Card>
@@ -388,8 +815,8 @@ export default function CashBookPage() {
             className='px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
           >
             <option value='all'>Semua Kategori</option>
-            <option value='income'>Kas Masuk</option>
-            <option value='expense'>Kas Keluar</option>
+            <option value='income'>Uang Masuk</option>
+            <option value='expense'>Uang Keluar</option>
           </select>
         </div>
       </Card>
@@ -478,9 +905,9 @@ export default function CashBookPage() {
                         }`}
                       >
                         {entry.category === 'income' ? (
-                          <ArrowUpCircle className='w-3 h-3' />
-                        ) : (
                           <ArrowDownCircle className='w-3 h-3' />
+                        ) : (
+                          <ArrowUpCircle className='w-3 h-3' />
                         )}
                         {entry.category === 'income' ? 'Masuk' : 'Keluar'}
                       </span>

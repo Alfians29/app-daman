@@ -18,10 +18,16 @@ import {
   Shield,
   ScrollText,
   ChevronRight,
+  FileText,
+  FileCog,
+  Sun,
+  Moon,
+  ChevronUp,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { teamMembers } from '@/data/dummy';
 import { Avatar } from './ui/Avatar';
+import Image from 'next/image';
 
 // Simulasi role admin (ganti dengan auth context nanti)
 const isAdmin = true;
@@ -32,14 +38,15 @@ const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/attendance', label: 'Absensi', icon: UserCheck },
   { href: '/schedule', label: 'Jadwal', icon: CalendarDays },
+  { href: '/report', label: 'Report Harian', icon: FileText },
   { href: '/dashboard/cashbook', label: 'Kas', icon: Wallet },
   { href: '/dashboard/about', label: 'Tentang Tim', icon: Users },
-  { href: '/dashboard/profile', label: 'Profil', icon: User },
 ];
 
 const adminNavItems = [
   { href: '/admin/team', label: 'Kelola Tim', icon: Users },
   { href: '/admin/schedule', label: 'Kelola Jadwal', icon: CalendarCog },
+  { href: '/admin/report', label: 'Kelola Report', icon: FileCog },
   { href: '/admin/cash', label: 'Kelola Kas', icon: Banknote },
   { href: '/admin/attendance', label: 'Kelola Kehadiran', icon: ClipboardList },
 ];
@@ -52,6 +59,9 @@ const superAdminNavItems = [
 export default function Sidebar() {
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -61,7 +71,28 @@ export default function Sidebar() {
   // Close sidebar on route change
   useEffect(() => {
     setIsMobileOpen(false);
+    setIsUserMenuOpen(false);
   }, [pathname]);
+
+  // Click outside to close user menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    if (isUserMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isUserMenuOpen]);
 
   // Prevent body scroll when mobile menu is open
   useEffect(() => {
@@ -75,10 +106,38 @@ export default function Sidebar() {
     };
   }, [isMobileOpen]);
 
+  // Theme toggle
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+      setIsDarkMode(true);
+      document.documentElement.classList.add('dark');
+    } else {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    if (isDarkMode) {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+      setIsDarkMode(false);
+    } else {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+      setIsDarkMode(true);
+    }
+  };
+
   const NavLink = ({
     item,
   }: {
-    item: { href: string; label: string; icon: React.ElementType };
+    item: {
+      href: string;
+      label: string;
+      icon: React.ComponentType<{ size?: number }>;
+    };
   }) => {
     const Icon = item.icon;
     const active = isActive(item.href);
@@ -87,32 +146,32 @@ export default function Sidebar() {
       <Link
         href={item.href}
         className={`
-          group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200
+          flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+          transition-all duration-200 group relative
           ${
             active
-              ? 'bg-[#E57373] text-white shadow-md'
-              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+              ? 'bg-[#E57373] text-white shadow-lg shadow-red-200/50'
+              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white'
           }
         `}
       >
-        <Icon
-          size={20}
-          className={active ? '' : 'group-hover:scale-110 transition-transform'}
-        />
-        <span className='font-medium text-sm flex-1'>{item.label}</span>
-        {active && <ChevronRight size={16} className='opacity-70' />}
+        <Icon size={20} />
+        <span className='flex-1'>{item.label}</span>
+        {active && (
+          <ChevronRight
+            size={16}
+            className='opacity-70 group-hover:translate-x-0.5 transition-transform'
+          />
+        )}
       </Link>
     );
   };
 
   const SectionDivider = ({ label }: { label: string }) => (
-    <div className='pt-5 pb-2'>
-      <div className='flex items-center gap-3 px-4'>
-        <span className='text-[10px] font-bold uppercase tracking-wider text-[#E57373]'>
-          {label}
-        </span>
-        <div className='h-px flex-1 bg-gray-100' />
-      </div>
+    <div className='pt-4 pb-2'>
+      <p className='px-3 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider'>
+        {label}
+      </p>
     </div>
   );
 
@@ -121,7 +180,7 @@ export default function Sidebar() {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className='lg:hidden fixed top-4 right-4 z-50 p-2.5 rounded-xl bg-white shadow-lg hover:bg-gray-50 active:scale-95 transition-transform duration-150'
+        className='lg:hidden fixed top-4 right-4 z-50 p-2.5 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors'
         aria-label='Toggle menu'
       >
         {isMobileOpen ? <X size={24} /> : <Menu size={24} />}
@@ -147,8 +206,8 @@ export default function Sidebar() {
         {/* Logo */}
         <div className='h-16 flex items-center px-5 border-b border-gray-100 dark:border-gray-700'>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-[#E57373] flex items-center justify-center shadow-lg shadow-red-200/50'>
-              <span className='text-lg font-bold text-white'>D</span>
+            <div className='w-18 h-10 rounded-lg bg-[#E57373] flex items-center justify-center shadow-lg shadow-red-200/50'>
+              <Image src='/logoputih.png' alt='Logo' width={55} height={55} />
             </div>
             <div>
               <h1 className='text-lg font-bold text-gray-800 dark:text-white'>
@@ -195,11 +254,59 @@ export default function Sidebar() {
           )}
         </nav>
 
-        {/* User Info */}
-        <div className='p-3 border-t border-gray-100 dark:border-gray-700'>
-          <div className='flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-200'>
+        {/* User Info with Dropdown */}
+        <div
+          ref={userMenuRef}
+          className='p-3 border-t border-gray-100 dark:border-gray-700 relative'
+        >
+          {/* User Menu Dropdown */}
+          {isUserMenuOpen && (
+            <div className='absolute bottom-full left-3 right-3 mb-2 bg-white dark:bg-gray-700 rounded-xl shadow-xl border border-gray-100 dark:border-gray-600 overflow-hidden'>
+              {/* Theme Toggle */}
+              <button
+                onClick={toggleTheme}
+                className='w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors'
+              >
+                {isDarkMode ? (
+                  <>
+                    <Sun size={18} className='text-amber-500' />
+                    <span>Mode Terang</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon size={18} className='text-indigo-500' />
+                    <span>Mode Gelap</span>
+                  </>
+                )}
+              </button>
+
+              {/* Settings / Profile */}
+              <Link
+                href='/dashboard/profile'
+                className='w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors border-t border-gray-100 dark:border-gray-600'
+              >
+                <User size={18} className='text-gray-500' />
+                <span>Profil</span>
+              </Link>
+
+              {/* Logout */}
+              <Link
+                href='/sign-in/login'
+                className='w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-gray-100 dark:border-gray-600'
+              >
+                <LogOut size={18} />
+                <span>Logout</span>
+              </Link>
+            </div>
+          )}
+
+          {/* User Card */}
+          <button
+            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+            className='w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-200'
+          >
             <Avatar src={currentUser.image} name={currentUser.name} size='md' />
-            <div className='flex-1 min-w-0'>
+            <div className='flex-1 min-w-0 text-left'>
               <p className='text-sm font-semibold text-gray-800 dark:text-white truncate'>
                 {currentUser.nickname}
               </p>
@@ -207,14 +314,13 @@ export default function Sidebar() {
                 {currentUser.position}
               </p>
             </div>
-            <Link
-              href='/sign-in/login'
-              className='p-2 text-gray-400 hover:text-[#E57373] hover:bg-white dark:hover:bg-gray-500 rounded-lg transition-colors duration-200'
-              title='Logout'
-            >
-              <LogOut size={18} />
-            </Link>
-          </div>
+            <ChevronUp
+              size={18}
+              className={`text-gray-400 transition-transform duration-200 ${
+                isUserMenuOpen ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
         </div>
       </aside>
     </>

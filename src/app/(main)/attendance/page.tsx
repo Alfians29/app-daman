@@ -10,13 +10,14 @@ import {
   XCircle,
   Sun,
   Moon,
-  Coffee,
   X,
   ChevronLeft,
   ChevronRight,
+  UserCheck,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { attendanceRecords, teamMembers, scheduleEntries } from '@/data/dummy';
 
 // Simulated current user (logged in user)
@@ -83,7 +84,7 @@ export default function AttendancePage() {
       value: 'Piket Pagi',
       label: 'Piket Pagi',
       icon: Sun,
-      color: 'bg-green-100 text-green-700',
+      color: 'bg-emerald-100 text-emerald-700',
     },
     {
       value: 'Piket Malam',
@@ -243,28 +244,26 @@ export default function AttendancePage() {
   return (
     <div className='space-y-6'>
       {/* Page Header */}
-      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
-        <div>
-          <h1 className='text-2xl font-bold text-gray-800'>Absensi</h1>
-          <p className='text-gray-500 text-sm mt-1'>
-            Periode:{' '}
-            <span className='font-medium text-gray-700'>{periodLabel}</span>
-          </p>
-        </div>
-        <button
-          onClick={() => {
-            setShowMyHistory(!showMyHistory);
-            setCurrentPage(1);
-          }}
-          className={`px-4 py-2 rounded-xl font-medium transition-colors ${
-            showMyHistory
-              ? 'bg-[#E57373] text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          {showMyHistory ? 'Lihat Semua' : 'Progress Saya'}
-        </button>
-      </div>
+      <PageHeader
+        title='Absensi'
+        description={`Periode: ${periodLabel}`}
+        icon={UserCheck}
+        actions={
+          <button
+            onClick={() => {
+              setShowMyHistory(!showMyHistory);
+              setCurrentPage(1);
+            }}
+            className={`px-4 py-2 rounded-xl font-medium transition-colors ${
+              showMyHistory
+                ? 'bg-white text-[#E57373]'
+                : 'bg-white/20 text-white hover:bg-white/30'
+            }`}
+          >
+            {showMyHistory ? 'Lihat Semua' : 'Progress Saya'}
+          </button>
+        }
+      />
 
       {/* My Progress Stats - Only show when viewing my progress */}
       {showMyHistory && (
@@ -353,7 +352,7 @@ export default function AttendancePage() {
           </div>
 
           {/* Keterangan Breakdown */}
-          <div className='grid grid-cols-5 gap-3'>
+          <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3'>
             {keteranganOptions.map((opt) => {
               const Icon = opt.icon;
               const count =
@@ -436,7 +435,7 @@ export default function AttendancePage() {
 
       {/* Work Model Stats - Only show when viewing all */}
       {!showMyHistory && (
-        <div className='grid grid-cols-5 gap-3'>
+        <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3'>
           {keteranganOptions.map((opt) => {
             const Icon = opt.icon;
             const count =

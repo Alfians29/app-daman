@@ -12,10 +12,19 @@ import {
   Download,
   Filter,
   BarChart3,
+  ClipboardCheck,
 } from 'lucide-react';
 import { attendanceRecords, teamMembers, AttendanceRecord } from '@/data/dummy';
-import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { PageHeader } from '@/components/ui/PageHeader';
+import {
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ConfirmModal,
+} from '@/components/ui/Modal';
+import { Input, Select } from '@/components/ui/Form';
 import toast from 'react-hot-toast';
 
 type Keterangan = 'Pagi' | 'Malam' | 'Piket Pagi' | 'Piket Malam' | 'Libur';
@@ -27,6 +36,19 @@ type AttendanceForm = {
   keterangan: Keterangan;
   status: 'Ontime' | 'Telat';
 };
+
+const memberOptions = [
+  { value: '', label: 'Pilih member' },
+  ...teamMembers.map((m) => ({ value: m.id, label: m.name })),
+];
+
+const keteranganOptions: { value: Keterangan; label: string }[] = [
+  { value: 'Pagi', label: 'Pagi' },
+  { value: 'Malam', label: 'Malam' },
+  { value: 'Piket Pagi', label: 'Piket Pagi' },
+  { value: 'Piket Malam', label: 'Piket Malam' },
+  { value: 'Libur', label: 'Libur' },
+];
 
 export default function AdminAttendancePage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -74,16 +96,8 @@ export default function AdminAttendancePage() {
     Malam: 'bg-purple-100 text-purple-700',
     'Piket Pagi': 'bg-emerald-100 text-emerald-700',
     'Piket Malam': 'bg-orange-100 text-orange-700',
-    Libur: 'bg-gray-100 text-gray-700',
+    Libur: 'bg-red-100 text-red-700',
   };
-
-  const keteranganOptions: Keterangan[] = [
-    'Pagi',
-    'Malam',
-    'Piket Pagi',
-    'Piket Malam',
-    'Libur',
-  ];
 
   // Get summary for selected date
   const summary = {
@@ -247,42 +261,49 @@ export default function AdminAttendancePage() {
     setShowDeleteModal(true);
   };
 
+  const closeModal = () => {
+    setShowAddModal(false);
+    setShowEditModal(false);
+    setSelectedRecord(null);
+    resetForm();
+  };
+
   return (
     <div className='space-y-6'>
       {/* Header */}
-      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
-        <div>
-          <h1 className='text-2xl font-bold text-gray-800'>Kelola Kehadiran</h1>
-          <p className='text-gray-500 text-sm mt-1'>
-            Kelola dan pantau kehadiran anggota tim
-          </p>
-        </div>
-        <div className='flex gap-2'>
-          <Button
-            variant='outline'
-            onClick={() => setShowStatsModal(true)}
-            icon={<BarChart3 className='w-4 h-4' />}
-          >
-            Statistik
-          </Button>
-          <Button
-            variant='outline'
-            onClick={handleExport}
-            icon={<Download className='w-4 h-4' />}
-          >
-            Download
-          </Button>
-          <Button
-            onClick={() => {
-              resetForm();
-              setShowAddModal(true);
-            }}
-            icon={<Plus className='w-4 h-4' />}
-          >
-            Tambah
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title='Kelola Kehadiran'
+        description='Kelola dan pantau kehadiran anggota tim'
+        icon={ClipboardCheck}
+        actions={
+          <>
+            <button
+              onClick={() => setShowStatsModal(true)}
+              className='flex items-center gap-2 px-4 py-2 bg-white/20 text-white border border-white/30 rounded-xl font-medium hover:bg-white/30 transition-colors'
+            >
+              <BarChart3 className='w-4 h-4' />
+              Statistik
+            </button>
+            <button
+              onClick={handleExport}
+              className='flex items-center gap-2 px-4 py-2 bg-white/20 text-white border border-white/30 rounded-xl font-medium hover:bg-white/30 transition-colors'
+            >
+              <Download className='w-4 h-4' />
+              Download
+            </button>
+            <button
+              onClick={() => {
+                resetForm();
+                setShowAddModal(true);
+              }}
+              className='flex items-center gap-2 px-4 py-2 bg-white text-[#E57373] rounded-xl font-medium hover:bg-white/90 transition-colors'
+            >
+              <Plus className='w-4 h-4' />
+              Tambah
+            </button>
+          </>
+        }
+      />
 
       {/* Summary Cards */}
       <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
@@ -312,12 +333,12 @@ export default function AdminAttendancePage() {
         </div>
         <div className='bg-white rounded-xl p-4 border border-gray-100'>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center'>
-              <X className='w-5 h-5 text-gray-600' />
+            <div className='w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center'>
+              <X className='w-5 h-5 text-red-600' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Libur</p>
-              <p className='text-lg font-bold text-gray-600'>{summary.libur}</p>
+              <p className='text-xs text-red-500'>Libur</p>
+              <p className='text-lg font-bold text-red-600'>{summary.libur}</p>
             </div>
           </div>
         </div>
@@ -358,8 +379,8 @@ export default function AdminAttendancePage() {
           >
             <option value='all'>Semua Keterangan</option>
             {keteranganOptions.map((k) => (
-              <option key={k} value={k}>
-                {k}
+              <option key={k.value} value={k.value}>
+                {k.label}
               </option>
             ))}
           </select>
@@ -493,263 +514,188 @@ export default function AdminAttendancePage() {
       </div>
 
       {/* Add/Edit Modal */}
-      {(showAddModal || showEditModal) && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
-          <Card className='w-full max-w-md mx-4'>
-            <div className='flex items-center justify-between mb-4'>
-              <h3 className='text-lg font-semibold text-gray-800'>
-                {showAddModal ? 'Tambah Kehadiran' : 'Edit Kehadiran'}
-              </h3>
-              <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setShowEditModal(false);
-                }}
-                className='p-2 hover:bg-gray-100 rounded-lg'
-              >
-                <X className='w-5 h-5 text-gray-500' />
-              </button>
-            </div>
+      <Modal
+        isOpen={showAddModal || showEditModal}
+        onClose={closeModal}
+        size='md'
+      >
+        <ModalHeader
+          title={showAddModal ? 'Tambah Kehadiran' : 'Edit Kehadiran'}
+          onClose={closeModal}
+        />
+        <ModalBody>
+          <div className='space-y-4'>
+            <Select
+              label='Member'
+              value={formData.memberId}
+              onChange={(e) =>
+                setFormData({ ...formData, memberId: e.target.value })
+              }
+              options={memberOptions}
+            />
 
-            <div className='space-y-4'>
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Member
-                </label>
-                <select
-                  value={formData.memberId}
-                  onChange={(e) =>
-                    setFormData({ ...formData, memberId: e.target.value })
-                  }
-                  className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                >
-                  <option value=''>Pilih member</option>
-                  {teamMembers.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <Input
+              label='Tanggal'
+              type='date'
+              value={formData.tanggal}
+              onChange={(e) =>
+                setFormData({ ...formData, tanggal: e.target.value })
+              }
+            />
 
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Tanggal
-                </label>
-                <input
-                  type='date'
-                  value={formData.tanggal}
-                  onChange={(e) =>
-                    setFormData({ ...formData, tanggal: e.target.value })
-                  }
-                  className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                />
-              </div>
+            <Input
+              label='Jam Absen'
+              type='time'
+              value={formData.jamAbsen}
+              onChange={(e) =>
+                setFormData({ ...formData, jamAbsen: e.target.value })
+              }
+            />
 
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Jam Absen
-                </label>
-                <input
-                  type='time'
-                  value={formData.jamAbsen}
-                  onChange={(e) =>
-                    setFormData({ ...formData, jamAbsen: e.target.value })
-                  }
-                  className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                />
-              </div>
+            <Select
+              label='Keterangan'
+              value={formData.keterangan}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  keterangan: e.target.value as Keterangan,
+                })
+              }
+              options={keteranganOptions}
+            />
 
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Keterangan
-                </label>
-                <select
-                  value={formData.keterangan}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      keterangan: e.target.value as Keterangan,
-                    })
-                  }
-                  className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                >
-                  {keteranganOptions.map((k) => (
-                    <option key={k} value={k}>
-                      {k}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Status
-                </label>
-                <div className='flex gap-2'>
-                  <button
-                    onClick={() =>
-                      setFormData({ ...formData, status: 'Ontime' })
-                    }
-                    className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-                      formData.status === 'Ontime'
-                        ? 'bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    Ontime
-                  </button>
-                  <button
-                    onClick={() =>
-                      setFormData({ ...formData, status: 'Telat' })
-                    }
-                    className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-                      formData.status === 'Telat'
-                        ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-500'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    Telat
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className='mt-6 flex gap-3 justify-end'>
-              <Button
-                variant='secondary'
-                onClick={() => {
-                  setShowAddModal(false);
-                  setShowEditModal(false);
-                }}
-              >
-                Batal
-              </Button>
-              <Button
-                onClick={showAddModal ? handleAdd : handleEdit}
-                disabled={!formData.memberId}
-              >
-                {showAddModal ? 'Tambah' : 'Simpan'}
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && selectedRecord && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
-          <Card className='w-full max-w-sm mx-4'>
-            <div className='text-center'>
-              <div className='w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4'>
-                <Trash2 className='w-6 h-6 text-red-600' />
-              </div>
-              <h3 className='text-lg font-semibold text-gray-800 mb-2'>
-                Hapus Data Kehadiran?
-              </h3>
-              <p className='text-sm text-gray-500 mb-6'>
-                Data kehadiran {selectedRecord.memberName} pada tanggal{' '}
-                {selectedRecord.tanggal} akan dihapus permanen.
-              </p>
-              <div className='flex gap-3 justify-center'>
-                <Button
-                  variant='secondary'
-                  onClick={() => setShowDeleteModal(false)}
-                >
-                  Batal
-                </Button>
+            <div>
+              <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
+                Status
+              </label>
+              <div className='flex gap-2'>
                 <button
-                  onClick={handleDelete}
-                  className='px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors'
+                  onClick={() => setFormData({ ...formData, status: 'Ontime' })}
+                  className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                    formData.status === 'Ontime'
+                      ? 'bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
                 >
-                  Hapus
+                  Ontime
+                </button>
+                <button
+                  onClick={() => setFormData({ ...formData, status: 'Telat' })}
+                  className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                    formData.status === 'Telat'
+                      ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-500'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Telat
                 </button>
               </div>
             </div>
-          </Card>
-        </div>
-      )}
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant='secondary' onClick={closeModal} className='flex-1'>
+            Batal
+          </Button>
+          <Button
+            onClick={showAddModal ? handleAdd : handleEdit}
+            disabled={!formData.memberId}
+            className='flex-1'
+          >
+            {showAddModal ? 'Tambah' : 'Simpan'}
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteModal && !!selectedRecord}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
+        title='Hapus Data Kehadiran?'
+        message={`Data kehadiran ${selectedRecord?.memberName} pada tanggal ${selectedRecord?.tanggal} akan dihapus permanen.`}
+        confirmText='Hapus'
+        cancelText='Batal'
+        variant='danger'
+      />
 
       {/* Statistics Modal */}
-      {showStatsModal && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
-          <Card className='w-full max-w-lg mx-4 max-h-[80vh] overflow-auto'>
-            <div className='flex items-center justify-between mb-4'>
-              <h3 className='text-lg font-semibold text-gray-800'>
-                Statistik Kehadiran
-              </h3>
-              <button
-                onClick={() => setShowStatsModal(false)}
-                className='p-2 hover:bg-gray-100 rounded-lg'
-              >
-                <X className='w-5 h-5 text-gray-500' />
-              </button>
-            </div>
-
-            <div className='space-y-3'>
-              {getMemberStats().length === 0 ? (
-                <p className='text-center text-gray-500 py-8'>
-                  Belum ada data kehadiran
-                </p>
-              ) : (
-                getMemberStats().map((stats, index) => {
-                  const total = stats.ontime + stats.telat;
-                  const ontimePercent =
-                    total > 0 ? Math.round((stats.ontime / total) * 100) : 0;
-                  return (
-                    <div key={index} className='p-4 bg-gray-50 rounded-xl'>
-                      <div className='flex items-center justify-between mb-2'>
-                        <p className='font-medium text-gray-800'>
-                          {stats.name}
-                        </p>
-                        <p className='text-sm font-bold text-emerald-600'>
-                          {ontimePercent}% Ontime
-                        </p>
+      <Modal
+        isOpen={showStatsModal}
+        onClose={() => setShowStatsModal(false)}
+        size='lg'
+      >
+        <ModalHeader
+          title='Statistik Kehadiran'
+          onClose={() => setShowStatsModal(false)}
+        />
+        <ModalBody>
+          <div className='space-y-3 max-h-[60vh] overflow-y-auto pr-2'>
+            {getMemberStats().length === 0 ? (
+              <p className='text-center text-gray-500 py-8'>
+                Belum ada data kehadiran
+              </p>
+            ) : (
+              getMemberStats().map((stats, index) => {
+                const total = stats.ontime + stats.telat;
+                const ontimePercent =
+                  total > 0 ? Math.round((stats.ontime / total) * 100) : 0;
+                return (
+                  <div
+                    key={index}
+                    className='p-4 bg-gray-50 dark:bg-gray-700 rounded-xl'
+                  >
+                    <div className='flex items-center justify-between mb-2'>
+                      <p className='font-medium text-gray-800 dark:text-white'>
+                        {stats.name}
+                      </p>
+                      <p className='text-sm font-bold text-emerald-600'>
+                        {ontimePercent}% Ontime
+                      </p>
+                    </div>
+                    <div className='flex gap-4 text-sm'>
+                      <div className='flex items-center gap-1'>
+                        <span className='w-2 h-2 rounded-full bg-emerald-500' />
+                        <span className='text-gray-600 dark:text-gray-400'>
+                          Ontime: {stats.ontime}
+                        </span>
                       </div>
-                      <div className='flex gap-4 text-sm'>
-                        <div className='flex items-center gap-1'>
-                          <span className='w-2 h-2 rounded-full bg-emerald-500' />
-                          <span className='text-gray-600'>
-                            Ontime: {stats.ontime}
-                          </span>
-                        </div>
-                        <div className='flex items-center gap-1'>
-                          <span className='w-2 h-2 rounded-full bg-amber-500' />
-                          <span className='text-gray-600'>
-                            Telat: {stats.telat}
-                          </span>
-                        </div>
-                        <div className='flex items-center gap-1'>
-                          <span className='w-2 h-2 rounded-full bg-gray-400' />
-                          <span className='text-gray-600'>
-                            Libur: {stats.libur}
-                          </span>
-                        </div>
+                      <div className='flex items-center gap-1'>
+                        <span className='w-2 h-2 rounded-full bg-amber-500' />
+                        <span className='text-gray-600 dark:text-gray-400'>
+                          Telat: {stats.telat}
+                        </span>
                       </div>
-                      {/* Progress bar */}
-                      <div className='mt-2 h-2 bg-gray-200 rounded-full overflow-hidden'>
-                        <div
-                          className='h-full bg-emerald-500'
-                          style={{ width: `${ontimePercent}%` }}
-                        />
+                      <div className='flex items-center gap-1'>
+                        <span className='w-2 h-2 rounded-full bg-gray-400' />
+                        <span className='text-gray-600 dark:text-gray-400'>
+                          Libur: {stats.libur}
+                        </span>
                       </div>
                     </div>
-                  );
-                })
-              )}
-            </div>
-
-            <div className='mt-4 pt-4 border-t flex justify-end'>
-              <Button
-                variant='secondary'
-                onClick={() => setShowStatsModal(false)}
-              >
-                Tutup
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
+                    {/* Progress bar */}
+                    <div className='mt-2 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden'>
+                      <div
+                        className='h-full bg-emerald-500'
+                        style={{ width: `${ontimePercent}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            variant='secondary'
+            onClick={() => setShowStatsModal(false)}
+            className='flex-1'
+          >
+            Tutup
+          </Button>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 }

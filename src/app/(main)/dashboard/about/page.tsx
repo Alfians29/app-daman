@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Card } from '@/components/ui/Card';
-import { Avatar } from '@/components/ui/Avatar';
 import { teamMembers, TeamMember } from '@/data/dummy';
 import {
   Mail,
@@ -17,6 +16,8 @@ import {
   User,
   ChevronDown,
 } from 'lucide-react';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Avatar } from '@/components/ui/Avatar';
 
 export default function AboutPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,12 +59,11 @@ export default function AboutPage() {
   return (
     <div className='space-y-6'>
       {/* Page Header */}
-      <div>
-        <h1 className='text-2xl font-bold text-gray-800'>Tentang Tim</h1>
-        <p className='text-gray-500 text-sm mt-1'>
-          Tim Data Management - {stats.total} anggota
-        </p>
-      </div>
+      <PageHeader
+        title='Tentang Tim'
+        description={`Tim Data Management - ${stats.total} anggota`}
+        icon={Users}
+      />
 
       {/* Stats Cards */}
       <div className='grid grid-cols-3 gap-4'>
@@ -273,8 +273,14 @@ export default function AboutPage() {
 
       {/* Member Detail Modal */}
       {selectedMember && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
-          <Card className='w-full max-w-md mx-4'>
+        <div
+          className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'
+          onClick={() => setSelectedMember(null)}
+        >
+          <Card
+            className='w-full max-w-md mx-4'
+            onClick={(e) => e?.stopPropagation()}
+          >
             <div className='flex items-center justify-between mb-4'>
               <h3 className='text-lg font-semibold text-gray-800'>
                 Detail Member
