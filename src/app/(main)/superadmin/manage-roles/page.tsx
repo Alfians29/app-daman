@@ -6,16 +6,25 @@ import {
   Search,
   Edit2,
   Trash2,
-  X,
   Shield,
   Users,
   UserCheck,
   Settings,
+  ShieldCheck,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { teamMembers } from '@/data/dummy';
 import toast from 'react-hot-toast';
+import { PageHeader } from '@/components/ui/PageHeader';
+import {
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ConfirmModal,
+} from '@/components/ui/Modal';
+import { Input, Select, Textarea } from '@/components/ui/Form';
 
 type Role = {
   id: string;
@@ -83,6 +92,20 @@ const initialAssignments: RoleAssignment[] = teamMembers
     roleId: i === 0 ? 'superadmin' : i < 3 ? 'admin' : 'member',
   }));
 
+const colorOptions = [
+  { value: 'bg-gray-100 text-gray-700', label: 'Abu-abu' },
+  { value: 'bg-blue-100 text-blue-700', label: 'Biru' },
+  { value: 'bg-purple-100 text-purple-700', label: 'Ungu' },
+  { value: 'bg-emerald-100 text-emerald-700', label: 'Hijau' },
+  { value: 'bg-orange-100 text-orange-700', label: 'Oranye' },
+  { value: 'bg-red-100 text-red-700', label: 'Merah' },
+];
+
+const memberOptions = [
+  { value: '', label: 'Pilih member' },
+  ...teamMembers.map((m) => ({ value: m.id, label: m.name })),
+];
+
 export default function ManageRolesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [roles, setRoles] = useState<Role[]>(initialRoles);
@@ -114,13 +137,9 @@ export default function ManageRolesPage() {
       role.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const colorOptions = [
-    { value: 'bg-gray-100 text-gray-700', label: 'Abu-abu' },
-    { value: 'bg-blue-100 text-blue-700', label: 'Biru' },
-    { value: 'bg-purple-100 text-purple-700', label: 'Ungu' },
-    { value: 'bg-emerald-100 text-emerald-700', label: 'Hijau' },
-    { value: 'bg-orange-100 text-orange-700', label: 'Oranye' },
-    { value: 'bg-red-100 text-red-700', label: 'Merah' },
+  const roleOptions = [
+    { value: '', label: 'Pilih role' },
+    ...roles.map((r) => ({ value: r.id, label: r.name })),
   ];
 
   const handleAdd = () => {
@@ -231,6 +250,13 @@ export default function ManageRolesPage() {
     setShowDeleteModal(true);
   };
 
+  const closeModal = () => {
+    setShowAddModal(false);
+    setShowEditModal(false);
+    setSelectedRole(null);
+    resetForm();
+  };
+
   const togglePermission = (permId: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -247,32 +273,32 @@ export default function ManageRolesPage() {
   return (
     <div className='space-y-6'>
       {/* Header */}
-      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
-        <div>
-          <h1 className='text-2xl font-bold text-gray-800'>Manajemen Role</h1>
-          <p className='text-gray-500 text-sm mt-1'>
-            Kelola role dan hak akses pengguna
-          </p>
-        </div>
-        <div className='flex gap-2'>
-          <Button
-            variant='outline'
-            onClick={() => setShowAssignModal(true)}
-            icon={<UserCheck className='w-4 h-4' />}
-          >
-            Tetapkan Role
-          </Button>
-          <Button
-            onClick={() => {
-              resetForm();
-              setShowAddModal(true);
-            }}
-            icon={<Plus className='w-4 h-4' />}
-          >
-            Tambah Role
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title='Manajemen Role'
+        description='Kelola role dan hak akses pengguna'
+        icon={ShieldCheck}
+        actions={
+          <>
+            <button
+              onClick={() => setShowAssignModal(true)}
+              className='flex items-center gap-2 px-4 py-2 bg-white/20 text-white border border-white/30 rounded-xl font-medium hover:bg-white/30 transition-colors'
+            >
+              <UserCheck className='w-4 h-4' />
+              Tetapkan Role
+            </button>
+            <button
+              onClick={() => {
+                resetForm();
+                setShowAddModal(true);
+              }}
+              className='flex items-center gap-2 px-4 py-2 bg-white text-[#E57373] rounded-xl font-medium hover:bg-white/90 transition-colors'
+            >
+              <Plus className='w-4 h-4' />
+              Tambah Role
+            </button>
+          </>
+        }
+      />
 
       {/* Summary Cards */}
       <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
@@ -443,217 +469,135 @@ export default function ManageRolesPage() {
       </Card>
 
       {/* Add/Edit Role Modal */}
-      {(showAddModal || showEditModal) && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
-          <Card className='w-full max-w-md mx-4 max-h-[80vh] overflow-auto'>
-            <div className='flex items-center justify-between mb-4'>
-              <h3 className='text-lg font-semibold text-gray-800'>
-                {showAddModal ? 'Tambah Role' : 'Edit Role'}
-              </h3>
-              <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setShowEditModal(false);
-                }}
-                className='p-2 hover:bg-gray-100 rounded-lg'
-              >
-                <X className='w-5 h-5 text-gray-500' />
-              </button>
-            </div>
+      <Modal
+        isOpen={showAddModal || showEditModal}
+        onClose={closeModal}
+        size='md'
+      >
+        <ModalHeader
+          title={showAddModal ? 'Tambah Role' : 'Edit Role'}
+          subtitle='Kelola hak akses sistem'
+          onClose={closeModal}
+        />
+        <ModalBody>
+          <div className='space-y-4'>
+            <Input
+              label='Nama Role'
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              placeholder='Contoh: Editor'
+            />
 
-            <div className='space-y-4'>
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Nama Role
-                </label>
-                <input
-                  type='text'
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  placeholder='Contoh: Editor'
-                  className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                />
-              </div>
+            <Textarea
+              label='Deskripsi'
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              placeholder='Deskripsi singkat tentang role ini'
+              rows={2}
+            />
 
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Deskripsi
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  placeholder='Deskripsi singkat tentang role ini'
-                  rows={2}
-                  className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                />
-              </div>
+            <Select
+              label='Warna Badge'
+              value={formData.color}
+              onChange={(e) =>
+                setFormData({ ...formData, color: e.target.value })
+              }
+              options={colorOptions}
+            />
 
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Warna Badge
-                </label>
-                <select
-                  value={formData.color}
-                  onChange={(e) =>
-                    setFormData({ ...formData, color: e.target.value })
-                  }
-                  className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                >
-                  {colorOptions.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-2'>
-                  Permissions
-                </label>
-                <div className='space-y-2 max-h-40 overflow-auto p-2 bg-gray-50 rounded-lg'>
-                  {availablePermissions.map((perm) => (
-                    <label
-                      key={perm.id}
-                      className='flex items-center gap-2 cursor-pointer'
-                    >
-                      <input
-                        type='checkbox'
-                        checked={formData.permissions.includes(perm.id)}
-                        onChange={() => togglePermission(perm.id)}
-                        className='w-4 h-4 text-[#E57373] rounded border-gray-300 focus:ring-[#E57373]'
-                      />
-                      <span className='text-sm text-gray-700'>
-                        {perm.label}
-                      </span>
-                    </label>
-                  ))}
-                </div>
+            <div>
+              <label className='block text-xs text-gray-500 mb-2'>
+                Permissions
+              </label>
+              <div className='space-y-2 max-h-40 overflow-auto p-2 bg-gray-50 rounded-lg'>
+                {availablePermissions.map((perm) => (
+                  <label
+                    key={perm.id}
+                    className='flex items-center gap-2 cursor-pointer'
+                  >
+                    <input
+                      type='checkbox'
+                      checked={formData.permissions.includes(perm.id)}
+                      onChange={() => togglePermission(perm.id)}
+                      className='w-4 h-4 text-[#E57373] rounded border-gray-300 focus:ring-[#E57373]'
+                    />
+                    <span className='text-sm text-gray-700'>{perm.label}</span>
+                  </label>
+                ))}
               </div>
             </div>
-
-            <div className='mt-6 flex gap-3 justify-end'>
-              <Button
-                variant='secondary'
-                onClick={() => {
-                  setShowAddModal(false);
-                  setShowEditModal(false);
-                }}
-              >
-                Batal
-              </Button>
-              <Button onClick={showAddModal ? handleAdd : handleEdit}>
-                {showAddModal ? 'Tambah' : 'Simpan'}
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant='secondary' onClick={closeModal} className='flex-1'>
+            Batal
+          </Button>
+          <Button
+            onClick={showAddModal ? handleAdd : handleEdit}
+            className='flex-1'
+          >
+            {showAddModal ? 'Tambah' : 'Simpan'}
+          </Button>
+        </ModalFooter>
+      </Modal>
 
       {/* Delete Confirmation Modal */}
-      {showDeleteModal && selectedRole && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
-          <Card className='w-full max-w-sm mx-4'>
-            <div className='text-center'>
-              <div className='w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4'>
-                <Trash2 className='w-6 h-6 text-red-600' />
-              </div>
-              <h3 className='text-lg font-semibold text-gray-800 mb-2'>
-                Hapus Role?
-              </h3>
-              <p className='text-sm text-gray-500 mb-6'>
-                Role &quot;{selectedRole.name}&quot; akan dihapus. Member dengan
-                role ini akan menjadi tidak memiliki role.
-              </p>
-              <div className='flex gap-3 justify-center'>
-                <Button
-                  variant='secondary'
-                  onClick={() => setShowDeleteModal(false)}
-                >
-                  Batal
-                </Button>
-                <button
-                  onClick={handleDelete}
-                  className='px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors'
-                >
-                  Hapus
-                </button>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showDeleteModal && !!selectedRole}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
+        title='Hapus Role?'
+        message={`Role "${selectedRole?.name}" akan dihapus. Member dengan role ini akan menjadi tidak memiliki role.`}
+        confirmText='Hapus'
+        cancelText='Batal'
+        variant='danger'
+      />
 
       {/* Assign Role Modal */}
-      {showAssignModal && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
-          <Card className='w-full max-w-sm mx-4'>
-            <div className='flex items-center justify-between mb-4'>
-              <h3 className='text-lg font-semibold text-gray-800'>
-                Tetapkan Role
-              </h3>
-              <button
-                onClick={() => setShowAssignModal(false)}
-                className='p-2 hover:bg-gray-100 rounded-lg'
-              >
-                <X className='w-5 h-5 text-gray-500' />
-              </button>
-            </div>
+      <Modal
+        isOpen={showAssignModal}
+        onClose={() => setShowAssignModal(false)}
+        size='sm'
+      >
+        <ModalHeader
+          title='Tetapkan Role'
+          subtitle='Pilih member dan role'
+          onClose={() => setShowAssignModal(false)}
+        />
+        <ModalBody>
+          <div className='space-y-4'>
+            <Select
+              label='Member'
+              value={assignMemberId}
+              onChange={(e) => setAssignMemberId(e.target.value)}
+              options={memberOptions}
+            />
 
-            <div className='space-y-4'>
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Member
-                </label>
-                <select
-                  value={assignMemberId}
-                  onChange={(e) => setAssignMemberId(e.target.value)}
-                  className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                >
-                  <option value=''>Pilih member</option>
-                  {teamMembers.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Role
-                </label>
-                <select
-                  value={assignRoleId}
-                  onChange={(e) => setAssignRoleId(e.target.value)}
-                  className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                >
-                  <option value=''>Pilih role</option>
-                  {roles.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className='mt-6 flex gap-3 justify-end'>
-              <Button
-                variant='secondary'
-                onClick={() => setShowAssignModal(false)}
-              >
-                Batal
-              </Button>
-              <Button onClick={handleAssign}>Tetapkan</Button>
-            </div>
-          </Card>
-        </div>
-      )}
+            <Select
+              label='Role'
+              value={assignRoleId}
+              onChange={(e) => setAssignRoleId(e.target.value)}
+              options={roleOptions}
+            />
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            variant='secondary'
+            onClick={() => setShowAssignModal(false)}
+            className='flex-1'
+          >
+            Batal
+          </Button>
+          <Button onClick={handleAssign} className='flex-1'>
+            Tetapkan
+          </Button>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 }

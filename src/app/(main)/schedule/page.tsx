@@ -3,8 +3,16 @@
 import { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { teamMembers, scheduleEntries } from '@/data/dummy';
-import { ChevronLeft, ChevronRight, User, Users, Filter } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  User,
+  Users,
+  Filter,
+  CalendarDays,
+} from 'lucide-react';
 
 // Simulated current user (logged in user)
 const currentUser = teamMembers[1]; // Muhammad Alfian
@@ -100,7 +108,7 @@ export default function SchedulePage() {
       case 'Malam':
         return 'bg-gray-200 text-gray-700';
       case 'Piket Pagi':
-        return 'bg-green-100 text-green-700';
+        return 'bg-emerald-100 text-emerald-700';
       case 'Piket Malam':
         return 'bg-purple-100 text-purple-700';
       case 'Libur':
@@ -160,34 +168,33 @@ export default function SchedulePage() {
   return (
     <div className='space-y-6'>
       {/* Page Header */}
-      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
-        <div>
-          <h1 className='text-2xl font-bold text-gray-800'>Jadwal</h1>
-          <p className='text-gray-500 text-sm mt-1'>
-            Lihat jadwal kerja anggota tim
-          </p>
-        </div>
-        <button
-          onClick={() => {
-            setShowMySchedule(!showMySchedule);
-            if (!showMySchedule) {
-              setSelectedMemberId('all');
-            }
-          }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors ${
-            showMySchedule
-              ? 'bg-[#E57373] text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          {showMySchedule ? (
-            <User className='w-4 h-4' />
-          ) : (
-            <Users className='w-4 h-4' />
-          )}
-          {showMySchedule ? 'Jadwal Saya' : 'Semua Jadwal'}
-        </button>
-      </div>
+      <PageHeader
+        title='Jadwal'
+        description='Lihat jadwal kerja anggota tim'
+        icon={CalendarDays}
+        actions={
+          <button
+            onClick={() => {
+              setShowMySchedule(!showMySchedule);
+              if (!showMySchedule) {
+                setSelectedMemberId('all');
+              }
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors ${
+              showMySchedule
+                ? 'bg-white text-[#E57373]'
+                : 'bg-white/20 text-white hover:bg-white/30'
+            }`}
+          >
+            {showMySchedule ? (
+              <User className='w-4 h-4' />
+            ) : (
+              <Users className='w-4 h-4' />
+            )}
+            {showMySchedule ? 'Jadwal Saya' : 'Semua Jadwal'}
+          </button>
+        }
+      />
 
       {/* My Schedule Summary - Only show when viewing my schedule */}
       {showMySchedule && (
@@ -209,7 +216,7 @@ export default function SchedulePage() {
             </div>
 
             {/* Summary counts */}
-            <div className='grid grid-cols-5 gap-3'>
+            <div className='grid grid-cols-3 sm:grid-cols-5 gap-3'>
               <div className='text-center'>
                 <p className='text-xl font-bold'>{myScheduleSummary.Pagi}</p>
                 <p className='text-xs text-white/80'>Pagi</p>
@@ -254,7 +261,7 @@ export default function SchedulePage() {
           <span className='text-gray-600'>Malam</span>
         </div>
         <div className='flex items-center gap-2 text-sm'>
-          <span className='w-6 h-6 rounded-lg bg-green-100 text-green-700 flex items-center justify-center text-xs font-bold'>
+          <span className='w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold'>
             PP
           </span>
           <span className='text-gray-600'>Piket Pagi</span>

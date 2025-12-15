@@ -341,7 +341,7 @@ body.dark,
   background-color: rgba(59, 130, 246, 0.2) !important;
 }
 
-.dark .bg-green-50 {
+.dark .bg-emerald-50 {
   background-color: rgba(16, 185, 129, 0.2) !important;
 }
 
@@ -370,7 +370,7 @@ body.dark,
   background-color: rgba(59, 130, 246, 0.25) !important;
 }
 
-.dark .bg-green-100 {
+.dark .bg-emerald-100 {
   background-color: rgba(16, 185, 129, 0.25) !important;
 }
 

@@ -15,10 +15,16 @@ import {
   Plus,
   LogIn,
   LogOut,
-  X,
+  ScrollText,
 } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { PageHeader } from '@/components/ui/PageHeader';
+import {
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from '@/components/ui/Modal';
 import toast from 'react-hot-toast';
 
 type AuditLog = {
@@ -241,21 +247,20 @@ export default function AuditLogPage() {
   return (
     <div className='space-y-6'>
       {/* Header */}
-      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
-        <div>
-          <h1 className='text-2xl font-bold text-gray-800'>Audit Log</h1>
-          <p className='text-gray-500 text-sm mt-1'>
-            Monitor semua aktivitas sistem
-          </p>
-        </div>
-        <Button
-          variant='outline'
-          onClick={handleExport}
-          icon={<Download className='w-4 h-4' />}
-        >
-          Export Excel
-        </Button>
-      </div>
+      <PageHeader
+        title='Audit Log'
+        description='Monitor semua aktivitas sistem'
+        icon={ScrollText}
+        actions={
+          <button
+            onClick={handleExport}
+            className='flex items-center gap-2 px-4 py-2 bg-white/20 text-white border border-white/30 rounded-xl font-medium hover:bg-white/30 transition-colors'
+          >
+            <Download className='w-4 h-4' />
+            Export Excel
+          </button>
+        }
+      />
 
       {/* Summary Cards */}
       <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
@@ -473,28 +478,24 @@ export default function AuditLogPage() {
       </div>
 
       {/* Detail Modal */}
-      {showDetailModal && selectedLog && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
-          <Card className='w-full max-w-md mx-4'>
-            <div className='flex items-center justify-between mb-4'>
-              <h3 className='text-lg font-semibold text-gray-800'>
-                Detail Log
-              </h3>
-              <button
-                onClick={() => setShowDetailModal(false)}
-                className='p-2 hover:bg-gray-100 rounded-lg'
-              >
-                <X className='w-5 h-5 text-gray-500' />
-              </button>
-            </div>
-
+      <Modal
+        isOpen={showDetailModal && !!selectedLog}
+        onClose={() => setShowDetailModal(false)}
+        size='md'
+      >
+        <ModalHeader
+          title='Detail Log'
+          onClose={() => setShowDetailModal(false)}
+        />
+        <ModalBody>
+          {selectedLog && (
             <div className='space-y-4'>
-              <div className='flex items-center gap-3 p-3 bg-gray-50 rounded-lg'>
+              <div className='flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg'>
                 <span className='text-gray-500'>
                   {getActionIcon(selectedLog.action)}
                 </span>
                 <div>
-                  <p className='font-medium text-gray-800'>
+                  <p className='font-medium text-gray-800 dark:text-white'>
                     {selectedLog.action}
                   </p>
                   <span
@@ -512,45 +513,53 @@ export default function AuditLogPage() {
 
               <div className='grid grid-cols-2 gap-4'>
                 <div>
-                  <p className='text-xs text-gray-500 mb-1'>Waktu</p>
-                  <p className='text-sm font-medium text-gray-800'>
+                  <p className='text-xs text-gray-500 dark:text-gray-400 mb-1'>
+                    Waktu
+                  </p>
+                  <p className='text-sm font-medium text-gray-800 dark:text-white'>
                     {selectedLog.timestamp}
                   </p>
                 </div>
                 <div>
-                  <p className='text-xs text-gray-500 mb-1'>IP Address</p>
-                  <p className='text-sm font-medium text-gray-800'>
+                  <p className='text-xs text-gray-500 dark:text-gray-400 mb-1'>
+                    IP Address
+                  </p>
+                  <p className='text-sm font-medium text-gray-800 dark:text-white'>
                     {selectedLog.ipAddress}
                   </p>
                 </div>
               </div>
 
               <div>
-                <p className='text-xs text-gray-500 mb-1'>User</p>
-                <p className='text-sm font-medium text-gray-800'>
+                <p className='text-xs text-gray-500 dark:text-gray-400 mb-1'>
+                  User
+                </p>
+                <p className='text-sm font-medium text-gray-800 dark:text-white'>
                   {selectedLog.user}
                 </p>
               </div>
 
               <div>
-                <p className='text-xs text-gray-500 mb-1'>Detail</p>
-                <p className='text-sm text-gray-700 p-3 bg-gray-50 rounded-lg'>
+                <p className='text-xs text-gray-500 dark:text-gray-400 mb-1'>
+                  Detail
+                </p>
+                <p className='text-sm text-gray-700 dark:text-gray-300 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg'>
                   {selectedLog.details}
                 </p>
               </div>
             </div>
-
-            <div className='mt-6 flex justify-end'>
-              <Button
-                variant='secondary'
-                onClick={() => setShowDetailModal(false)}
-              >
-                Tutup
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
+          )}
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            variant='secondary'
+            onClick={() => setShowDetailModal(false)}
+            className='flex-1'
+          >
+            Tutup
+          </Button>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 }

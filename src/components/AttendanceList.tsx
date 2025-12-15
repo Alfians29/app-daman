@@ -96,9 +96,9 @@ export function AttendanceList() {
               {todayRecords.filter((r) => r.keterangan === 'Malam').length}
             </p>
           </div>
-          <div className='p-3 rounded-xl bg-green-50 border border-green-100 text-center'>
-            <p className='text-xs font-medium text-green-600'>Piket P</p>
-            <p className='text-xl font-bold text-green-700'>
+          <div className='p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-center'>
+            <p className='text-xs font-medium text-emerald-600'>Piket P</p>
+            <p className='text-xl font-bold text-emerald-700'>
               {todayRecords.filter((r) => r.keterangan === 'Piket Pagi').length}
             </p>
           </div>

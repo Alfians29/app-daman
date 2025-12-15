@@ -6,15 +6,24 @@ import {
   Search,
   Edit2,
   Trash2,
-  X,
   Users,
   Phone,
   Mail,
   AtSign,
+  UsersRound,
 } from 'lucide-react';
 import { teamMembers, TeamMember } from '@/data/dummy';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { PageHeader } from '@/components/ui/PageHeader';
+import {
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ConfirmModal,
+} from '@/components/ui/Modal';
+import { Input, Select, FormRow } from '@/components/ui/Form';
 import toast from 'react-hot-toast';
 
 type MemberForm = {
@@ -29,8 +38,16 @@ type MemberForm = {
   phone: string;
 };
 
-const positionOptions = ['Team Leader', 'Member'];
-const departmentOptions = ['Data Management', 'IT Support', 'Operations'];
+const positionOptions = [
+  { value: 'Team Leader', label: 'Team Leader' },
+  { value: 'Member', label: 'Member' },
+];
+
+const departmentOptions = [
+  { value: 'Data Management', label: 'Data Management' },
+  { value: 'IT Support', label: 'IT Support' },
+  { value: 'Operations', label: 'Operations' },
+];
 
 export default function AdminTeamPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -173,6 +190,12 @@ export default function AdminTeamPage() {
     setShowDeleteModal(true);
   };
 
+  const closeModal = () => {
+    setShowAddModal(false);
+    setShowEditModal(false);
+    resetForm();
+  };
+
   // Statistics
   const stats = {
     total: members.length,
@@ -183,23 +206,23 @@ export default function AdminTeamPage() {
   return (
     <div className='space-y-6'>
       {/* Header */}
-      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
-        <div>
-          <h1 className='text-2xl font-bold text-gray-800'>Kelola Tim</h1>
-          <p className='text-gray-500 text-sm mt-1'>
-            Kelola anggota tim Data Management
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            resetForm();
-            setShowAddModal(true);
-          }}
-          icon={<Plus className='w-4 h-4' />}
-        >
-          Tambah Member
-        </Button>
-      </div>
+      <PageHeader
+        title='Kelola Tim'
+        description='Kelola anggota tim Data Management'
+        icon={UsersRound}
+        actions={
+          <button
+            onClick={() => {
+              resetForm();
+              setShowAddModal(true);
+            }}
+            className='flex items-center gap-2 px-4 py-2 bg-white text-[#E57373] rounded-xl font-medium hover:bg-white/90 transition-colors'
+          >
+            <Plus className='w-4 h-4' />
+            Tambah Member
+          </button>
+        }
+      />
 
       {/* Summary Cards */}
       <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
@@ -260,11 +283,8 @@ export default function AdminTeamPage() {
           className='px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
         >
           <option value='all'>Semua Posisi</option>
-          {positionOptions.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
+          <option value='Team Leader'>Team Leader</option>
+          <option value='Member'>Member</option>
         </select>
       </div>
 
@@ -344,226 +364,135 @@ export default function AdminTeamPage() {
       </div>
 
       {/* Add/Edit Modal */}
-      {(showAddModal || showEditModal) && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
-          <Card className='w-full max-w-lg mx-4 max-h-[90vh] overflow-auto'>
-            <div className='flex items-center justify-between mb-4'>
-              <h3 className='text-lg font-semibold text-gray-800'>
-                {showAddModal ? 'Tambah Member' : 'Edit Member'}
-              </h3>
-              <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setShowEditModal(false);
-                }}
-                className='p-2 hover:bg-gray-100 rounded-lg'
-              >
-                <X className='w-5 h-5 text-gray-500' />
-              </button>
-            </div>
+      <Modal
+        isOpen={showAddModal || showEditModal}
+        onClose={closeModal}
+        size='md'
+      >
+        <ModalHeader
+          title={showAddModal ? 'Tambah Member' : 'Edit Member'}
+          subtitle='Data Management Team'
+          onClose={closeModal}
+        />
+        <ModalBody>
+          <div className='space-y-4'>
+            <FormRow>
+              <Input
+                label='NIK'
+                value={formData.nik}
+                onChange={(e) =>
+                  setFormData({ ...formData, nik: e.target.value })
+                }
+                placeholder='nik_123'
+                required
+              />
+              <Input
+                label='Username'
+                value={formData.username}
+                onChange={(e) =>
+                  setFormData({ ...formData, username: e.target.value })
+                }
+                placeholder='john.doe'
+                required
+              />
+            </FormRow>
 
-            <div className='space-y-4'>
-              <div className='grid grid-cols-2 gap-4'>
-                <div>
-                  <label className='block text-sm font-medium text-gray-700 mb-1'>
-                    NIK *
-                  </label>
-                  <input
-                    type='text'
-                    value={formData.nik}
-                    onChange={(e) =>
-                      setFormData({ ...formData, nik: e.target.value })
-                    }
-                    placeholder='nik_123'
-                    className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                  />
-                </div>
-                <div>
-                  <label className='block text-sm font-medium text-gray-700 mb-1'>
-                    Username *
-                  </label>
-                  <input
-                    type='text'
-                    value={formData.username}
-                    onChange={(e) =>
-                      setFormData({ ...formData, username: e.target.value })
-                    }
-                    placeholder='john.doe'
-                    className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                  />
-                </div>
-              </div>
+            <Input
+              label='Nama Lengkap'
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              placeholder='John Doe'
+              required
+            />
 
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Nama Lengkap *
-                </label>
-                <input
-                  type='text'
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  placeholder='John Doe'
-                  className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                />
-              </div>
+            <Input
+              label='Nama Panggilan'
+              value={formData.nickname}
+              onChange={(e) =>
+                setFormData({ ...formData, nickname: e.target.value })
+              }
+              placeholder='John'
+            />
 
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Nama Panggilan
-                </label>
-                <input
-                  type='text'
-                  value={formData.nickname}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nickname: e.target.value })
-                  }
-                  placeholder='John'
-                  className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                />
-              </div>
+            <FormRow>
+              <Select
+                label='Posisi'
+                value={formData.position}
+                onChange={(e) =>
+                  setFormData({ ...formData, position: e.target.value })
+                }
+                options={positionOptions}
+              />
+              <Select
+                label='Departemen'
+                value={formData.department}
+                onChange={(e) =>
+                  setFormData({ ...formData, department: e.target.value })
+                }
+                options={departmentOptions}
+              />
+            </FormRow>
 
-              <div className='grid grid-cols-2 gap-4'>
-                <div>
-                  <label className='block text-sm font-medium text-gray-700 mb-1'>
-                    Posisi
-                  </label>
-                  <select
-                    value={formData.position}
-                    onChange={(e) =>
-                      setFormData({ ...formData, position: e.target.value })
-                    }
-                    className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                  >
-                    {positionOptions.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className='block text-sm font-medium text-gray-700 mb-1'>
-                    Departemen
-                  </label>
-                  <select
-                    value={formData.department}
-                    onChange={(e) =>
-                      setFormData({ ...formData, department: e.target.value })
-                    }
-                    className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                  >
-                    {departmentOptions.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+            <Input
+              label='Email'
+              type='email'
+              value={formData.email}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
+              placeholder='john.doe@company.com'
+            />
 
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Email
-                </label>
-                <input
-                  type='email'
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  placeholder='john.doe@company.com'
-                  className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                />
-              </div>
-
-              <div className='grid grid-cols-2 gap-4'>
-                <div>
-                  <label className='block text-sm font-medium text-gray-700 mb-1'>
-                    No. Telepon
-                  </label>
-                  <input
-                    type='tel'
-                    value={formData.phone}
-                    onChange={(e) =>
-                      setFormData({ ...formData, phone: e.target.value })
-                    }
-                    placeholder='081234567890'
-                    className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                  />
-                </div>
-                <div>
-                  <label className='block text-sm font-medium text-gray-700 mb-1'>
-                    Username Telegram
-                  </label>
-                  <input
-                    type='text'
-                    value={formData.usernameTelegram}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        usernameTelegram: e.target.value,
-                      })
-                    }
-                    placeholder='@username'
-                    className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className='mt-6 flex gap-3 justify-end'>
-              <Button
-                variant='secondary'
-                onClick={() => {
-                  setShowAddModal(false);
-                  setShowEditModal(false);
-                }}
-              >
-                Batal
-              </Button>
-              <Button onClick={showAddModal ? handleAdd : handleEdit}>
-                {showAddModal ? 'Tambah' : 'Simpan'}
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
+            <FormRow>
+              <Input
+                label='No. Telepon'
+                type='tel'
+                value={formData.phone}
+                onChange={(e) =>
+                  setFormData({ ...formData, phone: e.target.value })
+                }
+                placeholder='081234567890'
+              />
+              <Input
+                label='Username Telegram'
+                value={formData.usernameTelegram}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    usernameTelegram: e.target.value,
+                  })
+                }
+                placeholder='@username'
+              />
+            </FormRow>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant='secondary' onClick={closeModal} className='flex-1'>
+            Batal
+          </Button>
+          <Button
+            onClick={showAddModal ? handleAdd : handleEdit}
+            className='flex-1'
+          >
+            {showAddModal ? 'Tambah' : 'Simpan'}
+          </Button>
+        </ModalFooter>
+      </Modal>
 
       {/* Delete Confirmation Modal */}
-      {showDeleteModal && selectedMember && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
-          <Card className='w-full max-w-sm mx-4'>
-            <div className='text-center'>
-              <div className='w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4'>
-                <Trash2 className='w-6 h-6 text-red-600' />
-              </div>
-              <h3 className='text-lg font-semibold text-gray-800 mb-2'>
-                Hapus Member?
-              </h3>
-              <p className='text-sm text-gray-500 mb-6'>
-                Member &quot;{selectedMember.name}&quot; akan dihapus permanen
-                dari sistem.
-              </p>
-              <div className='flex gap-3 justify-center'>
-                <Button
-                  variant='secondary'
-                  onClick={() => setShowDeleteModal(false)}
-                >
-                  Batal
-                </Button>
-                <button
-                  onClick={handleDelete}
-                  className='px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors'
-                >
-                  Hapus
-                </button>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showDeleteModal && !!selectedMember}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
+        title='Hapus Member?'
+        message={`Member "${selectedMember?.name}" akan dihapus permanen dari sistem.`}
+        confirmText='Hapus'
+        cancelText='Batal'
+        variant='danger'
+      />
     </div>
   );
 }

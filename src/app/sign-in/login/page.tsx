@@ -1,18 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  Users,
-  Eye,
-  EyeOff,
-  LogIn,
-  Lock,
-  User,
-  Sparkles,
-  Moon,
-  Sun,
-} from 'lucide-react';
+import { Users, Eye, EyeOff, LogIn, Lock, User, Sparkles } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -20,32 +11,20 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isDark, setIsDark] = useState(false);
 
-  // Check localStorage for theme on mount
+  // Apply saved theme on mount (without toggle functionality)
   useEffect(() => {
     try {
       const savedTheme = localStorage.getItem('theme');
       if (savedTheme === 'dark') {
-        setIsDark(true);
         document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
       }
     } catch {
       // localStorage not available
     }
   }, []);
-
-  const toggleTheme = () => {
-    const newTheme = !isDark;
-    setIsDark(newTheme);
-    if (newTheme) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,19 +37,6 @@ export default function LoginPage() {
 
   return (
     <div className='min-h-screen flex bg-gray-50 dark:bg-gray-900 transition-colors duration-300'>
-      {/* Theme Toggle Button */}
-      <button
-        onClick={toggleTheme}
-        className='fixed top-4 right-4 z-50 p-3 rounded-xl bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-300 group'
-        title={isDark ? 'Light Mode' : 'Dark Mode'}
-      >
-        {isDark ? (
-          <Sun className='w-5 h-5 text-amber-500 group-hover:rotate-45 transition-transform' />
-        ) : (
-          <Moon className='w-5 h-5 text-gray-600 group-hover:-rotate-12 transition-transform' />
-        )}
-      </button>
-
       {/* Left Side - Hero/Branding */}
       <div className='hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#E57373] via-[#EF5350] to-[#C62828] relative overflow-hidden'>
         {/* Decorative Elements */}
@@ -82,8 +48,9 @@ export default function LoginPage() {
 
         {/* Content */}
         <div className='relative z-10 flex flex-col justify-center items-center w-full p-12 text-white'>
-          <div className='w-24 h-24 rounded-3xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-8 shadow-2xl'>
-            <Users className='w-12 h-12' />
+          <div className='w-50 h-35 rounded-3xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-8 shadow-2xl'>
+            {/* <Users className='w-12 h-12' /> */}
+            <Image src='/logoputih.png' alt='Logo' width={150} height={150} />
           </div>
           <h1 className='text-4xl font-bold mb-4'>Daman</h1>
           <p className='text-xl text-white/80 mb-8'>Management System</p>
@@ -125,7 +92,7 @@ export default function LoginPage() {
           {/* Mobile Logo */}
           <div className='lg:hidden text-center mb-8'>
             <div className='inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#E57373] to-[#C62828] shadow-lg mb-4'>
-              <Users className='w-8 h-8 text-white' />
+              <Image src='/logoputih.png' alt='Logo' width={55} height={55} />
             </div>
             <h1 className='text-2xl font-bold text-gray-800 dark:text-white'>
               Daman
