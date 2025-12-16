@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import {
   Plus,
   Search,
@@ -11,10 +11,10 @@ import {
   UserCheck,
   Settings,
   ShieldCheck,
+  Loader2,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { teamMembers } from '@/data/dummy';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/PageHeader';
 import {
@@ -25,72 +25,30 @@ import {
   ConfirmModal,
 } from '@/components/ui/Modal';
 import { Input, Select, Textarea } from '@/components/ui/Form';
+import { rolesAPI, usersAPI } from '@/lib/api';
 
 type Role = {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   permissions: string[];
-  color: string;
+  color: string | null;
   memberCount: number;
 };
 
-type RoleAssignment = {
-  memberId: string;
-  memberName: string;
-  roleId: string;
+type Permission = {
+  id: string;
+  code: string;
+  name: string;
+  module: string | null;
 };
 
-const availablePermissions = [
-  { id: 'view_dashboard', label: 'Lihat Dashboard' },
-  { id: 'manage_attendance', label: 'Kelola Kehadiran' },
-  { id: 'manage_schedule', label: 'Kelola Jadwal' },
-  { id: 'manage_cash', label: 'Kelola Kas' },
-  { id: 'manage_members', label: 'Kelola Anggota' },
-  { id: 'manage_roles', label: 'Kelola Role' },
-  { id: 'view_audit_log', label: 'Lihat Audit Log' },
-  { id: 'export_data', label: 'Export Data' },
-];
-
-const initialRoles: Role[] = [
-  {
-    id: 'superadmin',
-    name: 'Superadmin',
-    description: 'Akses penuh ke semua fitur sistem',
-    permissions: availablePermissions.map((p) => p.id),
-    color: 'bg-purple-100 text-purple-700',
-    memberCount: 1,
-  },
-  {
-    id: 'admin',
-    name: 'Admin',
-    description: 'Dapat mengelola kehadiran, jadwal, dan kas',
-    permissions: [
-      'view_dashboard',
-      'manage_attendance',
-      'manage_schedule',
-      'manage_cash',
-    ],
-    color: 'bg-blue-100 text-blue-700',
-    memberCount: 3,
-  },
-  {
-    id: 'member',
-    name: 'Member',
-    description: 'Dapat melihat dashboard dan mengisi absensi',
-    permissions: ['view_dashboard'],
-    color: 'bg-gray-100 text-gray-700',
-    memberCount: 10,
-  },
-];
-
-const initialAssignments: RoleAssignment[] = teamMembers
-  .slice(0, 5)
-  .map((m, i) => ({
-    memberId: m.id,
-    memberName: m.name,
-    roleId: i === 0 ? 'superadmin' : i < 3 ? 'admin' : 'member',
-  }));
+type User = {
+  id: string;
+  name: string;
+  roleId: string;
+  role: { id: string; name: string; color: string | null };
+};
 
 const colorOptions = [
   { value: 'bg-gray-100 text-gray-700', label: 'Abu-abu' },
@@ -101,16 +59,13 @@ const colorOptions = [
   { value: 'bg-red-100 text-red-700', label: 'Merah' },
 ];
 
-const memberOptions = [
-  { value: '', label: 'Pilih member' },
-  ...teamMembers.map((m) => ({ value: m.id, label: m.name })),
-];
-
 export default function ManageRolesPage() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [roles, setRoles] = useState<Role[]>(initialRoles);
-  const [assignments, setAssignments] =
-    useState<RoleAssignment[]>(initialAssignments);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPending, startTransition] = useTransition();
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -128,13 +83,31 @@ export default function ManageRolesPage() {
   });
 
   // Assignment form
-  const [assignMemberId, setAssignMemberId] = useState('');
+  const [assignUserId, setAssignUserId] = useState('');
   const [assignRoleId, setAssignRoleId] = useState('');
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    const [rolesResult, permsResult, usersResult] = await Promise.all([
+      rolesAPI.getAll(),
+      rolesAPI.getPermissions(),
+      usersAPI.getAll(),
+    ]);
+
+    if (rolesResult.success) setRoles(rolesResult.data as Role[]);
+    if (permsResult.success) setPermissions(permsResult.data as Permission[]);
+    if (usersResult.success) setUsers(usersResult.data as User[]);
+    setIsLoading(false);
+  };
 
   const filteredRoles = roles.filter(
     (role) =>
       role.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      role.description.toLowerCase().includes(searchQuery.toLowerCase())
+      (role.description || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const roleOptions = [
@@ -142,87 +115,97 @@ export default function ManageRolesPage() {
     ...roles.map((r) => ({ value: r.id, label: r.name })),
   ];
 
-  const handleAdd = () => {
+  const userOptions = [
+    { value: '', label: 'Pilih member' },
+    ...users.map((u) => ({ value: u.id, label: u.name })),
+  ];
+
+  const handleAdd = async () => {
     if (!formData.name) {
       toast.error('Nama role harus diisi!');
       return;
     }
 
-    const newRole: Role = {
-      id: `role-${Date.now()}`,
-      name: formData.name,
-      description: formData.description,
-      permissions: formData.permissions,
-      color: formData.color,
-      memberCount: 0,
-    };
+    startTransition(async () => {
+      const result = await rolesAPI.create({
+        name: formData.name,
+        description: formData.description,
+        color: formData.color,
+        permissions: formData.permissions,
+      });
 
-    setRoles([...roles, newRole]);
-    setShowAddModal(false);
-    resetForm();
-    toast.success('Role berhasil ditambahkan!');
+      if (result.success) {
+        toast.success('Role berhasil ditambahkan!');
+        loadData();
+        setShowAddModal(false);
+        resetForm();
+      } else {
+        toast.error(result.error || 'Gagal menambahkan role');
+      }
+    });
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!selectedRole) return;
 
-    setRoles(
-      roles.map((r) =>
-        r.id === selectedRole.id
-          ? {
-              ...r,
-              name: formData.name,
-              description: formData.description,
-              permissions: formData.permissions,
-              color: formData.color,
-            }
-          : r
-      )
-    );
-    setShowEditModal(false);
-    setSelectedRole(null);
-    resetForm();
-    toast.success('Role berhasil diubah!');
+    startTransition(async () => {
+      const result = await rolesAPI.update(selectedRole.id, {
+        name: formData.name,
+        description: formData.description,
+        color: formData.color,
+        permissions: formData.permissions,
+      });
+
+      if (result.success) {
+        toast.success('Role berhasil diubah!');
+        loadData();
+        setShowEditModal(false);
+        setSelectedRole(null);
+        resetForm();
+      } else {
+        toast.error(result.error || 'Gagal mengubah role');
+      }
+    });
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selectedRole) return;
-    if (selectedRole.id === 'superadmin') {
-      toast.error('Role Superadmin tidak dapat dihapus!');
-      return;
-    }
 
-    setRoles(roles.filter((r) => r.id !== selectedRole.id));
-    setAssignments(assignments.filter((a) => a.roleId !== selectedRole.id));
-    setShowDeleteModal(false);
-    setSelectedRole(null);
-    toast.success('Role berhasil dihapus!');
+    startTransition(async () => {
+      const result = await rolesAPI.delete(selectedRole.id);
+
+      if (result.success) {
+        toast.success('Role berhasil dihapus!');
+        loadData();
+        setShowDeleteModal(false);
+        setSelectedRole(null);
+      } else {
+        toast.error(result.error || 'Gagal menghapus role');
+      }
+    });
   };
 
-  const handleAssign = () => {
-    if (!assignMemberId || !assignRoleId) {
+  const handleAssign = async () => {
+    if (!assignUserId || !assignRoleId) {
       toast.error('Pilih member dan role!');
       return;
     }
 
-    const member = teamMembers.find((m) => m.id === assignMemberId);
-    if (!member) return;
+    startTransition(async () => {
+      const result = await usersAPI.update(assignUserId, {
+        roleId: assignRoleId,
+      });
 
-    // Remove existing assignment for this member
-    const newAssignments = assignments.filter(
-      (a) => a.memberId !== assignMemberId
-    );
-    newAssignments.push({
-      memberId: member.id,
-      memberName: member.name,
-      roleId: assignRoleId,
+      if (result.success) {
+        toast.success('Role berhasil ditetapkan!');
+        loadData();
+        setShowAssignModal(false);
+        setAssignUserId('');
+        setAssignRoleId('');
+      } else {
+        toast.error(result.error || 'Gagal menetapkan role');
+      }
     });
-
-    setAssignments(newAssignments);
-    setShowAssignModal(false);
-    setAssignMemberId('');
-    setAssignRoleId('');
-    toast.success('Role berhasil ditetapkan!');
   };
 
   const resetForm = () => {
@@ -238,9 +221,9 @@ export default function ManageRolesPage() {
     setSelectedRole(role);
     setFormData({
       name: role.name,
-      description: role.description,
+      description: role.description || '',
       permissions: role.permissions,
-      color: role.color,
+      color: role.color || 'bg-gray-100 text-gray-700',
     });
     setShowEditModal(true);
   };
@@ -257,18 +240,26 @@ export default function ManageRolesPage() {
     resetForm();
   };
 
-  const togglePermission = (permId: string) => {
+  const togglePermission = (permCode: string) => {
     setFormData((prev) => ({
       ...prev,
-      permissions: prev.permissions.includes(permId)
-        ? prev.permissions.filter((p) => p !== permId)
-        : [...prev.permissions, permId],
+      permissions: prev.permissions.includes(permCode)
+        ? prev.permissions.filter((p) => p !== permCode)
+        : [...prev.permissions, permCode],
     }));
   };
 
-  const getMembersByRole = (roleId: string) => {
-    return assignments.filter((a) => a.roleId === roleId);
+  const getUsersByRole = (roleId: string) => {
+    return users.filter((u) => u.roleId === roleId);
   };
+
+  if (isLoading) {
+    return (
+      <div className='flex items-center justify-center min-h-[400px]'>
+        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
+      </div>
+    );
+  }
 
   return (
     <div className='space-y-6'>
@@ -281,7 +272,8 @@ export default function ManageRolesPage() {
           <>
             <button
               onClick={() => setShowAssignModal(true)}
-              className='flex items-center gap-2 px-4 py-2 bg-white/20 text-white border border-white/30 rounded-xl font-medium hover:bg-white/30 transition-colors'
+              disabled={isPending}
+              className='flex items-center gap-2 px-4 py-2 bg-white/20 text-white border border-white/30 rounded-xl font-medium hover:bg-white/30 transition-colors disabled:opacity-50'
             >
               <UserCheck className='w-4 h-4' />
               Tetapkan Role
@@ -291,7 +283,8 @@ export default function ManageRolesPage() {
                 resetForm();
                 setShowAddModal(true);
               }}
-              className='flex items-center gap-2 px-4 py-2 bg-white text-[#E57373] rounded-xl font-medium hover:bg-white/90 transition-colors'
+              disabled={isPending}
+              className='flex items-center gap-2 px-4 py-2 bg-white text-[#E57373] rounded-xl font-medium hover:bg-white/90 transition-colors disabled:opacity-50'
             >
               <Plus className='w-4 h-4' />
               Tambah Role
@@ -320,9 +313,7 @@ export default function ManageRolesPage() {
             </div>
             <div>
               <p className='text-xs text-gray-500'>Total Anggota</p>
-              <p className='text-lg font-bold text-gray-800'>
-                {assignments.length}
-              </p>
+              <p className='text-lg font-bold text-gray-800'>{users.length}</p>
             </div>
           </div>
         </div>
@@ -334,7 +325,7 @@ export default function ManageRolesPage() {
             <div>
               <p className='text-xs text-gray-500'>Total Permission</p>
               <p className='text-lg font-bold text-gray-800'>
-                {availablePermissions.length}
+                {permissions.length}
               </p>
             </div>
           </div>
@@ -368,14 +359,16 @@ export default function ManageRolesPage() {
               <div className='flex gap-1'>
                 <button
                   onClick={() => openEditModal(role)}
-                  className='p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors'
+                  disabled={isPending}
+                  className='p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50'
                 >
                   <Edit2 size={16} />
                 </button>
-                {role.id !== 'superadmin' && (
+                {role.name !== 'Superadmin' && (
                   <button
                     onClick={() => openDeleteModal(role)}
-                    className='p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors'
+                    disabled={isPending}
+                    className='p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50'
                   >
                     <Trash2 size={16} />
                   </button>
@@ -393,7 +386,7 @@ export default function ManageRolesPage() {
                     key={p}
                     className='px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded'
                   >
-                    {availablePermissions.find((ap) => ap.id === p)?.label}
+                    {permissions.find((perm) => perm.code === p)?.name || p}
                   </span>
                 ))}
                 {role.permissions.length > 3 && (
@@ -406,7 +399,7 @@ export default function ManageRolesPage() {
 
             <div className='pt-3 border-t'>
               <p className='text-xs text-gray-500'>
-                {getMembersByRole(role.id).length} member dengan role ini
+                {role.memberCount} member dengan role ini
               </p>
             </div>
           </Card>
@@ -434,35 +427,33 @@ export default function ManageRolesPage() {
               </tr>
             </thead>
             <tbody className='divide-y divide-gray-100'>
-              {assignments.map((assignment) => {
-                const role = roles.find((r) => r.id === assignment.roleId);
-                return (
-                  <tr key={assignment.memberId} className='hover:bg-gray-50'>
-                    <td className='px-4 py-3 text-sm text-gray-800'>
-                      {assignment.memberName}
-                    </td>
-                    <td className='px-4 py-3'>
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded-lg ${role?.color}`}
-                      >
-                        {role?.name}
-                      </span>
-                    </td>
-                    <td className='px-4 py-3 text-center'>
-                      <button
-                        onClick={() => {
-                          setAssignMemberId(assignment.memberId);
-                          setAssignRoleId(assignment.roleId);
-                          setShowAssignModal(true);
-                        }}
-                        className='text-xs text-[#E57373] hover:underline'
-                      >
-                        Ubah Role
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+              {users.map((user) => (
+                <tr key={user.id} className='hover:bg-gray-50'>
+                  <td className='px-4 py-3 text-sm text-gray-800'>
+                    {user.name}
+                  </td>
+                  <td className='px-4 py-3'>
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded-lg ${user.role?.color}`}
+                    >
+                      {user.role?.name}
+                    </span>
+                  </td>
+                  <td className='px-4 py-3 text-center'>
+                    <button
+                      onClick={() => {
+                        setAssignUserId(user.id);
+                        setAssignRoleId(user.roleId);
+                        setShowAssignModal(true);
+                      }}
+                      disabled={isPending}
+                      className='text-xs text-[#E57373] hover:underline disabled:opacity-50'
+                    >
+                      Ubah Role
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -514,18 +505,18 @@ export default function ManageRolesPage() {
                 Permissions
               </label>
               <div className='space-y-2 max-h-40 overflow-auto p-2 bg-gray-50 rounded-lg'>
-                {availablePermissions.map((perm) => (
+                {permissions.map((perm) => (
                   <label
                     key={perm.id}
                     className='flex items-center gap-2 cursor-pointer'
                   >
                     <input
                       type='checkbox'
-                      checked={formData.permissions.includes(perm.id)}
-                      onChange={() => togglePermission(perm.id)}
+                      checked={formData.permissions.includes(perm.code)}
+                      onChange={() => togglePermission(perm.code)}
                       className='w-4 h-4 text-[#E57373] rounded border-gray-300 focus:ring-[#E57373]'
                     />
-                    <span className='text-sm text-gray-700'>{perm.label}</span>
+                    <span className='text-sm text-gray-700'>{perm.name}</span>
                   </label>
                 ))}
               </div>
@@ -539,8 +530,15 @@ export default function ManageRolesPage() {
           <Button
             onClick={showAddModal ? handleAdd : handleEdit}
             className='flex-1'
+            disabled={isPending}
           >
-            {showAddModal ? 'Tambah' : 'Simpan'}
+            {isPending ? (
+              <Loader2 className='w-4 h-4 animate-spin' />
+            ) : showAddModal ? (
+              'Tambah'
+            ) : (
+              'Simpan'
+            )}
           </Button>
         </ModalFooter>
       </Modal>
@@ -572,9 +570,9 @@ export default function ManageRolesPage() {
           <div className='space-y-4'>
             <Select
               label='Member'
-              value={assignMemberId}
-              onChange={(e) => setAssignMemberId(e.target.value)}
-              options={memberOptions}
+              value={assignUserId}
+              onChange={(e) => setAssignUserId(e.target.value)}
+              options={userOptions}
             />
 
             <Select
@@ -593,8 +591,16 @@ export default function ManageRolesPage() {
           >
             Batal
           </Button>
-          <Button onClick={handleAssign} className='flex-1'>
-            Tetapkan
+          <Button
+            onClick={handleAssign}
+            className='flex-1'
+            disabled={isPending}
+          >
+            {isPending ? (
+              <Loader2 className='w-4 h-4 animate-spin' />
+            ) : (
+              'Tetapkan'
+            )}
           </Button>
         </ModalFooter>
       </Modal>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import {
   Plus,
   Search,
@@ -11,8 +11,9 @@ import {
   Mail,
   AtSign,
   UsersRound,
+  Loader2,
+  Shield,
 } from 'lucide-react';
-import { teamMembers, TeamMember } from '@/data/dummy';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -25,10 +26,35 @@ import {
 } from '@/components/ui/Modal';
 import { Input, Select, FormRow } from '@/components/ui/Form';
 import toast from 'react-hot-toast';
+import { usersAPI } from '@/lib/api';
+
+type User = {
+  id: string;
+  nik: string;
+  username: string;
+  name: string;
+  nickname: string | null;
+  email: string;
+  position: string;
+  department: string;
+  image: string | null;
+  usernameTelegram: string | null;
+  phone: string | null;
+  roleId: string;
+  isActive: boolean;
+  role: { id: string; name: string; color: string | null };
+};
+
+type Role = {
+  id: string;
+  name: string;
+  color: string | null;
+};
 
 type MemberForm = {
   nik: string;
   username: string;
+  password: string;
   name: string;
   nickname: string;
   email: string;
@@ -36,6 +62,7 @@ type MemberForm = {
   department: string;
   usernameTelegram: string;
   phone: string;
+  roleId: string;
 };
 
 const positionOptions = [
@@ -52,20 +79,22 @@ const departmentOptions = [
 export default function AdminTeamPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPosition, setFilterPosition] = useState<string>('all');
-
-  // Local members state
-  const [members, setMembers] = useState<TeamMember[]>(teamMembers);
+  const [members, setMembers] = useState<User[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPending, startTransition] = useTransition();
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+  const [selectedMember, setSelectedMember] = useState<User | null>(null);
 
   // Form state
   const [formData, setFormData] = useState<MemberForm>({
     nik: '',
     username: '',
+    password: '',
     name: '',
     nickname: '',
     email: '',
@@ -73,7 +102,34 @@ export default function AdminTeamPage() {
     department: 'Data Management',
     usernameTelegram: '',
     phone: '',
+    roleId: '',
   });
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    const [usersResult, rolesResult] = await Promise.all([
+      usersAPI.getAll(),
+      usersAPI.getRolesForSelect(),
+    ]);
+
+    if (usersResult.success) setMembers(usersResult.data as User[]);
+    if (rolesResult.success) {
+      const rolesData = rolesResult.data as Role[];
+      setRoles(rolesData);
+      // Set default roleId if available
+      if (rolesData && rolesData.length > 0) {
+        const memberRole = rolesData.find((r) => r.name === 'Member');
+        if (memberRole) {
+          setFormData((prev) => ({ ...prev, roleId: memberRole.id }));
+        }
+      }
+    }
+    setIsLoading(false);
+  };
 
   const filteredMembers = members.filter((member) => {
     const matchesSearch =
@@ -86,79 +142,102 @@ export default function AdminTeamPage() {
   });
 
   // Add member
-  const handleAdd = () => {
-    if (!formData.name || !formData.username || !formData.nik) {
-      toast.error('NIK, Username, dan Nama harus diisi!');
+  const handleAdd = async () => {
+    if (
+      !formData.name ||
+      !formData.username ||
+      !formData.nik ||
+      !formData.email
+    ) {
+      toast.error('NIK, Username, Nama, dan Email harus diisi!');
       return;
     }
 
-    // Check for duplicate username
-    if (members.some((m) => m.username === formData.username)) {
-      toast.error('Username sudah digunakan!');
+    if (!formData.password) {
+      toast.error('Password harus diisi!');
       return;
     }
 
-    const newMember: TeamMember = {
-      id: `member-${Date.now()}`,
-      nik: formData.nik,
-      username: formData.username,
-      name: formData.name,
-      nickname: formData.nickname || formData.name.split(' ')[0],
-      email: formData.email,
-      position: formData.position,
-      department: formData.department,
-      image: '',
-      usernameTelegram: formData.usernameTelegram,
-      phone: formData.phone,
-    };
+    startTransition(async () => {
+      const result = await usersAPI.create({
+        nik: formData.nik,
+        username: formData.username,
+        password: formData.password,
+        name: formData.name,
+        nickname: formData.nickname || formData.name.split(' ')[0],
+        email: formData.email,
+        position: formData.position,
+        department: formData.department,
+        usernameTelegram: formData.usernameTelegram || undefined,
+        phone: formData.phone || undefined,
+        roleId: formData.roleId,
+      });
 
-    setMembers([...members, newMember]);
-    setShowAddModal(false);
-    resetForm();
-    toast.success('Member berhasil ditambahkan!');
+      if (result.success) {
+        toast.success('Member berhasil ditambahkan!');
+        loadData();
+        setShowAddModal(false);
+        resetForm();
+      } else {
+        toast.error(result.error || 'Gagal menambahkan member');
+      }
+    });
   };
 
   // Edit member
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!selectedMember) return;
 
-    setMembers(
-      members.map((m) =>
-        m.id === selectedMember.id
-          ? {
-              ...m,
-              nik: formData.nik,
-              username: formData.username,
-              name: formData.name,
-              nickname: formData.nickname,
-              email: formData.email,
-              position: formData.position,
-              department: formData.department,
-              usernameTelegram: formData.usernameTelegram,
-              phone: formData.phone,
-            }
-          : m
-      )
-    );
-    setShowEditModal(false);
-    setSelectedMember(null);
-    resetForm();
-    toast.success('Member berhasil diubah!');
+    startTransition(async () => {
+      const result = await usersAPI.update(selectedMember.id, {
+        nik: formData.nik,
+        username: formData.username,
+        name: formData.name,
+        nickname: formData.nickname,
+        email: formData.email,
+        position: formData.position,
+        department: formData.department,
+        usernameTelegram: formData.usernameTelegram,
+        phone: formData.phone,
+        roleId: formData.roleId,
+      });
+
+      if (result.success) {
+        toast.success('Member berhasil diubah!');
+        loadData();
+        setShowEditModal(false);
+        setSelectedMember(null);
+        resetForm();
+      } else {
+        toast.error(result.error || 'Gagal mengubah member');
+      }
+    });
   };
 
   // Delete member
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selectedMember) return;
-    setMembers(members.filter((m) => m.id !== selectedMember.id));
-    setShowDeleteModal(false);
-    setSelectedMember(null);
-    toast.success('Member berhasil dihapus!');
+
+    startTransition(async () => {
+      const result = await usersAPI.delete(selectedMember.id);
+
+      if (result.success) {
+        toast.success('Member berhasil dihapus!');
+        loadData();
+        setShowDeleteModal(false);
+        setSelectedMember(null);
+      } else {
+        toast.error(result.error || 'Gagal menghapus member');
+      }
+    });
   };
 
   const resetForm = () => {
+    const memberRole = roles.find((r) => r.name === 'Member');
     setFormData({
       nik: '',
       username: '',
+      password: '',
       name: '',
       nickname: '',
       email: '',
@@ -166,26 +245,29 @@ export default function AdminTeamPage() {
       department: 'Data Management',
       usernameTelegram: '',
       phone: '',
+      roleId: memberRole?.id || '',
     });
   };
 
-  const openEditModal = (member: TeamMember) => {
+  const openEditModal = (member: User) => {
     setSelectedMember(member);
     setFormData({
       nik: member.nik,
       username: member.username,
+      password: '',
       name: member.name,
-      nickname: member.nickname,
+      nickname: member.nickname || '',
       email: member.email,
       position: member.position,
       department: member.department,
-      usernameTelegram: member.usernameTelegram,
-      phone: member.phone,
+      usernameTelegram: member.usernameTelegram || '',
+      phone: member.phone || '',
+      roleId: member.roleId,
     });
     setShowEditModal(true);
   };
 
-  const openDeleteModal = (member: TeamMember) => {
+  const openDeleteModal = (member: User) => {
     setSelectedMember(member);
     setShowDeleteModal(true);
   };
@@ -203,6 +285,19 @@ export default function AdminTeamPage() {
     member: members.filter((m) => m.position === 'Member').length,
   };
 
+  const roleOptions = [
+    { value: '', label: 'Pilih Role' },
+    ...roles.map((r) => ({ value: r.id, label: r.name })),
+  ];
+
+  if (isLoading) {
+    return (
+      <div className='flex items-center justify-center min-h-[400px]'>
+        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
+      </div>
+    );
+  }
+
   return (
     <div className='space-y-6'>
       {/* Header */}
@@ -216,7 +311,8 @@ export default function AdminTeamPage() {
               resetForm();
               setShowAddModal(true);
             }}
-            className='flex items-center gap-2 px-4 py-2 bg-white text-[#E57373] rounded-xl font-medium hover:bg-white/90 transition-colors'
+            disabled={isPending}
+            className='flex items-center gap-2 px-4 py-2 bg-white text-[#E57373] rounded-xl font-medium hover:bg-white/90 transition-colors disabled:opacity-50'
           >
             <Plus className='w-4 h-4' />
             Tambah Member
@@ -314,13 +410,15 @@ export default function AdminTeamPage() {
                 <div className='flex gap-1'>
                   <button
                     onClick={() => openEditModal(member)}
-                    className='p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors'
+                    disabled={isPending}
+                    className='p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50'
                   >
                     <Edit2 size={16} />
                   </button>
                   <button
                     onClick={() => openDeleteModal(member)}
-                    className='p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors'
+                    disabled={isPending}
+                    className='p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50'
                   >
                     <Trash2 size={16} />
                   </button>
@@ -328,7 +426,7 @@ export default function AdminTeamPage() {
               </div>
 
               <div className='mt-3 pt-3 border-t space-y-2'>
-                <div className='flex items-center gap-2'>
+                <div className='flex items-center gap-2 flex-wrap'>
                   <span
                     className={`px-2 py-0.5 text-xs font-medium rounded-lg ${
                       member.position === 'Team Leader'
@@ -337,6 +435,14 @@ export default function AdminTeamPage() {
                     }`}
                   >
                     {member.position}
+                  </span>
+                  <span
+                    className={`px-2 py-0.5 text-xs font-medium rounded-lg ${
+                      member.role?.color || 'bg-gray-100 text-gray-700'
+                    }`}
+                  >
+                    <Shield className='w-3 h-3 inline mr-1' />
+                    {member.role?.name}
                   </span>
                   <span className='text-xs text-gray-500'>
                     NIK: {member.nik}
@@ -397,6 +503,19 @@ export default function AdminTeamPage() {
               />
             </FormRow>
 
+            {showAddModal && (
+              <Input
+                label='Password'
+                type='password'
+                value={formData.password}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
+                placeholder='••••••••'
+                required
+              />
+            )}
+
             <Input
               label='Nama Lengkap'
               value={formData.name}
@@ -407,14 +526,26 @@ export default function AdminTeamPage() {
               required
             />
 
-            <Input
-              label='Nama Panggilan'
-              value={formData.nickname}
-              onChange={(e) =>
-                setFormData({ ...formData, nickname: e.target.value })
-              }
-              placeholder='John'
-            />
+            <FormRow>
+              <Input
+                label='Nama Panggilan'
+                value={formData.nickname}
+                onChange={(e) =>
+                  setFormData({ ...formData, nickname: e.target.value })
+                }
+                placeholder='John'
+              />
+              <Input
+                label='Email'
+                type='email'
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                placeholder='john.doe@company.com'
+                required
+              />
+            </FormRow>
 
             <FormRow>
               <Select
@@ -435,14 +566,13 @@ export default function AdminTeamPage() {
               />
             </FormRow>
 
-            <Input
-              label='Email'
-              type='email'
-              value={formData.email}
+            <Select
+              label='Role'
+              value={formData.roleId}
               onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
+                setFormData({ ...formData, roleId: e.target.value })
               }
-              placeholder='john.doe@company.com'
+              options={roleOptions}
             />
 
             <FormRow>
@@ -476,8 +606,15 @@ export default function AdminTeamPage() {
           <Button
             onClick={showAddModal ? handleAdd : handleEdit}
             className='flex-1'
+            disabled={isPending}
           >
-            {showAddModal ? 'Tambah' : 'Simpan'}
+            {isPending ? (
+              <Loader2 className='w-4 h-4 animate-spin' />
+            ) : showAddModal ? (
+              'Tambah'
+            ) : (
+              'Simpan'
+            )}
           </Button>
         </ModalFooter>
       </Modal>

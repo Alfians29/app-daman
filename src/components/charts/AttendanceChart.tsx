@@ -12,15 +12,38 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { monthlyAttendanceData } from '@/data/dummy';
+
+type AttendanceDataItem = {
+  name: string;
+  pagi: number;
+  malam: number;
+  piketPagi: number;
+  piketMalam: number;
+  libur: number;
+};
 
 interface AttendanceChartProps {
-  data?: typeof monthlyAttendanceData;
+  data?: AttendanceDataItem[];
   period?: '1bulan' | '6bulan' | '1tahun';
 }
 
+const defaultData: AttendanceDataItem[] = [
+  { name: 'Jan', pagi: 0, malam: 0, piketPagi: 0, piketMalam: 0, libur: 0 },
+  { name: 'Feb', pagi: 0, malam: 0, piketPagi: 0, piketMalam: 0, libur: 0 },
+  { name: 'Mar', pagi: 0, malam: 0, piketPagi: 0, piketMalam: 0, libur: 0 },
+  { name: 'Apr', pagi: 0, malam: 0, piketPagi: 0, piketMalam: 0, libur: 0 },
+  { name: 'Mei', pagi: 0, malam: 0, piketPagi: 0, piketMalam: 0, libur: 0 },
+  { name: 'Jun', pagi: 0, malam: 0, piketPagi: 0, piketMalam: 0, libur: 0 },
+  { name: 'Jul', pagi: 0, malam: 0, piketPagi: 0, piketMalam: 0, libur: 0 },
+  { name: 'Agu', pagi: 0, malam: 0, piketPagi: 0, piketMalam: 0, libur: 0 },
+  { name: 'Sep', pagi: 0, malam: 0, piketPagi: 0, piketMalam: 0, libur: 0 },
+  { name: 'Okt', pagi: 0, malam: 0, piketPagi: 0, piketMalam: 0, libur: 0 },
+  { name: 'Nov', pagi: 0, malam: 0, piketPagi: 0, piketMalam: 0, libur: 0 },
+  { name: 'Des', pagi: 0, malam: 0, piketPagi: 0, piketMalam: 0, libur: 0 },
+];
+
 function AttendanceChartContent({
-  data = monthlyAttendanceData,
+  data = defaultData,
   period = '1tahun',
 }: AttendanceChartProps) {
   const [mounted, setMounted] = useState(false);

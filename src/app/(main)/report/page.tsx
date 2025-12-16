@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   FileText,
   Calendar,
@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Trash2,
+  Loader2,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
@@ -30,59 +31,108 @@ import {
   FormGroup,
   FormSection,
 } from '@/components/ui/Form';
-import {
-  teamMembers,
-  dailyReports,
-  scheduleEntries,
-  DailyReport,
-  ReportTask,
-  jobTypes,
-} from '@/data/dummy';
+import { reportsAPI, jobTypesAPI, usersAPI, scheduleAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
 
-// Simulated current user (logged in user)
-const currentUser = teamMembers[1]; // Muhammad Alfian
+type ReportTask = {
+  id: string;
+  jobType: string;
+  keterangan: string;
+  value: number;
+};
+type DailyReport = {
+  id: string;
+  memberId: string;
+  memberName?: string;
+  member?: { name: string };
+  tanggal: string;
+  tasks: ReportTask[];
+  createdAt: string;
+  updatedAt: string;
+};
+type JobType = { id: string; name: string; isActive: boolean };
+type TeamMember = {
+  id: string;
+  name: string;
+  nickname: string | null;
+  position: string;
+  image: string | null;
+  isActive: boolean;
+};
+type Schedule = {
+  id: string;
+  memberId: string;
+  tanggal: string;
+  keterangan: string;
+};
+
+const CURRENT_USER_ID = 'user-2';
 
 export default function ReportPage() {
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split('T')[0]
   );
-  const [reports, setReports] = useState<DailyReport[]>(dailyReports);
+  const [reports, setReports] = useState<DailyReport[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [scheduleEntries, setScheduleEntries] = useState<Schedule[]>([]);
+  const [jobTypes, setJobTypes] = useState<JobType[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingReport, setEditingReport] = useState<DailyReport | null>(null);
   const [tasks, setTasks] = useState<ReportTask[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [currentUser, setCurrentUser] = useState<TeamMember | null>(null);
 
-  // Get active job types for dropdown
-  const activeJobTypes = jobTypes.filter((jt) => jt.isActive);
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  // Get schedule for a member on selected date
-  const getMemberSchedule = (memberId: string, date: string) => {
-    return scheduleEntries.find(
-      (s) => s.memberId === memberId && s.tanggal === date
-    );
+  const loadData = async () => {
+    setIsLoading(true);
+    const [reportsRes, usersRes, schedRes, jobsRes] = await Promise.all([
+      reportsAPI.getAll(),
+      usersAPI.getAll(),
+      scheduleAPI.getAll(),
+      jobTypesAPI.getAll(),
+    ]);
+    if (reportsRes.success && reportsRes.data) setReports(reportsRes.data);
+    if (usersRes.success && usersRes.data) {
+      const activeUsers = usersRes.data.filter((u: TeamMember) => u.isActive);
+      setTeamMembers(activeUsers);
+      setCurrentUser(
+        activeUsers.find((u: TeamMember) => u.id === CURRENT_USER_ID) ||
+          activeUsers[0]
+      );
+    }
+    if (schedRes.success && schedRes.data) setScheduleEntries(schedRes.data);
+    if (jobsRes.success && jobsRes.data)
+      setJobTypes(jobsRes.data.filter((j: JobType) => j.isActive));
+    setIsLoading(false);
   };
 
-  // Check if user can edit a report (within 3 days)
+  const getMemberSchedule = (memberId: string, date: string) =>
+    scheduleEntries.find(
+      (s) => s.memberId === memberId && s.tanggal.split('T')[0] === date
+    );
+
   const canEditReport = (report: DailyReport) => {
     const createdAt = new Date(report.createdAt);
-    const now = new Date();
     const diffDays = Math.floor(
-      (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24)
+      (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24)
     );
-    return diffDays < 3 && report.memberId === currentUser.id;
+    return diffDays < 3 && report.memberId === currentUser?.id;
   };
 
-  // Check if user already has report for selected date
-  const hasReportForDate = (memberId: string, date: string) => {
-    return reports.some((r) => r.memberId === memberId && r.tanggal === date);
-  };
+  const hasReportForDate = (memberId: string, date: string) =>
+    reports.some(
+      (r) => r.memberId === memberId && r.tanggal.split('T')[0] === date
+    );
 
-  // Get reports for selected date
-  const reportsForDate = useMemo(() => {
-    return reports.filter((r) => r.tanggal === selectedDate);
-  }, [reports, selectedDate]);
+  const reportsForDate = useMemo(
+    () => reports.filter((r) => r.tanggal.split('T')[0] === selectedDate),
+    [reports, selectedDate]
+  );
 
-  // Get member report data with schedule info
   const memberReportData = useMemo(() => {
     return teamMembers.map((member) => {
       const schedule = getMemberSchedule(member.id, selectedDate);
@@ -91,19 +141,17 @@ export default function ReportPage() {
         member,
         schedule,
         report,
-        isLibur: schedule?.keterangan === 'Libur',
+        isLibur: schedule?.keterangan === 'LIBUR',
       };
     });
-  }, [selectedDate, reportsForDate]);
+  }, [teamMembers, selectedDate, reportsForDate, scheduleEntries]);
 
-  // Navigate date
   const navigateDate = (days: number) => {
     const date = new Date(selectedDate);
     date.setDate(date.getDate() + days);
     setSelectedDate(date.toISOString().split('T')[0]);
   };
 
-  // Open modal for new report
   const openNewReportModal = () => {
     setEditingReport(null);
     setTasks([
@@ -111,128 +159,118 @@ export default function ReportPage() {
     ]);
     setShowModal(true);
   };
-
-  // Open modal for editing
   const openEditModal = (report: DailyReport) => {
     setEditingReport(report);
     setTasks([...report.tasks]);
     setShowModal(true);
   };
-
-  // Add new task
-  const addTask = () => {
+  const addTask = () =>
     setTasks([
       ...tasks,
       { id: `task-${Date.now()}`, jobType: '', keterangan: '', value: 0 },
     ]);
-  };
-
-  // Remove task
   const removeTask = (taskId: string) => {
     if (tasks.length === 1) {
-      toast.error('Minimal harus ada 1 pekerjaan!');
+      toast.error('Minimal 1 pekerjaan!');
       return;
     }
     setTasks(tasks.filter((t) => t.id !== taskId));
   };
-
-  // Update task
   const updateTask = (
     taskId: string,
     field: 'jobType' | 'keterangan' | 'value',
     value: string | number
-  ) => {
+  ) =>
     setTasks(
       tasks.map((t) => (t.id === taskId ? { ...t, [field]: value } : t))
     );
-  };
 
-  // Save report
-  const saveReport = () => {
-    // Validate tasks
-    const hasEmptyTask = tasks.some((t) => !t.jobType || !t.keterangan.trim());
-    if (hasEmptyTask) {
-      toast.error('Lengkapi semua jenis pekerjaan dan keterangannya!');
+  const saveReport = async () => {
+    if (tasks.some((t) => !t.jobType || !t.keterangan.trim())) {
+      toast.error('Lengkapi semua pekerjaan!');
       return;
     }
-
-    if (editingReport) {
-      // Update existing report
-      setReports((prev) =>
-        prev.map((r) =>
-          r.id === editingReport.id
-            ? {
-                ...r,
-                tasks,
-                updatedAt: new Date().toISOString(),
-              }
-            : r
-        )
-      );
-      toast.success('Report berhasil diupdate!');
-    } else {
-      // Check if already has report for the date
-      if (hasReportForDate(currentUser.id, selectedDate)) {
-        toast.error('Anda sudah memiliki report untuk tanggal ini!');
-        return;
+    setIsSaving(true);
+    try {
+      if (editingReport) {
+        const result = await reportsAPI.update(editingReport.id, { tasks });
+        if (result.success) {
+          toast.success('Report diupdate!');
+          loadData();
+        } else toast.error(result.error || 'Gagal update');
+      } else {
+        if (!currentUser || hasReportForDate(currentUser.id, selectedDate)) {
+          toast.error('Sudah ada report!');
+          setIsSaving(false);
+          return;
+        }
+        const result = await reportsAPI.create({
+          memberId: currentUser.id,
+          tanggal: selectedDate,
+          tasks,
+        });
+        if (result.success) {
+          toast.success('Report ditambahkan!');
+          loadData();
+        } else toast.error(result.error || 'Gagal simpan');
       }
-
-      // Create new report
-      const newReport: DailyReport = {
-        id: `report-${Date.now()}`,
-        memberId: currentUser.id,
-        memberName: currentUser.name,
-        tanggal: selectedDate,
-        tasks,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setReports((prev) => [...prev, newReport]);
-      toast.success('Report berhasil ditambahkan!');
+      setShowModal(false);
+      setTasks([]);
+      setEditingReport(null);
+    } catch {
+      toast.error('Error!');
+    } finally {
+      setIsSaving(false);
     }
-
-    setShowModal(false);
-    setTasks([]);
-    setEditingReport(null);
   };
 
-  // Format date for display
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('id-ID', {
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString('id-ID', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
       year: 'numeric',
     });
-  };
 
-  // Get schedule badge style
   const getScheduleBadge = (keterangan: string | undefined) => {
-    switch (keterangan) {
-      case 'Pagi':
-        return { bg: 'bg-blue-100', text: 'text-blue-700' };
-      case 'Malam':
-        return { bg: 'bg-purple-100', text: 'text-purple-700' };
-      case 'Piket Pagi':
-        return { bg: 'bg-emerald-100', text: 'text-emerald-700' };
-      case 'Piket Malam':
-        return { bg: 'bg-indigo-100', text: 'text-indigo-700' };
-      case 'Libur':
-        return { bg: 'bg-red-100', text: 'text-red-700' };
-      default:
-        return { bg: 'bg-gray-100', text: 'text-gray-700' };
-    }
+    const styles: Record<string, { bg: string; text: string }> = {
+      PAGI: { bg: 'bg-blue-100', text: 'text-blue-700' },
+      MALAM: { bg: 'bg-purple-100', text: 'text-purple-700' },
+      PIKET_PAGI: { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+      PIKET_MALAM: { bg: 'bg-indigo-100', text: 'text-indigo-700' },
+      LIBUR: { bg: 'bg-red-100', text: 'text-red-700' },
+    };
+    return (
+      styles[keterangan || ''] || { bg: 'bg-gray-100', text: 'text-gray-700' }
+    );
   };
 
-  // Check if current user's schedule is Libur
-  const currentUserSchedule = getMemberSchedule(currentUser.id, selectedDate);
-  const isCurrentUserLibur = currentUserSchedule?.keterangan === 'Libur';
-  const currentUserHasReport = hasReportForDate(currentUser.id, selectedDate);
+  const getKeteranganLabel = (k: string) =>
+    ({
+      PAGI: 'Pagi',
+      MALAM: 'Malam',
+      PIKET_PAGI: 'Piket Pagi',
+      PIKET_MALAM: 'Piket Malam',
+      LIBUR: 'Libur',
+    }[k] || k);
+
+  const currentUserSchedule = currentUser
+    ? getMemberSchedule(currentUser.id, selectedDate)
+    : null;
+  const isCurrentUserLibur = currentUserSchedule?.keterangan === 'LIBUR';
+  const currentUserHasReport = currentUser
+    ? hasReportForDate(currentUser.id, selectedDate)
+    : true;
+
+  if (isLoading)
+    return (
+      <div className='flex items-center justify-center min-h-[400px]'>
+        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
+      </div>
+    );
 
   return (
     <div className='space-y-6'>
-      {/* Page Header */}
       <PageHeader
         title='Report Harian'
         description='Laporan pekerjaan harian tim'
@@ -250,44 +288,38 @@ export default function ReportPage() {
         }
       />
 
-      {/* Date Navigation */}
       <Card>
         <div className='flex flex-col sm:flex-row sm:items-center gap-4'>
-          {/* Date Picker */}
           <div className='flex items-center gap-3 flex-1'>
             <Calendar className='w-5 h-5 text-[#E57373]' />
             <input
               type='date'
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className='px-4 py-2 border border-gray-200 rounded-xl text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373] cursor-pointer'
+              className='px-4 py-2 border border-gray-200 rounded-xl font-medium'
             />
             <span className='text-gray-600 font-medium hidden sm:block'>
               {formatDate(selectedDate)}
             </span>
           </div>
-
-          {/* Navigation Buttons */}
           <div className='flex items-center gap-2'>
             <button
               onClick={() =>
                 setSelectedDate(new Date().toISOString().split('T')[0])
               }
-              className='px-3 py-2 text-sm font-medium text-[#E57373] bg-red-50 hover:bg-red-100 rounded-lg transition-colors'
+              className='px-3 py-2 text-sm font-medium text-[#E57373] bg-red-50 hover:bg-red-100 rounded-lg'
             >
               Hari Ini
             </button>
             <button
               onClick={() => navigateDate(-1)}
-              className='p-2 hover:bg-gray-100 rounded-lg transition-colors'
-              title='Hari sebelumnya'
+              className='p-2 hover:bg-gray-100 rounded-lg'
             >
               <ChevronLeft className='w-5 h-5 text-gray-600' />
             </button>
             <button
               onClick={() => navigateDate(1)}
-              className='p-2 hover:bg-gray-100 rounded-lg transition-colors'
-              title='Hari berikutnya'
+              className='p-2 hover:bg-gray-100 rounded-lg'
             >
               <ChevronRight className='w-5 h-5 text-gray-600' />
             </button>
@@ -295,7 +327,6 @@ export default function ReportPage() {
         </div>
       </Card>
 
-      {/* Summary Stats */}
       <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
         <Card>
           <div className='flex items-center gap-3'>
@@ -351,17 +382,15 @@ export default function ReportPage() {
         </Card>
       </div>
 
-      {/* Reports List */}
       <Card>
         <h3 className='font-semibold text-gray-800 mb-4'>
           Report Tim - {formatDate(selectedDate)}
         </h3>
-
         <div className='space-y-3'>
           {memberReportData.map(({ member, schedule, report, isLibur }) => (
             <div
               key={member.id}
-              className={`p-4 rounded-xl border transition-all ${
+              className={`p-4 rounded-xl border ${
                 report
                   ? 'bg-white border-gray-200'
                   : isLibur
@@ -371,7 +400,6 @@ export default function ReportPage() {
             >
               <div className='flex items-start gap-3'>
                 <Avatar src={member.image} name={member.name} size='md' />
-
                 <div className='flex-1 min-w-0'>
                   <div className='flex items-center gap-2 mb-1'>
                     <p className='font-medium text-gray-800'>{member.name}</p>
@@ -381,20 +409,17 @@ export default function ReportPage() {
                           getScheduleBadge(schedule.keterangan).bg
                         } ${getScheduleBadge(schedule.keterangan).text}`}
                       >
-                        {schedule.keterangan}
+                        {getKeteranganLabel(schedule.keterangan)}
                       </span>
                     )}
                   </div>
                   <p className='text-xs text-gray-500 mb-2'>
                     {member.position}
                   </p>
-
                   {isLibur ? (
                     <div className='flex items-center gap-2 text-red-600'>
                       <Coffee className='w-4 h-4' />
-                      <span className='text-sm font-medium'>
-                        Libur - Tidak ada report
-                      </span>
+                      <span className='text-sm font-medium'>Libur</span>
                     </div>
                   ) : report ? (
                     <div className='space-y-2'>
@@ -421,13 +446,6 @@ export default function ReportPage() {
                       <p className='text-xs text-gray-400 mt-2'>
                         Dibuat:{' '}
                         {new Date(report.createdAt).toLocaleString('id-ID')}
-                        {report.updatedAt !== report.createdAt && (
-                          <span>
-                            {' '}
-                            • Diupdate:{' '}
-                            {new Date(report.updatedAt).toLocaleString('id-ID')}
-                          </span>
-                        )}
                       </p>
                     </div>
                   ) : (
@@ -437,13 +455,10 @@ export default function ReportPage() {
                     </div>
                   )}
                 </div>
-
-                {/* Edit button for own report within 3 days */}
                 {report && canEditReport(report) && (
                   <button
                     onClick={() => openEditModal(report)}
-                    className='p-2 hover:bg-gray-100 rounded-lg transition-colors'
-                    title='Edit Report'
+                    className='p-2 hover:bg-gray-100 rounded-lg'
                   >
                     <Edit3 className='w-4 h-4 text-gray-500' />
                   </button>
@@ -454,7 +469,6 @@ export default function ReportPage() {
         </div>
       </Card>
 
-      {/* Add/Edit Report Modal */}
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} size='md'>
         <ModalHeader
           title={editingReport ? 'Edit Report' : 'Tambah Report'}
@@ -462,15 +476,19 @@ export default function ReportPage() {
           onClose={() => setShowModal(false)}
         />
         <ModalBody>
-          <div className='flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-xl'>
-            <Avatar src={currentUser.image} name={currentUser.name} size='sm' />
-            <div>
-              <p className='font-medium text-gray-800'>{currentUser.name}</p>
-              <p className='text-xs text-gray-500'>{currentUser.position}</p>
+          {currentUser && (
+            <div className='flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-xl'>
+              <Avatar
+                src={currentUser.image}
+                name={currentUser.name}
+                size='sm'
+              />
+              <div>
+                <p className='font-medium text-gray-800'>{currentUser.name}</p>
+                <p className='text-xs text-gray-500'>{currentUser.position}</p>
+              </div>
             </div>
-          </div>
-
-          {/* Tasks List */}
+          )}
           <div className='space-y-4'>
             {tasks.map((task, index) => (
               <FormGroup key={task.id}>
@@ -480,8 +498,7 @@ export default function ReportPage() {
                     tasks.length > 1 ? (
                       <button
                         onClick={() => removeTask(task.id)}
-                        className='p-1 hover:bg-red-100 rounded-lg transition-colors text-red-500'
-                        title='Hapus pekerjaan'
+                        className='p-1 hover:bg-red-100 rounded-lg text-red-500'
                       >
                         <Trash2 className='w-4 h-4' />
                       </button>
@@ -494,13 +511,12 @@ export default function ReportPage() {
                       onChange={(e) =>
                         updateTask(task.id, 'jobType', e.target.value)
                       }
-                      options={activeJobTypes.map((jt) => ({
+                      options={jobTypes.map((jt) => ({
                         value: jt.name,
                         label: jt.name,
                       }))}
                       placeholder='Pilih jenis pekerjaan...'
                     />
-
                     <Input
                       label='Jumlah/Value'
                       type='number'
@@ -515,7 +531,6 @@ export default function ReportPage() {
                       placeholder='0'
                       min={0}
                     />
-
                     <Textarea
                       label='Keterangan'
                       value={task.keterangan}
@@ -530,11 +545,9 @@ export default function ReportPage() {
               </FormGroup>
             ))}
           </div>
-
-          {/* Add Task Button */}
           <button
             onClick={addTask}
-            className='w-full mt-4 py-2.5 border-2 border-dashed border-gray-300 text-gray-500 rounded-xl flex items-center justify-center gap-2 hover:border-[#E57373] hover:text-[#E57373] transition-colors'
+            className='w-full mt-4 py-2.5 border-2 border-dashed border-gray-300 text-gray-500 rounded-xl flex items-center justify-center gap-2 hover:border-[#E57373] hover:text-[#E57373]'
           >
             <Plus className='w-4 h-4' />
             Tambah Pekerjaan
@@ -548,8 +561,8 @@ export default function ReportPage() {
           >
             Batal
           </Button>
-          <Button onClick={saveReport} className='flex-1'>
-            {editingReport ? 'Update' : 'Simpan'}
+          <Button onClick={saveReport} className='flex-1' disabled={isSaving}>
+            {isSaving ? 'Menyimpan...' : editingReport ? 'Update' : 'Simpan'}
           </Button>
         </ModalFooter>
       </Modal>

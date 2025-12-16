@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { teamMembers, scheduleEntries } from '@/data/dummy';
+import { usersAPI, scheduleAPI } from '@/lib/api';
 import {
   ChevronLeft,
   ChevronRight,
@@ -12,27 +12,72 @@ import {
   Users,
   Filter,
   CalendarDays,
+  Loader2,
 } from 'lucide-react';
 
-// Simulated current user (logged in user)
-const currentUser = teamMembers[1]; // Muhammad Alfian
+type TeamMember = {
+  id: string;
+  name: string;
+  nickname: string | null;
+  position: string;
+  image: string | null;
+  isActive: boolean;
+};
+
+type Schedule = {
+  id: string;
+  memberId: string;
+  tanggal: string;
+  keterangan: string;
+};
+
+const CURRENT_USER_ID = 'user-2';
 
 export default function SchedulePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showMySchedule, setShowMySchedule] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<string>('all');
   const [currentStartDate, setCurrentStartDate] = useState(() => {
-    // Start from 1st of current month
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
   });
 
-  // Get all days in the current month
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [scheduleEntries, setScheduleEntries] = useState<Schedule[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<TeamMember | null>(null);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    const [usersResult, schedResult] = await Promise.all([
+      usersAPI.getAll(),
+      scheduleAPI.getAll(),
+    ]);
+
+    if (usersResult.success && usersResult.data) {
+      const activeUsers = usersResult.data.filter(
+        (u: TeamMember) => u.isActive
+      );
+      setTeamMembers(activeUsers);
+      setCurrentUser(
+        activeUsers.find((u: TeamMember) => u.id === CURRENT_USER_ID) ||
+          activeUsers[0]
+      );
+    }
+    if (schedResult.success && schedResult.data) {
+      setScheduleEntries(schedResult.data);
+    }
+    setIsLoading(false);
+  };
+
   const getDaysInMonth = (startDate: Date) => {
     const year = startDate.getFullYear();
     const month = startDate.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-
     const days = [];
     for (let i = 1; i <= daysInMonth; i++) {
       days.push(new Date(year, month, i));
@@ -59,59 +104,50 @@ export default function SchedulePage() {
     setCurrentStartDate(new Date(today.getFullYear(), today.getMonth(), 1));
   };
 
-  // Get month label
-  const getMonthLabel = () => {
-    return currentStartDate.toLocaleDateString('id-ID', {
+  const getMonthLabel = () =>
+    currentStartDate.toLocaleDateString('id-ID', {
       month: 'long',
       year: 'numeric',
     });
-  };
 
-  // Filter members based on search, my schedule toggle, and selected member
   const filteredMembers = useMemo(() => {
     let members = teamMembers;
-
-    // If showing my schedule only
-    if (showMySchedule) {
+    if (showMySchedule && currentUser) {
       members = members.filter((m) => m.id === currentUser.id);
     }
-
-    // If specific member is selected
     if (selectedMemberId !== 'all' && !showMySchedule) {
       members = members.filter((m) => m.id === selectedMemberId);
     }
-
-    // Search filter
     if (searchQuery) {
       members = members.filter(
         (m) =>
-          m.nickname.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (m.nickname || '')
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
           m.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-
     return members;
-  }, [searchQuery, showMySchedule, selectedMemberId]);
+  }, [teamMembers, searchQuery, showMySchedule, selectedMemberId, currentUser]);
 
-  // Get schedule for a member on a specific date (from scheduleEntries)
   const getScheduleForMember = (memberId: string, date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
     return scheduleEntries.find(
-      (s) => s.memberId === memberId && s.tanggal === dateStr
+      (s) => s.memberId === memberId && s.tanggal.split('T')[0] === dateStr
     );
   };
 
   const getKeteranganStyle = (keterangan: string) => {
     switch (keterangan) {
-      case 'Pagi':
+      case 'PAGI':
         return 'bg-blue-100 text-blue-700';
-      case 'Malam':
+      case 'MALAM':
         return 'bg-gray-200 text-gray-700';
-      case 'Piket Pagi':
+      case 'PIKET_PAGI':
         return 'bg-emerald-100 text-emerald-700';
-      case 'Piket Malam':
+      case 'PIKET_MALAM':
         return 'bg-purple-100 text-purple-700';
-      case 'Libur':
+      case 'LIBUR':
         return 'bg-red-100 text-red-700';
       default:
         return 'bg-gray-100 text-gray-500';
@@ -120,33 +156,27 @@ export default function SchedulePage() {
 
   const getKeteranganShort = (keterangan: string) => {
     switch (keterangan) {
-      case 'Pagi':
+      case 'PAGI':
         return 'P';
-      case 'Malam':
+      case 'MALAM':
         return 'M';
-      case 'Piket Pagi':
+      case 'PIKET_PAGI':
         return 'PP';
-      case 'Piket Malam':
+      case 'PIKET_MALAM':
         return 'PM';
-      case 'Libur':
+      case 'LIBUR':
         return 'L';
       default:
         return '-';
     }
   };
 
-  const isToday = (date: Date) => {
-    const today = new Date();
-    return date.toDateString() === today.toDateString();
-  };
+  const isToday = (date: Date) =>
+    date.toDateString() === new Date().toDateString();
+  const isWeekend = (date: Date) => date.getDay() === 0 || date.getDay() === 6;
 
-  const isWeekend = (date: Date) => {
-    return date.getDay() === 0 || date.getDay() === 6;
-  };
-
-  // My schedule summary for the month
   const myMonthSchedules = scheduleEntries.filter((s) => {
-    if (s.memberId !== currentUser.id) return false;
+    if (!currentUser || s.memberId !== currentUser.id) return false;
     const scheduleDate = new Date(s.tanggal);
     return (
       scheduleDate.getMonth() === currentStartDate.getMonth() &&
@@ -155,19 +185,25 @@ export default function SchedulePage() {
   });
 
   const myScheduleSummary = {
-    Pagi: myMonthSchedules.filter((s) => s.keterangan === 'Pagi').length,
-    Malam: myMonthSchedules.filter((s) => s.keterangan === 'Malam').length,
-    'Piket Pagi': myMonthSchedules.filter((s) => s.keterangan === 'Piket Pagi')
+    PAGI: myMonthSchedules.filter((s) => s.keterangan === 'PAGI').length,
+    MALAM: myMonthSchedules.filter((s) => s.keterangan === 'MALAM').length,
+    PIKET_PAGI: myMonthSchedules.filter((s) => s.keterangan === 'PIKET_PAGI')
       .length,
-    'Piket Malam': myMonthSchedules.filter(
-      (s) => s.keterangan === 'Piket Malam'
-    ).length,
-    Libur: myMonthSchedules.filter((s) => s.keterangan === 'Libur').length,
+    PIKET_MALAM: myMonthSchedules.filter((s) => s.keterangan === 'PIKET_MALAM')
+      .length,
+    LIBUR: myMonthSchedules.filter((s) => s.keterangan === 'LIBUR').length,
   };
+
+  if (isLoading) {
+    return (
+      <div className='flex items-center justify-center min-h-[400px]'>
+        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
+      </div>
+    );
+  }
 
   return (
     <div className='space-y-6'>
-      {/* Page Header */}
       <PageHeader
         title='Jadwal'
         description='Lihat jadwal kerja anggota tim'
@@ -176,9 +212,7 @@ export default function SchedulePage() {
           <button
             onClick={() => {
               setShowMySchedule(!showMySchedule);
-              if (!showMySchedule) {
-                setSelectedMemberId('all');
-              }
+              if (!showMySchedule) setSelectedMemberId('all');
             }}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors ${
               showMySchedule
@@ -196,8 +230,8 @@ export default function SchedulePage() {
         }
       />
 
-      {/* My Schedule Summary - Only show when viewing my schedule */}
-      {showMySchedule && (
+      {/* My Schedule Summary */}
+      {showMySchedule && currentUser && (
         <Card className='bg-gradient-to-r from-[#E57373] to-[#C62828] text-white'>
           <div className='flex flex-col lg:flex-row lg:items-center gap-4'>
             <div className='flex items-center gap-4 flex-1'>
@@ -214,31 +248,29 @@ export default function SchedulePage() {
                 </p>
               </div>
             </div>
-
-            {/* Summary counts */}
             <div className='grid grid-cols-3 sm:grid-cols-5 gap-3'>
               <div className='text-center'>
-                <p className='text-xl font-bold'>{myScheduleSummary.Pagi}</p>
+                <p className='text-xl font-bold'>{myScheduleSummary.PAGI}</p>
                 <p className='text-xs text-white/80'>Pagi</p>
               </div>
               <div className='text-center'>
-                <p className='text-xl font-bold'>{myScheduleSummary.Malam}</p>
+                <p className='text-xl font-bold'>{myScheduleSummary.MALAM}</p>
                 <p className='text-xs text-white/80'>Malam</p>
               </div>
               <div className='text-center'>
                 <p className='text-xl font-bold'>
-                  {myScheduleSummary['Piket Pagi']}
+                  {myScheduleSummary.PIKET_PAGI}
                 </p>
                 <p className='text-xs text-white/80'>PP</p>
               </div>
               <div className='text-center'>
                 <p className='text-xl font-bold'>
-                  {myScheduleSummary['Piket Malam']}
+                  {myScheduleSummary.PIKET_MALAM}
                 </p>
                 <p className='text-xs text-white/80'>PM</p>
               </div>
               <div className='text-center'>
-                <p className='text-xl font-bold'>{myScheduleSummary.Libur}</p>
+                <p className='text-xl font-bold'>{myScheduleSummary.LIBUR}</p>
                 <p className='text-xs text-white/80'>Libur</p>
               </div>
             </div>
@@ -280,7 +312,7 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      {/* Filter Member - Only show when not viewing my schedule */}
+      {/* Filter */}
       {!showMySchedule && (
         <div className='flex flex-col sm:flex-row gap-3'>
           <div className='flex items-center gap-2'>
@@ -292,17 +324,17 @@ export default function SchedulePage() {
             placeholder='Cari nama member...'
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className='flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
+            className='flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm'
           />
           <select
             value={selectedMemberId}
             onChange={(e) => setSelectedMemberId(e.target.value)}
-            className='px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
+            className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
           >
             <option value='all'>Semua Member</option>
             {teamMembers.map((m) => (
               <option key={m.id} value={m.id}>
-                {m.nickname}
+                {m.nickname || m.name}
               </option>
             ))}
           </select>
@@ -311,7 +343,6 @@ export default function SchedulePage() {
 
       {/* Schedule Card */}
       <Card>
-        {/* Month Navigation */}
         <div className='flex items-center justify-between mb-6'>
           <button
             onClick={prevMonth}
@@ -338,7 +369,6 @@ export default function SchedulePage() {
           </button>
         </div>
 
-        {/* Schedule Table */}
         <div className='overflow-x-auto'>
           <table className='w-full border-collapse'>
             <thead>
@@ -391,11 +421,9 @@ export default function SchedulePage() {
                           name={member.name}
                           size='sm'
                         />
-                        <div className='min-w-0'>
-                          <p className='text-sm font-medium text-gray-800 truncate'>
-                            {member.nickname}
-                          </p>
-                        </div>
+                        <p className='text-sm font-medium text-gray-800 truncate'>
+                          {member.nickname || member.name}
+                        </p>
                       </div>
                     </td>
                     {monthDates.map((date, index) => {

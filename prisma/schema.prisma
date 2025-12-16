@@ -43,6 +43,7 @@ enum ActivityType {
   UPDATE
   DELETE
   LOGIN
+  LOGOUT
 }
 
 // ============================================================================
@@ -77,7 +78,6 @@ model User {
   cashEntries      CashEntry[]
   dailyReports     DailyReport[]
   activities       Activity[]
-  kasPayments      KasPayment[]
 
   @@index([username])
   @@index([usernameTelegram])
@@ -174,7 +174,7 @@ model Schedule {
 model CashEntry {
   id                  String              @id
   date                DateTime            @db.Date
-  description         String
+  description         String?
   category            TransactionCategory
   amount              Decimal             @db.Decimal(15, 2)
   transactionCategory String?             // "Kas Bulanan", "Donasi", "ATK", dll
@@ -188,22 +188,7 @@ model CashEntry {
   @@index([category])
 }
 
-/// KasPayment - Tabel untuk menyimpan status pembayaran kas bulanan per member
-model KasPayment {
-  id        String    @id
-  memberId  String
-  member    User      @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  month     String    // Format: "YYYY-MM" (e.g., "2025-01")
-  paid      Boolean   @default(false)
-  amount    Decimal   @db.Decimal(15, 2)
-  paidAt    DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
 
-  @@unique([memberId, month])
-  @@index([memberId])
-  @@index([month])
-}
 
 /// Activity - Tabel untuk audit log aktivitas user
 model Activity {

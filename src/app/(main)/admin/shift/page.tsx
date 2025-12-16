@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import {
   Plus,
   Clock,
-  Save,
   Sun,
   Moon,
   Sunrise,
@@ -13,8 +12,8 @@ import {
   Edit2,
   Trash2,
   Check,
-  X,
   Search,
+  Loader2,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -26,71 +25,19 @@ import {
   ConfirmModal,
 } from '@/components/ui/Modal';
 import toast from 'react-hot-toast';
+import { shiftsAPI } from '@/lib/api';
 
-// ============ SHIFT SETTINGS DATA ============
+// ============ TYPES ============
 interface ShiftSetting {
   id: string;
   shiftType: string;
   name: string;
-  startTime: string;
-  endTime: string;
-  lateAfter: string;
+  startTime: string | null;
+  endTime: string | null;
+  lateAfter: string | null;
   isActive: boolean;
-  color: string;
+  color: string | null;
 }
-
-const initialShiftSettings: ShiftSetting[] = [
-  {
-    id: 'shift-1',
-    shiftType: 'Pagi',
-    name: 'Shift Pagi',
-    startTime: '07:00',
-    endTime: '15:00',
-    lateAfter: '08:00',
-    isActive: true,
-    color: 'emerald',
-  },
-  {
-    id: 'shift-2',
-    shiftType: 'Malam',
-    name: 'Shift Malam',
-    startTime: '19:00',
-    endTime: '07:00',
-    lateAfter: '20:00',
-    isActive: true,
-    color: 'purple',
-  },
-  {
-    id: 'shift-3',
-    shiftType: 'Piket Pagi',
-    name: 'Piket Pagi',
-    startTime: '06:00',
-    endTime: '14:00',
-    lateAfter: '07:00',
-    isActive: true,
-    color: 'amber',
-  },
-  {
-    id: 'shift-4',
-    shiftType: 'Piket Malam',
-    name: 'Piket Malam',
-    startTime: '18:00',
-    endTime: '06:00',
-    lateAfter: '19:00',
-    isActive: true,
-    color: 'indigo',
-  },
-  {
-    id: 'shift-5',
-    shiftType: 'Libur',
-    name: 'Libur',
-    startTime: '-',
-    endTime: '-',
-    lateAfter: '-',
-    isActive: true,
-    color: 'red',
-  },
-];
 
 const colorOptions = [
   { value: 'emerald', label: 'Hijau' },
@@ -105,24 +52,37 @@ const colorOptions = [
 
 const getShiftIcon = (shiftType: string) => {
   switch (shiftType) {
-    case 'Pagi':
+    case 'PAGI':
       return Sunrise;
-    case 'Malam':
+    case 'MALAM':
       return Moon;
-    case 'Piket Pagi':
+    case 'PIKET_PAGI':
       return Sun;
-    case 'Piket Malam':
+    case 'PIKET_MALAM':
       return Sunset;
-    case 'Libur':
+    case 'LIBUR':
       return Coffee;
     default:
       return Clock;
   }
 };
 
+const formatShiftType = (shiftType: string) => {
+  const mapping: Record<string, string> = {
+    PAGI: 'Pagi',
+    MALAM: 'Malam',
+    PIKET_PAGI: 'Piket Pagi',
+    PIKET_MALAM: 'Piket Malam',
+    LIBUR: 'Libur',
+  };
+  return mapping[shiftType] || shiftType;
+};
+
 export default function ManageShiftPage() {
-  const [shifts, setShifts] = useState<ShiftSetting[]>(initialShiftSettings);
+  const [shifts, setShifts] = useState<ShiftSetting[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPending, startTransition] = useTransition();
 
   // Modal states
   const [showModal, setShowModal] = useState(false);
@@ -139,6 +99,22 @@ export default function ManageShiftPage() {
     lateAfter: '',
     color: 'emerald',
   });
+
+  // Fetch data on mount
+  useEffect(() => {
+    loadShifts();
+  }, []);
+
+  const loadShifts = async () => {
+    setIsLoading(true);
+    const result = await shiftsAPI.getAll();
+    if (result.success && result.data) {
+      setShifts(result.data as ShiftSetting[]);
+    } else {
+      toast.error('Gagal memuat data shift');
+    }
+    setIsLoading(false);
+  };
 
   // Filter shifts
   const filteredShifts = shifts.filter(
@@ -167,10 +143,10 @@ export default function ManageShiftPage() {
     setFormData({
       shiftType: shift.shiftType,
       name: shift.name,
-      startTime: shift.startTime,
-      endTime: shift.endTime,
-      lateAfter: shift.lateAfter,
-      color: shift.color,
+      startTime: shift.startTime || '',
+      endTime: shift.endTime || '',
+      lateAfter: shift.lateAfter || '',
+      color: shift.color || 'emerald',
     });
     setShowModal(true);
   };
@@ -182,67 +158,87 @@ export default function ManageShiftPage() {
   };
 
   // Handle save (create/update)
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.shiftType || !formData.name) {
       toast.error('Nama shift dan tipe shift harus diisi!');
       return;
     }
 
-    if (editingShift) {
-      // Update existing
-      setShifts((prev) =>
-        prev.map((s) =>
-          s.id === editingShift.id
-            ? {
-                ...s,
-                shiftType: formData.shiftType,
-                name: formData.name,
-                startTime: formData.startTime,
-                endTime: formData.endTime,
-                lateAfter: formData.lateAfter,
-                color: formData.color,
-              }
-            : s
-        )
-      );
-      toast.success('Shift berhasil diperbarui!');
-    } else {
-      // Create new
-      const newShift: ShiftSetting = {
-        id: `shift-${Date.now()}`,
-        shiftType: formData.shiftType,
-        name: formData.name,
-        startTime: formData.startTime,
-        endTime: formData.endTime,
-        lateAfter: formData.lateAfter,
-        isActive: true,
-        color: formData.color,
-      };
-      setShifts((prev) => [...prev, newShift]);
-      toast.success('Shift baru berhasil ditambahkan!');
-    }
+    startTransition(async () => {
+      if (editingShift) {
+        // Update existing
+        const result = await shiftsAPI.update(editingShift.id, {
+          shiftType: formData.shiftType,
+          name: formData.name,
+          startTime: formData.startTime,
+          endTime: formData.endTime,
+          lateAfter: formData.lateAfter,
+          color: formData.color,
+        });
 
-    setShowModal(false);
+        if (result.success) {
+          toast.success('Shift berhasil diperbarui!');
+          loadShifts();
+        } else {
+          toast.error(result.error || 'Gagal memperbarui shift');
+        }
+      } else {
+        // Create new
+        const result = await shiftsAPI.create({
+          shiftType: formData.shiftType,
+          name: formData.name,
+          startTime: formData.startTime,
+          endTime: formData.endTime,
+          lateAfter: formData.lateAfter,
+          color: formData.color,
+        });
+
+        if (result.success) {
+          toast.success('Shift baru berhasil ditambahkan!');
+          loadShifts();
+        } else {
+          toast.error(result.error || 'Gagal menambah shift');
+        }
+      }
+
+      setShowModal(false);
+    });
   };
 
   // Handle delete
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deletingShift) return;
-    setShifts((prev) => prev.filter((s) => s.id !== deletingShift.id));
-    setShowDeleteModal(false);
-    setDeletingShift(null);
-    toast.success('Shift berhasil dihapus!');
+
+    startTransition(async () => {
+      const result = await shiftsAPI.delete(deletingShift.id);
+
+      if (result.success) {
+        toast.success('Shift berhasil dihapus!');
+        loadShifts();
+      } else {
+        toast.error(result.error || 'Gagal menghapus shift');
+      }
+
+      setShowDeleteModal(false);
+      setDeletingShift(null);
+    });
   };
 
   // Toggle active status
-  const toggleActive = (id: string) => {
-    setShifts((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, isActive: !s.isActive } : s))
-    );
-    toast.success('Status shift diubah!');
+  const handleToggleActive = async (id: string) => {
+    startTransition(async () => {
+      const result = await shiftsAPI.toggle(id);
+
+      if (result.success) {
+        toast.success('Status shift diubah!');
+        loadShifts();
+      } else {
+        toast.error(result.error || 'Gagal mengubah status');
+      }
+    });
   };
 
-  const getColorClasses = (color: string) => {
+  const getColorClasses = (color: string | null) => {
     const colors: Record<string, { bg: string; text: string; border: string }> =
       {
         emerald: {
@@ -286,8 +282,16 @@ export default function ManageShiftPage() {
           border: 'border-orange-200',
         },
       };
-    return colors[color] || colors.emerald;
+    return colors[color || 'emerald'] || colors.emerald;
   };
+
+  if (isLoading) {
+    return (
+      <div className='flex items-center justify-center min-h-[400px]'>
+        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
+      </div>
+    );
+  }
 
   return (
     <div className='space-y-6'>
@@ -299,10 +303,11 @@ export default function ManageShiftPage() {
         actions={
           <button
             onClick={openAddModal}
-            className='flex items-center gap-2 px-4 py-2 bg-white text-[#E57373] rounded-xl font-medium hover:bg-white/90 transition-colors'
+            disabled={isPending}
+            className='flex items-center gap-2 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white font-medium rounded-xl transition-colors disabled:opacity-50'
           >
             <Plus className='w-4 h-4' />
-            Tambah
+            Tambah Shift
           </button>
         }
       />
@@ -339,7 +344,7 @@ export default function ManageShiftPage() {
         </Card>
         <Card className='text-center'>
           <p className='text-2xl font-bold text-purple-600'>
-            {shifts.filter((s) => s.shiftType !== 'Libur').length}
+            {shifts.filter((s) => s.shiftType !== 'LIBUR').length}
           </p>
           <p className='text-sm text-gray-500'>Shift Kerja</p>
         </Card>
@@ -370,13 +375,14 @@ export default function ManageShiftPage() {
                   <span
                     className={`text-xs px-2 py-0.5 rounded-full ${colorClasses.bg} ${colorClasses.text}`}
                   >
-                    {shift.shiftType}
+                    {formatShiftType(shift.shiftType)}
                   </span>
                 </div>
                 {/* Toggle Active */}
                 <button
-                  onClick={() => toggleActive(shift.id)}
-                  className={`relative w-10 h-5 rounded-full transition-colors ${
+                  onClick={() => handleToggleActive(shift.id)}
+                  disabled={isPending}
+                  className={`relative w-10 h-5 rounded-full transition-colors disabled:opacity-50 ${
                     shift.isActive ? 'bg-emerald-500' : 'bg-gray-300'
                   }`}
                 >
@@ -389,24 +395,24 @@ export default function ManageShiftPage() {
               </div>
 
               {/* Time Info */}
-              {shift.shiftType !== 'Libur' ? (
+              {shift.shiftType !== 'LIBUR' ? (
                 <div className='space-y-2 text-sm'>
                   <div className='flex justify-between'>
                     <span className='text-gray-500'>Jam Mulai</span>
                     <span className='font-medium text-gray-800'>
-                      {shift.startTime}
+                      {shift.startTime || '-'}
                     </span>
                   </div>
                   <div className='flex justify-between'>
                     <span className='text-gray-500'>Jam Selesai</span>
                     <span className='font-medium text-gray-800'>
-                      {shift.endTime}
+                      {shift.endTime || '-'}
                     </span>
                   </div>
                   <div className='flex justify-between'>
                     <span className='text-gray-500'>Batas Telat</span>
                     <span className='font-medium text-red-600'>
-                      {shift.lateAfter}
+                      {shift.lateAfter || '-'}
                     </span>
                   </div>
                 </div>
@@ -420,14 +426,16 @@ export default function ManageShiftPage() {
               <div className='flex gap-2 mt-4'>
                 <button
                   onClick={() => openEditModal(shift)}
-                  className='flex-1 py-2 text-sm font-medium text-[#E57373] bg-red-50 hover:bg-red-100 rounded-lg transition-colors flex items-center justify-center gap-2'
+                  disabled={isPending}
+                  className='flex-1 py-2 text-sm font-medium text-[#E57373] bg-red-50 hover:bg-red-100 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50'
                 >
                   <Edit2 className='w-4 h-4' />
                   Edit
                 </button>
                 <button
                   onClick={() => openDeleteModal(shift)}
-                  className='py-2 px-3 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors'
+                  disabled={isPending}
+                  className='py-2 px-3 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50'
                 >
                   <Trash2 className='w-4 h-4' />
                 </button>
@@ -438,7 +446,7 @@ export default function ManageShiftPage() {
       </div>
 
       {/* Empty State */}
-      {filteredShifts.length === 0 && (
+      {filteredShifts.length === 0 && !isLoading && (
         <Card className='text-center py-12'>
           <Clock className='w-12 h-12 text-gray-300 mx-auto mb-4' />
           <h3 className='font-semibold text-gray-600 mb-2'>
@@ -478,9 +486,7 @@ export default function ManageShiftPage() {
               <label className='block text-sm font-medium text-gray-700 mb-1'>
                 Tipe Shift
               </label>
-              <input
-                type='text'
-                placeholder='e.g., Pagi, Malam, Piket'
+              <select
                 value={formData.shiftType}
                 onChange={(e) =>
                   setFormData((prev) => ({
@@ -489,7 +495,14 @@ export default function ManageShiftPage() {
                   }))
                 }
                 className='w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-              />
+              >
+                <option value=''>Pilih tipe shift</option>
+                <option value='PAGI'>Pagi</option>
+                <option value='MALAM'>Malam</option>
+                <option value='PIKET_PAGI'>Piket Pagi</option>
+                <option value='PIKET_MALAM'>Piket Malam</option>
+                <option value='LIBUR'>Libur</option>
+              </select>
             </div>
 
             <div>
@@ -572,6 +585,7 @@ export default function ManageShiftPage() {
                   return (
                     <button
                       key={opt.value}
+                      type='button'
                       onClick={() =>
                         setFormData((prev) => ({ ...prev, color: opt.value }))
                       }
@@ -594,15 +608,21 @@ export default function ManageShiftPage() {
         <ModalFooter>
           <button
             onClick={() => setShowModal(false)}
-            className='flex-1 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-xl transition-colors'
+            disabled={isPending}
+            className='flex-1 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-xl transition-colors disabled:opacity-50'
           >
             Batal
           </button>
           <button
             onClick={handleSave}
-            className='flex-1 py-2.5 bg-[#E57373] hover:bg-[#EF5350] text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2'
+            disabled={isPending}
+            className='flex-1 py-2.5 bg-[#E57373] hover:bg-[#EF5350] text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50'
           >
-            <Check className='w-4 h-4' />
+            {isPending ? (
+              <Loader2 className='w-4 h-4 animate-spin' />
+            ) : (
+              <Check className='w-4 h-4' />
+            )}
             {editingShift ? 'Simpan Perubahan' : 'Tambah Shift'}
           </button>
         </ModalFooter>

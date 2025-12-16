@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import {
   Plus,
   Search,
@@ -13,9 +13,8 @@ import {
   Filter,
   WalletCards,
   Wallet,
+  Loader2,
 } from 'lucide-react';
-import { cashEntries, CashEntry, teamMembers } from '@/data/dummy';
-import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
 import {
@@ -27,20 +26,24 @@ import {
 } from '@/components/ui/Modal';
 import { Input, Select } from '@/components/ui/Form';
 import toast from 'react-hot-toast';
+import { cashAPI, usersAPI } from '@/lib/api';
 
-// Predefined transaction categories
-const transactionCategories = [
-  { value: 'Kas Bulanan', label: 'Kas Bulanan' },
-  { value: 'Kebutuhan Kantor', label: 'Kebutuhan Kantor' },
-  { value: 'Belanja Operasional', label: 'Belanja Operasional' },
-  { value: 'Perlengkapan', label: 'Perlengkapan' },
-  { value: 'Lain-lain', label: 'Lain-lain' },
-];
+type CashEntry = {
+  id: string;
+  date: string;
+  transactionCategory: string | null;
+  description: string;
+  category: string;
+  amount: number;
+  memberId: string | null;
+  member: { id: string; name: string } | null;
+};
 
-const memberOptions = [
-  { value: '', label: 'Pilih member' },
-  ...teamMembers.map((m) => ({ value: m.id, label: m.name })),
-];
+type Member = {
+  id: string;
+  name: string;
+  nickname: string | null;
+};
 
 type TransactionForm = {
   date: string;
@@ -48,8 +51,19 @@ type TransactionForm = {
   description: string;
   category: 'income' | 'expense';
   amount: number;
-  memberId?: string;
+  memberId: string;
 };
+
+const incomeCategories = [
+  { value: 'Kas Bulanan', label: 'Kas Bulanan' },
+  { value: 'Lain-lain', label: 'Lain-lain' },
+];
+
+const expenseCategories = [
+  { value: 'Kebutuhan Kantor', label: 'Kebutuhan Kantor' },
+  { value: 'Perlengkapan', label: 'Perlengkapan' },
+  { value: 'Lain-lain', label: 'Lain-lain' },
+];
 
 export default function AdminCashPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,13 +72,16 @@ export default function AdminCashPage() {
   const [dateTo, setDateTo] = useState('');
   const [memberFilter, setMemberFilter] = useState<string>('all');
 
-  // Modal states
+  const [entries, setEntries] = useState<CashEntry[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPending, startTransition] = useTransition();
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<CashEntry | null>(null);
 
-  // Form state
   const [formData, setFormData] = useState<TransactionForm>({
     date: new Date().toISOString().split('T')[0],
     transactionCategory: 'Kas Bulanan',
@@ -74,35 +91,45 @@ export default function AdminCashPage() {
     memberId: '',
   });
 
-  // Local entries state (simulating database)
-  const [entries, setEntries] = useState<CashEntry[]>(cashEntries);
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    const [cashResult, usersResult] = await Promise.all([
+      cashAPI.getAll(),
+      usersAPI.getAll(),
+    ]);
+
+    if (cashResult.success) setEntries(cashResult.data as CashEntry[]);
+    if (usersResult.success) setMembers(usersResult.data as Member[]);
+    setIsLoading(false);
+  };
 
   const filteredEntries = entries.filter((entry) => {
     const matchesSearch = entry.description
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
-    const matchesFilter = filter === 'all' || entry.category === filter;
+    const matchesFilter =
+      filter === 'all' || entry.category.toLowerCase() === filter;
     const matchesMember =
       memberFilter === 'all' || entry.memberId === memberFilter;
 
-    // Date filter
     let matchesDate = true;
-    if (dateFrom) {
-      matchesDate = matchesDate && entry.date >= dateFrom;
-    }
-    if (dateTo) {
-      matchesDate = matchesDate && entry.date <= dateTo;
-    }
+    const entryDate = new Date(entry.date).toISOString().split('T')[0];
+    if (dateFrom) matchesDate = matchesDate && entryDate >= dateFrom;
+    if (dateTo) matchesDate = matchesDate && entryDate <= dateTo;
 
     return matchesSearch && matchesFilter && matchesMember && matchesDate;
   });
 
   const totalIncome = filteredEntries
-    .filter((e) => e.category === 'income')
-    .reduce((sum, e) => sum + e.amount, 0);
+    .filter((e) => e.category === 'INCOME')
+    .reduce((sum, e) => sum + Number(e.amount), 0);
   const totalExpense = filteredEntries
-    .filter((e) => e.category === 'expense')
-    .reduce((sum, e) => sum + e.amount, 0);
+    .filter((e) => e.category === 'EXPENSE')
+    .reduce((sum, e) => sum + Number(e.amount), 0);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -112,85 +139,89 @@ export default function AdminCashPage() {
     }).format(amount);
   };
 
-  // Add transaction
-  const handleAdd = () => {
-    const member = teamMembers.find((m) => m.id === formData.memberId);
-    const newEntry: CashEntry = {
-      id: `cash-${Date.now()}`,
-      date: formData.date,
-      transactionCategory: formData.transactionCategory,
-      description: formData.description,
-      category: formData.category,
-      amount: formData.amount,
-      memberId: formData.memberId,
-      memberName: member?.name,
-    };
-    setEntries([newEntry, ...entries]);
-    setShowAddModal(false);
-    resetForm();
-    toast.success('Transaksi berhasil ditambahkan!');
+  const memberOptions = [
+    { value: '', label: 'Pilih member' },
+    ...members.map((m) => ({ value: m.id, label: m.name })),
+  ];
+
+  const handleAdd = async () => {
+    startTransition(async () => {
+      const result = await cashAPI.create({
+        date: formData.date,
+        transactionCategory: formData.transactionCategory,
+        description: formData.description,
+        category: formData.category,
+        amount: formData.amount,
+        memberId: formData.memberId || null,
+      });
+
+      if (result.success) {
+        toast.success('Transaksi berhasil ditambahkan!');
+        loadData();
+        setShowAddModal(false);
+        resetForm();
+      } else {
+        toast.error(result.error || 'Gagal menambahkan transaksi');
+      }
+    });
   };
 
-  // Edit transaction
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!selectedEntry) return;
-    const member = teamMembers.find((m) => m.id === formData.memberId);
-    setEntries(
-      entries.map((e) =>
-        e.id === selectedEntry.id
-          ? {
-              ...e,
-              date: formData.date,
-              transactionCategory: formData.transactionCategory,
-              description: formData.description,
-              category: formData.category,
-              amount: formData.amount,
-              memberId: formData.memberId,
-              memberName: member?.name,
-            }
-          : e
-      )
-    );
-    setShowEditModal(false);
-    setSelectedEntry(null);
-    resetForm();
-    toast.success('Transaksi berhasil diubah!');
+
+    startTransition(async () => {
+      const result = await cashAPI.update(selectedEntry.id, {
+        date: formData.date,
+        transactionCategory: formData.transactionCategory,
+        description: formData.description,
+        category: formData.category,
+        amount: formData.amount,
+        memberId: formData.memberId || null,
+      });
+
+      if (result.success) {
+        toast.success('Transaksi berhasil diubah!');
+        loadData();
+        setShowEditModal(false);
+        setSelectedEntry(null);
+        resetForm();
+      } else {
+        toast.error(result.error || 'Gagal mengubah transaksi');
+      }
+    });
   };
 
-  // Delete transaction
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selectedEntry) return;
-    setEntries(entries.filter((e) => e.id !== selectedEntry.id));
-    setShowDeleteModal(false);
-    setSelectedEntry(null);
-    toast.success('Transaksi berhasil dihapus!');
+
+    startTransition(async () => {
+      const result = await cashAPI.delete(selectedEntry.id);
+
+      if (result.success) {
+        toast.success('Transaksi berhasil dihapus!');
+        loadData();
+        setShowDeleteModal(false);
+        setSelectedEntry(null);
+      } else {
+        toast.error(result.error || 'Gagal menghapus transaksi');
+      }
+    });
   };
 
-  // Export to Excel
   const handleExport = async () => {
     const XLSX = await import('xlsx');
 
     const exportData = filteredEntries.map((e) => ({
-      Tanggal: e.date,
+      Tanggal: new Date(e.date).toLocaleDateString('id-ID'),
       Deskripsi: e.description,
-      Kategori: e.category === 'income' ? 'Pemasukan' : 'Pengeluaran',
-      Jumlah: e.amount,
-      Member: e.memberName || '-',
+      Kategori: e.category === 'INCOME' ? 'Pemasukan' : 'Pengeluaran',
+      Jumlah: Number(e.amount),
+      Member: e.member?.name || '-',
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Kas');
-
-    // Set column widths
-    ws['!cols'] = [
-      { wch: 12 },
-      { wch: 30 },
-      { wch: 12 },
-      { wch: 15 },
-      { wch: 15 },
-    ];
-
     XLSX.writeFile(wb, `kas_${new Date().toISOString().split('T')[0]}.xlsx`);
     toast.success('File Excel berhasil didownload!');
   };
@@ -209,11 +240,11 @@ export default function AdminCashPage() {
   const openEditModal = (entry: CashEntry) => {
     setSelectedEntry(entry);
     setFormData({
-      date: entry.date,
+      date: new Date(entry.date).toISOString().split('T')[0],
       transactionCategory: entry.transactionCategory || 'Lain-lain',
       description: entry.description,
-      category: entry.category,
-      amount: entry.amount,
+      category: entry.category.toLowerCase() as 'income' | 'expense',
+      amount: Number(entry.amount),
       memberId: entry.memberId || '',
     });
     setShowEditModal(true);
@@ -231,9 +262,16 @@ export default function AdminCashPage() {
     resetForm();
   };
 
+  if (isLoading) {
+    return (
+      <div className='flex items-center justify-center min-h-[400px]'>
+        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
+      </div>
+    );
+  }
+
   return (
     <div className='space-y-6'>
-      {/* Header */}
       <PageHeader
         title='Kelola Uang Kas'
         description='Kelola pemasukan dan pengeluaran kas tim'
@@ -252,7 +290,8 @@ export default function AdminCashPage() {
                 resetForm();
                 setShowAddModal(true);
               }}
-              className='flex items-center gap-2 px-4 py-2 bg-white text-[#E57373] rounded-xl font-medium hover:bg-white/90 transition-colors'
+              disabled={isPending}
+              className='flex items-center gap-2 px-4 py-2 bg-white text-[#E57373] rounded-xl font-medium hover:bg-white/90 transition-colors disabled:opacity-50'
             >
               <Plus className='w-4 h-4' />
               Tambah
@@ -265,8 +304,21 @@ export default function AdminCashPage() {
       <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
         <div className='bg-white rounded-xl p-4 border border-gray-100'>
           <div className='flex items-center gap-3'>
+            <div className='w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center'>
+              <Wallet className='w-5 h-5 text-blue-600' />
+            </div>
+            <div>
+              <p className='text-xs text-gray-500'>Saldo</p>
+              <p className='text-lg font-bold text-blue-600'>
+                {formatCurrency(totalIncome - totalExpense)}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className='bg-white rounded-xl p-4 border border-gray-100'>
+          <div className='flex items-center gap-3'>
             <div className='w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center'>
-              <ArrowUpCircle className='w-5 h-5 text-emerald-600' />
+              <ArrowDownCircle className='w-5 h-5 text-emerald-600' />
             </div>
             <div>
               <p className='text-xs text-gray-500'>Total Pemasukan</p>
@@ -279,25 +331,12 @@ export default function AdminCashPage() {
         <div className='bg-white rounded-xl p-4 border border-gray-100'>
           <div className='flex items-center gap-3'>
             <div className='w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center'>
-              <ArrowDownCircle className='w-5 h-5 text-red-600' />
+              <ArrowUpCircle className='w-5 h-5 text-red-600' />
             </div>
             <div>
               <p className='text-xs text-gray-500'>Total Pengeluaran</p>
               <p className='text-lg font-bold text-red-600'>
                 {formatCurrency(totalExpense)}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className='bg-white rounded-xl p-4 border border-gray-100'>
-          <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center'>
-              <Wallet className='w-5 h-5 text-blue-600' />
-            </div>
-            <div>
-              <p className='text-xs text-gray-500'>Saldo</p>
-              <p className='text-lg font-bold text-blue-600'>
-                {formatCurrency(totalIncome - totalExpense)}
               </p>
             </div>
           </div>
@@ -338,7 +377,6 @@ export default function AdminCashPage() {
           </div>
         </div>
 
-        {/* Date Filter */}
         <div className='flex flex-wrap items-center gap-3'>
           <div className='flex items-center gap-2'>
             <Calendar className='w-4 h-4 text-gray-400' />
@@ -348,14 +386,14 @@ export default function AdminCashPage() {
             type='date'
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className='px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
+            className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
           />
           <span className='text-gray-400'>-</span>
           <input
             type='date'
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className='px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
+            className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
           />
           {(dateFrom || dateTo) && (
             <button
@@ -368,19 +406,17 @@ export default function AdminCashPage() {
               Reset
             </button>
           )}
-
-          {/* Member Filter */}
           <div className='flex items-center gap-2 ml-auto'>
             <Filter className='w-4 h-4 text-gray-400' />
             <select
               value={memberFilter}
               onChange={(e) => setMemberFilter(e.target.value)}
-              className='px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
+              className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
             >
               <option value='all'>Semua Member</option>
-              {teamMembers.map((m) => (
+              {members.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.nickname}
+                  {m.nickname || m.name}
                 </option>
               ))}
             </select>
@@ -398,13 +434,13 @@ export default function AdminCashPage() {
                   Tanggal
                 </th>
                 <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                  Anggota
+                </th>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
                   Kategori
                 </th>
                 <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
                   Deskripsi
-                </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
-                  Member
                 </th>
                 <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
                   Tipe
@@ -431,53 +467,55 @@ export default function AdminCashPage() {
                 filteredEntries.map((entry) => (
                   <tr key={entry.id} className='hover:bg-gray-50'>
                     <td className='px-4 py-3 text-sm text-gray-600'>
-                      {entry.date}
+                      {new Date(entry.date).toLocaleDateString('id-ID')}
+                    </td>
+                    <td className='px-4 py-3 text-sm text-gray-600'>
+                      {entry.member?.name || '-'}
                     </td>
                     <td className='px-4 py-3'>
                       <span className='inline-flex px-2 py-1 text-xs font-medium rounded-lg bg-blue-100 text-blue-700'>
                         {entry.transactionCategory || 'Lain-lain'}
                       </span>
                     </td>
-                    <td className='px-4 py-3 text-sm text-gray-800 font-medium'>
-                      {entry.description}
-                    </td>
-                    <td className='px-4 py-3 text-sm text-gray-600'>
-                      {entry.memberName || '-'}
+                    <td className='px-4 py-3 text-sm text-gray-800'>
+                      {entry.description || '-'}
                     </td>
                     <td className='px-4 py-3'>
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-medium rounded-lg ${
-                          entry.category === 'income'
+                          entry.category === 'INCOME'
                             ? 'bg-emerald-100 text-emerald-700'
                             : 'bg-red-100 text-red-700'
                         }`}
                       >
-                        {entry.category === 'income'
+                        {entry.category === 'INCOME'
                           ? 'Pemasukan'
                           : 'Pengeluaran'}
                       </span>
                     </td>
                     <td
                       className={`px-4 py-3 text-sm font-medium text-right ${
-                        entry.category === 'income'
+                        entry.category === 'INCOME'
                           ? 'text-emerald-600'
                           : 'text-red-600'
                       }`}
                     >
-                      {entry.category === 'income' ? '+' : '-'}
-                      {formatCurrency(entry.amount)}
+                      {entry.category === 'INCOME' ? '+' : '-'}
+                      {formatCurrency(Number(entry.amount))}
                     </td>
                     <td className='px-4 py-3'>
                       <div className='flex items-center justify-center gap-2'>
                         <button
                           onClick={() => openEditModal(entry)}
-                          className='p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors'
+                          disabled={isPending}
+                          className='p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50'
                         >
                           <Edit2 size={16} />
                         </button>
                         <button
                           onClick={() => openDeleteModal(entry)}
-                          className='p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors'
+                          disabled={isPending}
+                          className='p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50'
                         >
                           <Trash2 size={16} />
                         </button>
@@ -512,7 +550,6 @@ export default function AdminCashPage() {
                 setFormData({ ...formData, date: e.target.value })
               }
             />
-
             <div>
               <label className='block text-xs text-gray-500 mb-1'>
                 Tipe Transaksi
@@ -521,7 +558,11 @@ export default function AdminCashPage() {
                 <button
                   type='button'
                   onClick={() =>
-                    setFormData({ ...formData, category: 'income' })
+                    setFormData({
+                      ...formData,
+                      category: 'income',
+                      transactionCategory: 'Kas Bulanan',
+                    })
                   }
                   className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
                     formData.category === 'income'
@@ -534,7 +575,11 @@ export default function AdminCashPage() {
                 <button
                   type='button'
                   onClick={() =>
-                    setFormData({ ...formData, category: 'expense' })
+                    setFormData({
+                      ...formData,
+                      category: 'expense',
+                      transactionCategory: 'Kebutuhan Kantor',
+                    })
                   }
                   className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
                     formData.category === 'expense'
@@ -546,7 +591,6 @@ export default function AdminCashPage() {
                 </button>
               </div>
             </div>
-
             <Select
               label='Kategori Transaksi'
               value={formData.transactionCategory}
@@ -556,18 +600,20 @@ export default function AdminCashPage() {
                   transactionCategory: e.target.value,
                 })
               }
-              options={transactionCategories}
+              options={
+                formData.category === 'income'
+                  ? incomeCategories
+                  : expenseCategories
+              }
             />
-
             <Input
-              label='Deskripsi'
+              label='Deskripsi (opsional)'
               value={formData.description}
               onChange={(e) =>
                 setFormData({ ...formData, description: e.target.value })
               }
               placeholder='Contoh: Iuran bulan Desember'
             />
-
             <Input
               label='Jumlah (Rp)'
               type='number'
@@ -578,11 +624,10 @@ export default function AdminCashPage() {
                   amount: parseInt(e.target.value) || 0,
                 })
               }
-              placeholder='50000'
+              placeholder='15000'
             />
-
             <Select
-              label='Member (opsional)'
+              label='Member'
               value={formData.memberId || ''}
               onChange={(e) =>
                 setFormData({ ...formData, memberId: e.target.value })
@@ -597,10 +642,16 @@ export default function AdminCashPage() {
           </Button>
           <Button
             onClick={showAddModal ? handleAdd : handleEdit}
-            disabled={!formData.description || !formData.amount}
+            disabled={isPending || !formData.amount}
             className='flex-1'
           >
-            {showAddModal ? 'Tambah' : 'Simpan'}
+            {isPending ? (
+              <Loader2 className='w-4 h-4 animate-spin' />
+            ) : showAddModal ? (
+              'Tambah'
+            ) : (
+              'Simpan'
+            )}
           </Button>
         </ModalFooter>
       </Modal>

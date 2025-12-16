@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { Users, Eye, EyeOff, LogIn, Lock, User, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { authAPI } from '@/lib/api';
+import toast from 'react-hot-toast';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -12,7 +14,6 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Apply saved theme on mount (without toggle functionality)
   useEffect(() => {
     try {
       const savedTheme = localStorage.getItem('theme');
@@ -26,13 +27,26 @@ export default function LoginPage() {
     }
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate login delay
-    setTimeout(() => {
-      window.location.href = '/';
-    }, 1000);
+
+    try {
+      const result = await authAPI.login(username, password);
+
+      if (result.success && result.data) {
+        // Store user data in localStorage
+        localStorage.setItem('user', JSON.stringify(result.data));
+        toast.success('Login berhasil!');
+        window.location.href = '/';
+      } else {
+        toast.error(result.error || 'Login gagal');
+      }
+    } catch {
+      toast.error('Terjadi kesalahan');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

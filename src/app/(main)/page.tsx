@@ -1,54 +1,101 @@
 'use client';
 
+import { useState, useEffect, useMemo } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
 import { AttendanceChart } from '@/components/charts/AttendanceChart';
 import { CashBookChart } from '@/components/charts/CashBookChart';
 import { RecentActivities } from '@/components/RecentActivities';
-import {
-  teamMembers,
-  attendanceRecords,
-  scheduleEntries,
-  cashEntries,
-  getSummaryStats,
-} from '@/data/dummy';
+import { usersAPI, attendanceAPI, scheduleAPI, cashAPI } from '@/lib/api';
 import Link from 'next/link';
 import {
   Users,
   UserCheck,
   Wallet,
-  TrendingUp,
   Calendar,
   Clock,
   Sun,
   Moon,
   Sunrise,
   CheckCircle,
-  AlertCircle,
   ArrowRight,
+  Loader2,
+  ArrowDownCircle,
+  ArrowUpCircle,
 } from 'lucide-react';
 
-// Simulated current user (logged in user)
-const currentUser = teamMembers[1]; // Muhammad Alfian
-
-// Simulated kas payment status
-const kasPaymentStatus: { [memberId: string]: boolean } = {
-  '1': true,
-  '2': true,
-  '3': true,
-  '4': false,
-  '5': true,
-  '6': false,
-  '7': true,
+type TeamMember = {
+  id: string;
+  name: string;
+  nickname: string | null;
+  position: string;
+  department: string;
+  image: string | null;
+  isActive: boolean;
 };
+type AttendanceRecord = {
+  id: string;
+  memberId: string;
+  member?: { name: string; image?: string };
+  tanggal: string;
+  jamAbsen: string;
+  keterangan: string;
+  status: string;
+};
+type Schedule = {
+  id: string;
+  memberId: string;
+  tanggal: string;
+  keterangan: string;
+};
+type CashEntry = { id: string; amount: number; category: string; date: string };
+
+const CURRENT_USER_ID = 'user-2';
 
 export default function Dashboard() {
-  const stats = getSummaryStats();
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<
+    AttendanceRecord[]
+  >([]);
+  const [scheduleEntries, setScheduleEntries] = useState<Schedule[]>([]);
+  const [cashEntries, setCashEntries] = useState<CashEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<TeamMember | null>(null);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    const [usersRes, attRes, schedRes, cashRes] = await Promise.all([
+      usersAPI.getAll(),
+      attendanceAPI.getAll(),
+      scheduleAPI.getAll(),
+      cashAPI.getAll(),
+    ]);
+    if (usersRes.success && usersRes.data) {
+      const activeUsers = (usersRes.data as TeamMember[]).filter(
+        (u) => u.isActive
+      );
+      setTeamMembers(activeUsers);
+      setCurrentUser(
+        activeUsers.find((u) => u.id === CURRENT_USER_ID) || activeUsers[0]
+      );
+    }
+    if (attRes.success && attRes.data)
+      setAttendanceRecords(attRes.data as AttendanceRecord[]);
+    if (schedRes.success && schedRes.data)
+      setScheduleEntries(schedRes.data as Schedule[]);
+    if (cashRes.success && cashRes.data)
+      setCashEntries(cashRes.data as CashEntry[]);
+    setIsLoading(false);
+  };
+
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
   const hour = today.getHours();
 
-  // Greeting based on time
   const getGreeting = () => {
     if (hour >= 5 && hour < 12) return { text: 'Selamat Pagi', icon: Sunrise };
     if (hour >= 12 && hour < 17) return { text: 'Selamat Siang', icon: Sun };
@@ -59,54 +106,129 @@ export default function Dashboard() {
   const greeting = getGreeting();
   const GreetingIcon = greeting.icon;
 
-  // User's stats
+  // User stats
   const userAttendance = attendanceRecords.filter(
-    (r) => r.memberId === currentUser.id
+    (r) => currentUser && r.memberId === currentUser.id
   );
   const userOntimeCount = userAttendance.filter(
-    (r) => r.status === 'Ontime'
+    (r) => r.status === 'ONTIME'
   ).length;
-  const userTotalAttendance = userAttendance.length;
   const userOntimeRate =
-    userTotalAttendance > 0
-      ? Math.round((userOntimeCount / userTotalAttendance) * 100)
+    userAttendance.length > 0
+      ? Math.round((userOntimeCount / userAttendance.length) * 100)
       : 0;
 
   // Today's schedule
   const todaySchedule = scheduleEntries.find(
-    (s) => s.memberId === currentUser.id && s.tanggal === todayStr
+    (s) =>
+      currentUser &&
+      s.memberId === currentUser.id &&
+      s.tanggal.split('T')[0] === todayStr
   );
 
-  // User's kas payment status
-  const userKasPaid = kasPaymentStatus[currentUser.id] || false;
-
-  // Team kas progress
-  const paidCount = Object.values(kasPaymentStatus).filter(Boolean).length;
-  const kasProgressPercent = Math.round((paidCount / teamMembers.length) * 100);
-
-  // Total kas
+  // Cash stats
   const totalCashIn = cashEntries
-    .filter((e) => e.category === 'income')
-    .reduce((sum, e) => sum + e.amount, 0);
+    .filter((e) => e.category.toLowerCase() === 'income')
+    .reduce((sum, e) => sum + Number(e.amount), 0);
   const totalCashOut = cashEntries
-    .filter((e) => e.category === 'expense')
-    .reduce((sum, e) => sum + e.amount, 0);
+    .filter((e) => e.category.toLowerCase() === 'expense')
+    .reduce((sum, e) => sum + Number(e.amount), 0);
   const totalCash = totalCashIn - totalCashOut;
 
-  // Find earliest and latest attendance today
+  // Generate chart data from database
+  const monthNames = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'Mei',
+    'Jun',
+    'Jul',
+    'Agu',
+    'Sep',
+    'Okt',
+    'Nov',
+    'Des',
+  ];
+
+  const cashChartData = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return monthNames.map((name, index) => {
+      const targetMonth = `${currentYear}-${String(index + 1).padStart(
+        2,
+        '0'
+      )}`;
+      const monthIncome = cashEntries
+        .filter(
+          (e) =>
+            e.category.toLowerCase() === 'income' &&
+            e.date.startsWith(targetMonth)
+        )
+        .reduce((sum, e) => sum + Number(e.amount), 0);
+      const monthExpense = cashEntries
+        .filter(
+          (e) =>
+            e.category.toLowerCase() === 'expense' &&
+            e.date.startsWith(targetMonth)
+        )
+        .reduce((sum, e) => sum + Number(e.amount), 0);
+      // Calculate running balance up to this month
+      const runningIncome = cashEntries
+        .filter(
+          (e) =>
+            e.category.toLowerCase() === 'income' &&
+            e.date <= `${targetMonth}-31`
+        )
+        .reduce((sum, e) => sum + Number(e.amount), 0);
+      const runningExpense = cashEntries
+        .filter(
+          (e) =>
+            e.category.toLowerCase() === 'expense' &&
+            e.date <= `${targetMonth}-31`
+        )
+        .reduce((sum, e) => sum + Number(e.amount), 0);
+      return {
+        name,
+        masuk: monthIncome,
+        keluar: monthExpense,
+        saldo: runningIncome - runningExpense,
+      };
+    });
+  }, [cashEntries]);
+
+  const scheduleChartData = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return monthNames.map((name, index) => {
+      const targetMonth = `${currentYear}-${String(index + 1).padStart(
+        2,
+        '0'
+      )}`;
+      const monthSchedules = scheduleEntries.filter((s) =>
+        s.tanggal.startsWith(targetMonth)
+      );
+      return {
+        name,
+        pagi: monthSchedules.filter((s) => s.keterangan === 'PAGI').length,
+        malam: monthSchedules.filter((s) => s.keterangan === 'MALAM').length,
+        piketPagi: monthSchedules.filter((s) => s.keterangan === 'PIKET_PAGI')
+          .length,
+        piketMalam: monthSchedules.filter((s) => s.keterangan === 'PIKET_MALAM')
+          .length,
+        libur: monthSchedules.filter((s) => s.keterangan === 'LIBUR').length,
+      };
+    });
+  }, [scheduleEntries]);
+
+  // Today attendance
   const todayAttendance = attendanceRecords.filter(
-    (r) => r.tanggal === todayStr
+    (r) => r.tanggal.split('T')[0] === todayStr
   );
-  const sortedByTime = [...todayAttendance].sort((a, b) => {
-    const timeA = a.jamAbsen || '99:99';
-    const timeB = b.jamAbsen || '99:99';
-    return timeA.localeCompare(timeB);
-  });
+  const sortedByTime = [...todayAttendance].sort((a, b) =>
+    (a.jamAbsen || '99:99').localeCompare(b.jamAbsen || '99:99')
+  );
   const earliestAttendance = sortedByTime[0];
   const latestAttendance =
     sortedByTime.length > 1 ? sortedByTime[sortedByTime.length - 1] : null;
-
-  // Get member info for earliest/latest
   const earliestMember = earliestAttendance
     ? teamMembers.find((m) => m.id === earliestAttendance.memberId)
     : null;
@@ -114,13 +236,11 @@ export default function Dashboard() {
     ? teamMembers.find((m) => m.id === latestAttendance.memberId)
     : null;
 
-  // Calculate attendance progress for current period (16th - 15th)
+  // Period calculation
   const getPeriodDates = () => {
     const now = new Date();
     const currentDay = now.getDate();
-    let startDate: Date;
-    let endDate: Date;
-
+    let startDate: Date, endDate: Date;
     if (currentDay >= 16) {
       startDate = new Date(now.getFullYear(), now.getMonth(), 16);
       endDate = new Date(now.getFullYear(), now.getMonth() + 1, 15);
@@ -133,17 +253,15 @@ export default function Dashboard() {
 
   const { startDate, endDate } = getPeriodDates();
   const minWorkingDays = 22;
-
-  // User's attendance count in current period
   const userPeriodAttendance = attendanceRecords.filter((r) => {
     const recordDate = new Date(r.tanggal);
     return (
+      currentUser &&
       r.memberId === currentUser.id &&
       recordDate >= startDate &&
       recordDate <= endDate
     );
   }).length;
-
   const attendanceProgressPercent = Math.min(
     100,
     Math.round((userPeriodAttendance / minWorkingDays) * 100)
@@ -160,53 +278,75 @@ export default function Dashboard() {
     return `16 ${startMonth} - 15 ${endMonth}`;
   };
 
-  const formatCurrency = (num: number) => {
-    return new Intl.NumberFormat('id-ID', {
+  const formatCurrency = (num: number) =>
+    new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
       minimumFractionDigits: 0,
     }).format(num);
-  };
 
   const getScheduleStyle = (keterangan: string) => {
-    switch (keterangan) {
-      case 'Pagi':
-        return { bg: 'bg-blue-100', text: 'text-blue-700', icon: Sun };
-      case 'Malam':
-        return { bg: 'bg-gray-200', text: 'text-gray-700', icon: Moon };
-      case 'Piket Pagi':
-        return { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: Sun };
-      case 'Piket Malam':
-        return { bg: 'bg-purple-100', text: 'text-purple-700', icon: Moon };
-      case 'Libur':
-        return { bg: 'bg-red-100', text: 'text-red-700', icon: Calendar };
-      default:
-        return { bg: 'bg-gray-100', text: 'text-gray-500', icon: Calendar };
-    }
+    const styles: Record<
+      string,
+      { bg: string; text: string; icon: typeof Sun }
+    > = {
+      PAGI: { bg: 'bg-blue-100', text: 'text-blue-700', icon: Sun },
+      MALAM: { bg: 'bg-gray-200', text: 'text-gray-700', icon: Moon },
+      PIKET_PAGI: { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: Sun },
+      PIKET_MALAM: { bg: 'bg-purple-100', text: 'text-purple-700', icon: Moon },
+      LIBUR: { bg: 'bg-red-100', text: 'text-red-700', icon: Calendar },
+    };
+    return (
+      styles[keterangan] || {
+        bg: 'bg-gray-100',
+        text: 'text-gray-500',
+        icon: Calendar,
+      }
+    );
   };
+
+  const getKeteranganLabel = (k: string) =>
+    ({
+      PAGI: 'Pagi',
+      MALAM: 'Malam',
+      PIKET_PAGI: 'Piket Pagi',
+      PIKET_MALAM: 'Piket Malam',
+      LIBUR: 'Libur',
+    }[k] || k);
+
+  if (isLoading)
+    return (
+      <div className='flex items-center justify-center min-h-[400px]'>
+        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
+      </div>
+    );
 
   return (
     <div className='space-y-6'>
       {/* Greeting Header */}
       <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
-        <div className='flex items-center gap-4'>
-          <Avatar src={currentUser.image} name={currentUser.name} size='lg' />
-          <div>
-            <div className='flex items-center gap-2'>
-              <GreetingIcon className='w-5 h-5 text-amber-500' />
-              <span className='text-gray-500 dark:text-gray-400'>
-                {greeting.text},
-              </span>
+        {currentUser && (
+          <div className='flex items-center gap-4'>
+            <Avatar
+              src={currentUser.image ?? undefined}
+              name={currentUser.name}
+              size='lg'
+            />
+            <div>
+              <div className='flex items-center gap-2'>
+                <GreetingIcon className='w-5 h-5 text-amber-500' />
+                <span className='text-gray-500'>{greeting.text},</span>
+              </div>
+              <h1 className='text-2xl font-bold text-gray-800'>
+                {currentUser.nickname || currentUser.name}!
+              </h1>
+              <p className='text-sm text-gray-500'>
+                {currentUser.position} • {currentUser.department}
+              </p>
             </div>
-            <h1 className='text-2xl font-bold text-gray-800 dark:text-white'>
-              {currentUser.nickname}!
-            </h1>
-            <p className='text-sm text-gray-500 dark:text-gray-400'>
-              {currentUser.position} • {currentUser.department}
-            </p>
           </div>
-        </div>
-        <div className='text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-4 py-2 rounded-xl shadow-sm'>
+        )}
+        <div className='text-sm text-gray-500 bg-white px-4 py-2 rounded-xl shadow-sm'>
           {today.toLocaleDateString('id-ID', {
             weekday: 'long',
             year: 'numeric',
@@ -218,17 +358,14 @@ export default function Dashboard() {
 
       {/* Attendance Highlights */}
       <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
-        {/* Earliest Attendance */}
         <Card className='border-l-4 border-l-emerald-500'>
           <div className='flex items-center justify-between'>
             <div>
-              <p className='text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide'>
-                Absen Tercepat
-              </p>
+              <p className='text-xs text-gray-500 uppercase'>Absen Tercepat</p>
               {earliestMember && earliestAttendance ? (
                 <>
-                  <p className='text-lg font-bold text-gray-800 dark:text-white mt-1'>
-                    {earliestMember.nickname}
+                  <p className='text-lg font-bold text-gray-800 mt-1'>
+                    {earliestMember.nickname || earliestMember.name}
                   </p>
                   <p className='text-2xl font-bold text-emerald-600'>
                     {earliestAttendance.jamAbsen}
@@ -240,27 +377,23 @@ export default function Dashboard() {
                 </p>
               )}
             </div>
-            {earliestMember && earliestAttendance && (
+            {earliestMember && (
               <Avatar
-                src={earliestMember.image}
+                src={earliestMember.image ?? undefined}
                 name={earliestMember.name}
                 size='lg'
               />
             )}
           </div>
         </Card>
-
-        {/* Latest Attendance */}
         <Card className='border-l-4 border-l-amber-500'>
           <div className='flex items-center justify-between'>
             <div>
-              <p className='text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide'>
-                Absen Terlambat
-              </p>
+              <p className='text-xs text-gray-500 uppercase'>Absen Terakhir</p>
               {latestMember && latestAttendance ? (
                 <>
-                  <p className='text-lg font-bold text-gray-800 dark:text-white mt-1'>
-                    {latestMember.nickname}
+                  <p className='text-lg font-bold text-gray-800 mt-1'>
+                    {latestMember.nickname || latestMember.name}
                   </p>
                   <p className='text-2xl font-bold text-amber-600'>
                     {latestAttendance.jamAbsen}
@@ -272,24 +405,20 @@ export default function Dashboard() {
                 </p>
               )}
             </div>
-            {latestMember && latestAttendance && (
+            {latestMember && (
               <Avatar
-                src={latestMember.image}
+                src={latestMember.image ?? undefined}
                 name={latestMember.name}
                 size='lg'
               />
             )}
           </div>
         </Card>
-
-        {/* Attendance Progress */}
         <Card className='border-l-4 border-l-blue-500'>
           <div className='flex items-center justify-between'>
             <div>
-              <p className='text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide'>
-                Progres Absensi
-              </p>
-              <p className='text-lg font-bold text-gray-800 dark:text-white mt-1'>
+              <p className='text-xs text-gray-500 uppercase'>Progres Absensi</p>
+              <p className='text-lg font-bold text-gray-800 mt-1'>
                 {formatPeriodLabel()}
               </p>
               <p className='text-2xl font-bold text-blue-600'>
@@ -297,36 +426,10 @@ export default function Dashboard() {
                 <span className='text-sm font-normal'>hari</span>
               </p>
             </div>
-            <div className='text-right'>
-              <div className='w-16 h-16 rounded-full border-4 border-blue-100 flex items-center justify-center relative'>
-                <span className='text-lg font-bold text-blue-600'>
-                  {attendanceProgressPercent}%
-                </span>
-                <svg className='absolute inset-0 w-full h-full -rotate-90'>
-                  <circle
-                    cx='32'
-                    cy='32'
-                    r='28'
-                    fill='none'
-                    stroke='#dbeafe'
-                    strokeWidth='4'
-                  />
-                  <circle
-                    cx='32'
-                    cy='32'
-                    r='28'
-                    fill='none'
-                    stroke={
-                      attendanceProgressPercent >= 100 ? '#10b981' : '#3b82f6'
-                    }
-                    strokeWidth='4'
-                    strokeDasharray={`${
-                      (attendanceProgressPercent / 100) * 176
-                    } 176`}
-                    strokeLinecap='round'
-                  />
-                </svg>
-              </div>
+            <div className='w-16 h-16 rounded-full border-4 border-blue-100 flex items-center justify-center relative'>
+              <span className='text-lg font-bold text-blue-600'>
+                {attendanceProgressPercent}%
+              </span>
             </div>
           </div>
         </Card>
@@ -334,31 +437,28 @@ export default function Dashboard() {
 
       {/* Personal Stats Row */}
       <div className='grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4'>
-        {/* Today's Schedule */}
         <Card className='col-span-2 lg:col-span-1'>
           <div className='flex items-center gap-3'>
             {todaySchedule ? (
-              <>
-                {(() => {
-                  const style = getScheduleStyle(todaySchedule.keterangan);
-                  const IconComponent = style.icon;
-                  return (
-                    <>
-                      <div
-                        className={`w-12 h-12 rounded-xl ${style.bg} flex items-center justify-center`}
-                      >
-                        <IconComponent className={`w-6 h-6 ${style.text}`} />
-                      </div>
-                      <div>
-                        <p className='text-xs text-gray-500'>Jadwal Hari Ini</p>
-                        <p className='font-bold text-gray-800'>
-                          {todaySchedule.keterangan}
-                        </p>
-                      </div>
-                    </>
-                  );
-                })()}
-              </>
+              (() => {
+                const style = getScheduleStyle(todaySchedule.keterangan);
+                const IconComponent = style.icon;
+                return (
+                  <>
+                    <div
+                      className={`w-12 h-12 rounded-xl ${style.bg} flex items-center justify-center`}
+                    >
+                      <IconComponent className={`w-6 h-6 ${style.text}`} />
+                    </div>
+                    <div>
+                      <p className='text-xs text-gray-500'>Jadwal Hari Ini</p>
+                      <p className='font-bold text-gray-800'>
+                        {getKeteranganLabel(todaySchedule.keterangan)}
+                      </p>
+                    </div>
+                  </>
+                );
+              })()
             ) : (
               <>
                 <div className='w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center'>
@@ -372,8 +472,6 @@ export default function Dashboard() {
             )}
           </div>
         </Card>
-
-        {/* Ontime Rate */}
         <Card>
           <div className='flex items-center gap-3'>
             <div className='w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center'>
@@ -387,8 +485,6 @@ export default function Dashboard() {
             </div>
           </div>
         </Card>
-
-        {/* My Attendance */}
         <Card>
           <div className='flex items-center gap-3'>
             <div className='w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center'>
@@ -397,41 +493,27 @@ export default function Dashboard() {
             <div>
               <p className='text-xs text-gray-500'>Total Absen</p>
               <p className='text-xl font-bold text-blue-600'>
-                {userTotalAttendance}
+                {userAttendance.length}
               </p>
             </div>
           </div>
         </Card>
-
-        {/* Kas Payment Status */}
         <Card>
           <div className='flex items-center gap-3'>
-            <div
-              className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                userKasPaid ? 'bg-emerald-100' : 'bg-amber-100'
-              }`}
-            >
-              {userKasPaid ? (
-                <CheckCircle className='w-6 h-6 text-emerald-600' />
-              ) : (
-                <AlertCircle className='w-6 h-6 text-amber-600' />
-              )}
+            <div className='w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center'>
+              <Wallet className='w-6 h-6 text-blue-600' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Kas Bulan Ini</p>
-              <p
-                className={`font-bold ${
-                  userKasPaid ? 'text-emerald-600' : 'text-amber-600'
-                }`}
-              >
-                {userKasPaid ? 'Lunas' : 'Belum Bayar'}
+              <p className='text-xs text-gray-500'>Saldo Kas</p>
+              <p className='text-lg font-bold text-blue-600'>
+                {formatCurrency(totalCash)}
               </p>
             </div>
           </div>
         </Card>
       </div>
 
-      {/* Team Stats Summary */}
+      {/* Team Stats */}
       <div className='grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4'>
         <Card>
           <div className='flex items-center gap-3'>
@@ -441,12 +523,11 @@ export default function Dashboard() {
             <div>
               <p className='text-xs text-gray-500'>Total Anggota</p>
               <p className='text-xl font-bold text-gray-800'>
-                {stats.totalMembers}
+                {teamMembers.length}
               </p>
             </div>
           </div>
         </Card>
-
         <Card>
           <div className='flex items-center gap-3'>
             <div className='w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center'>
@@ -455,35 +536,33 @@ export default function Dashboard() {
             <div>
               <p className='text-xs text-gray-500'>Hadir Hari Ini</p>
               <p className='text-xl font-bold text-emerald-600'>
-                {stats.presentToday}
+                {todayAttendance.length}
               </p>
             </div>
           </div>
         </Card>
-
         <Card>
           <div className='flex items-center gap-3'>
-            <div className='w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center'>
-              <Wallet className='w-6 h-6 text-amber-600' />
+            <div className='w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center'>
+              <ArrowDownCircle className='w-6 h-6 text-emerald-600' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Saldo Kas</p>
-              <p className='text-lg font-bold text-amber-600'>
-                {formatCurrency(totalCash)}
+              <p className='text-xs text-gray-500'>Total Pemasukan</p>
+              <p className='text-lg font-bold text-emerald-600'>
+                {formatCurrency(totalCashIn)}
               </p>
             </div>
           </div>
         </Card>
-
         <Card>
           <div className='flex items-center gap-3'>
-            <div className='w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center'>
-              <TrendingUp className='w-6 h-6 text-purple-600' />
+            <div className='w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center'>
+              <ArrowUpCircle className='w-6 h-6 text-red-600' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Progress Kas</p>
-              <p className='text-xl font-bold text-purple-600'>
-                {kasProgressPercent}%
+              <p className='text-xs text-gray-500'>Total Pengeluaran</p>
+              <p className='text-lg font-bold text-red-600'>
+                {formatCurrency(totalCashOut)}
               </p>
             </div>
           </div>
@@ -492,7 +571,6 @@ export default function Dashboard() {
 
       {/* Charts Row */}
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6'>
-        {/* Attendance Chart */}
         <Card>
           <div className='flex items-center justify-between mb-4'>
             <div>
@@ -506,10 +584,8 @@ export default function Dashboard() {
               Lihat Semua <ArrowRight className='w-3 h-3' />
             </Link>
           </div>
-          <AttendanceChart />
+          <AttendanceChart data={scheduleChartData} />
         </Card>
-
-        {/* Cash Chart */}
         <Card>
           <div className='flex items-center justify-between mb-4'>
             <div>
@@ -523,7 +599,7 @@ export default function Dashboard() {
               Lihat Semua <ArrowRight className='w-3 h-3' />
             </Link>
           </div>
-          <CashBookChart />
+          <CashBookChart data={cashChartData} />
         </Card>
       </div>
 
@@ -535,10 +611,8 @@ export default function Dashboard() {
               <Calendar className='w-5 h-5 text-blue-600' />
             </div>
             <div>
-              <h3 className='font-semibold text-gray-800 dark:text-white'>
-                Jadwal Hari Ini
-              </h3>
-              <p className='text-sm text-gray-500 dark:text-gray-400'>
+              <h3 className='font-semibold text-gray-800'>Jadwal Hari Ini</h3>
+              <p className='text-sm text-gray-500'>
                 {today.toLocaleDateString('id-ID', {
                   weekday: 'long',
                   day: 'numeric',
@@ -554,264 +628,43 @@ export default function Dashboard() {
             Lihat Semua <ArrowRight className='w-3 h-3' />
           </Link>
         </div>
-
-        {/* Schedule by Shift */}
         <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3'>
-          {/* Pagi */}
-          <div className='p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20'>
-            <div className='flex items-center gap-2 mb-2'>
-              <Sun className='w-4 h-4 text-blue-600' />
-              <span className='text-sm font-medium text-blue-700 dark:text-blue-300'>
-                Pagi
-              </span>
-            </div>
-            {(() => {
-              const members = scheduleEntries
-                .filter(
-                  (s) => s.tanggal === todayStr && s.keterangan === 'Pagi'
-                )
-                .map((s) => teamMembers.find((m) => m.id === s.memberId))
-                .filter(Boolean);
-
-              if (members.length === 0) {
-                return <p className='text-xs text-gray-400'>Tidak ada</p>;
-              }
-
-              const leftCol = members.slice(0, 3);
-              const rightCol = members.slice(3);
-
-              return (
-                <div className='flex gap-4'>
-                  <div className='space-y-1.5'>
-                    {leftCol.map((member) => (
-                      <div
-                        key={member!.id}
-                        className='flex items-center gap-2 text-sm'
-                      >
-                        <Avatar
-                          src={member!.image}
-                          name={member!.name}
-                          size='xs'
-                        />
-                        <span className='text-gray-700 dark:text-gray-300 truncate'>
-                          {member!.nickname}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  {rightCol.length > 0 && (
-                    <div className='space-y-1.5'>
-                      {rightCol.map((member) => (
-                        <div
-                          key={member!.id}
-                          className='flex items-center gap-2 text-sm'
-                        >
-                          <Avatar
-                            src={member!.image}
-                            name={member!.name}
-                            size='xs'
-                          />
-                          <span className='text-gray-700 dark:text-gray-300 truncate'>
-                            {member!.nickname}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-          </div>
-
-          {/* Malam */}
-          <div className='p-3 rounded-xl bg-gray-100 dark:bg-gray-700'>
-            <div className='flex items-center gap-2 mb-2'>
-              <Moon className='w-4 h-4 text-gray-600 dark:text-gray-300' />
-              <span className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-                Malam
-              </span>
-            </div>
-            {(() => {
-              const members = scheduleEntries
-                .filter(
-                  (s) => s.tanggal === todayStr && s.keterangan === 'Malam'
-                )
-                .map((s) => teamMembers.find((m) => m.id === s.memberId))
-                .filter(Boolean);
-
-              if (members.length === 0) {
-                return <p className='text-xs text-gray-400'>Tidak ada</p>;
-              }
-
-              const leftCol = members.slice(0, 3);
-              const rightCol = members.slice(3);
-
-              return (
-                <div className='flex gap-4'>
-                  <div className='space-y-1.5'>
-                    {leftCol.map((member) => (
-                      <div
-                        key={member!.id}
-                        className='flex items-center gap-2 text-sm'
-                      >
-                        <Avatar
-                          src={member!.image}
-                          name={member!.name}
-                          size='xs'
-                        />
-                        <span className='text-gray-700 dark:text-gray-300 truncate'>
-                          {member!.nickname}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  {rightCol.length > 0 && (
-                    <div className='space-y-1.5'>
-                      {rightCol.map((member) => (
-                        <div
-                          key={member!.id}
-                          className='flex items-center gap-2 text-sm'
-                        >
-                          <Avatar
-                            src={member!.image}
-                            name={member!.name}
-                            size='xs'
-                          />
-                          <span className='text-gray-700 dark:text-gray-300 truncate'>
-                            {member!.nickname}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-          </div>
-
-          {/* Piket Pagi */}
-          <div className='p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20'>
-            <div className='flex items-center gap-2 mb-2'>
-              <Sun className='w-4 h-4 text-emerald-600' />
-              <span className='text-sm font-medium text-emerald-700 dark:text-emerald-300'>
-                Piket Pagi
-              </span>
-            </div>
-            {(() => {
-              const members = scheduleEntries
-                .filter(
-                  (s) => s.tanggal === todayStr && s.keterangan === 'Piket Pagi'
-                )
-                .map((s) => teamMembers.find((m) => m.id === s.memberId))
-                .filter(Boolean);
-
-              if (members.length === 0) {
-                return <p className='text-xs text-gray-400'>Tidak ada</p>;
-              }
-
-              const leftCol = members.slice(0, 3);
-              const rightCol = members.slice(3);
-
-              return (
-                <div className='flex gap-4'>
-                  <div className='space-y-1.5'>
-                    {leftCol.map((member) => (
-                      <div
-                        key={member!.id}
-                        className='flex items-center gap-2 text-sm'
-                      >
-                        <Avatar
-                          src={member!.image}
-                          name={member!.name}
-                          size='xs'
-                        />
-                        <span className='text-gray-700 dark:text-gray-300 truncate'>
-                          {member!.nickname}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  {rightCol.length > 0 && (
-                    <div className='space-y-1.5'>
-                      {rightCol.map((member) => (
-                        <div
-                          key={member!.id}
-                          className='flex items-center gap-2 text-sm'
-                        >
-                          <Avatar
-                            src={member!.image}
-                            name={member!.name}
-                            size='xs'
-                          />
-                          <span className='text-gray-700 dark:text-gray-300 truncate'>
-                            {member!.nickname}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-          </div>
-
-          {/* Piket Malam */}
-          <div className='p-3 rounded-xl bg-purple-50 dark:bg-purple-900/20'>
-            <div className='flex items-center gap-2 mb-2'>
-              <Moon className='w-4 h-4 text-purple-600' />
-              <span className='text-sm font-medium text-purple-700 dark:text-purple-300'>
-                Piket Malam
-              </span>
-            </div>
-            {(() => {
+          {['PAGI', 'MALAM', 'PIKET_PAGI', 'PIKET_MALAM', 'LIBUR'].map(
+            (keterangan) => {
+              const style = getScheduleStyle(keterangan);
+              const IconComponent = style.icon;
               const members = scheduleEntries
                 .filter(
                   (s) =>
-                    s.tanggal === todayStr && s.keterangan === 'Piket Malam'
+                    s.tanggal.split('T')[0] === todayStr &&
+                    s.keterangan === keterangan
                 )
                 .map((s) => teamMembers.find((m) => m.id === s.memberId))
                 .filter(Boolean);
-
-              if (members.length === 0) {
-                return <p className='text-xs text-gray-400'>Tidak ada</p>;
-              }
-
-              const leftCol = members.slice(0, 3);
-              const rightCol = members.slice(3);
-
               return (
-                <div className='flex gap-4'>
-                  <div className='space-y-1.5'>
-                    {leftCol.map((member) => (
-                      <div
-                        key={member!.id}
-                        className='flex items-center gap-2 text-sm'
-                      >
-                        <Avatar
-                          src={member!.image}
-                          name={member!.name}
-                          size='xs'
-                        />
-                        <span className='text-gray-700 dark:text-gray-300 truncate'>
-                          {member!.nickname}
-                        </span>
-                      </div>
-                    ))}
+                <div key={keterangan} className={`p-3 rounded-xl ${style.bg}`}>
+                  <div className='flex items-center gap-2 mb-2'>
+                    <IconComponent className={`w-4 h-4 ${style.text}`} />
+                    <span className={`text-sm font-medium ${style.text}`}>
+                      {getKeteranganLabel(keterangan)}
+                    </span>
                   </div>
-                  {rightCol.length > 0 && (
+                  {members.length === 0 ? (
+                    <p className='text-xs text-gray-400'>Tidak ada</p>
+                  ) : (
                     <div className='space-y-1.5'>
-                      {rightCol.map((member) => (
+                      {members.slice(0, 6).map((member) => (
                         <div
                           key={member!.id}
                           className='flex items-center gap-2 text-sm'
                         >
                           <Avatar
-                            src={member!.image}
+                            src={member!.image ?? undefined}
                             name={member!.name}
                             size='xs'
                           />
-                          <span className='text-gray-700 dark:text-gray-300 truncate'>
-                            {member!.nickname}
+                          <span className='text-gray-700 truncate'>
+                            {member!.nickname || member!.name}
                           </span>
                         </div>
                       ))}
@@ -819,148 +672,10 @@ export default function Dashboard() {
                   )}
                 </div>
               );
-            })()}
-          </div>
-
-          {/* Libur */}
-          <div className='p-3 rounded-xl bg-red-50 dark:bg-red-900/20'>
-            <div className='flex items-center gap-2 mb-2'>
-              <Calendar className='w-4 h-4 text-red-600' />
-              <span className='text-sm font-medium text-red-700 dark:text-red-300'>
-                Libur
-              </span>
-            </div>
-            {(() => {
-              const members = scheduleEntries
-                .filter(
-                  (s) => s.tanggal === todayStr && s.keterangan === 'Libur'
-                )
-                .map((s) => teamMembers.find((m) => m.id === s.memberId))
-                .filter(Boolean);
-
-              if (members.length === 0) {
-                return <p className='text-xs text-gray-400'>Tidak ada</p>;
-              }
-
-              const leftCol = members.slice(0, 3);
-              const rightCol = members.slice(3);
-
-              return (
-                <div className='flex gap-4'>
-                  <div className='space-y-1.5'>
-                    {leftCol.map((member) => (
-                      <div
-                        key={member!.id}
-                        className='flex items-center gap-2 text-sm'
-                      >
-                        <Avatar
-                          src={member!.image}
-                          name={member!.name}
-                          size='xs'
-                        />
-                        <span className='text-gray-700 dark:text-gray-300 truncate'>
-                          {member!.nickname}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  {rightCol.length > 0 && (
-                    <div className='space-y-1.5'>
-                      {rightCol.map((member) => (
-                        <div
-                          key={member!.id}
-                          className='flex items-center gap-2 text-sm'
-                        >
-                          <Avatar
-                            src={member!.image}
-                            name={member!.name}
-                            size='xs'
-                          />
-                          <span className='text-gray-700 dark:text-gray-300 truncate'>
-                            {member!.nickname}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-          </div>
+            }
+          )}
         </div>
       </Card>
-
-      {/* Bottom Row: Kas Progress & Recent Activities */}
-      <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6'>
-        {/* Kas Payment Progress */}
-        <Card>
-          <div className='flex items-center justify-between mb-4'>
-            <div className='flex items-center gap-3'>
-              <div className='w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center'>
-                <Wallet className='w-5 h-5 text-amber-600' />
-              </div>
-              <div>
-                <h3 className='font-semibold text-gray-800 dark:text-white'>
-                  Kas Bulan Ini
-                </h3>
-                <p className='text-sm text-gray-500 dark:text-gray-400'>
-                  {paidCount}/{teamMembers.length} lunas
-                </p>
-              </div>
-            </div>
-            <span className='text-2xl font-bold text-gray-800 dark:text-white'>
-              {kasProgressPercent}%
-            </span>
-          </div>
-
-          {/* Progress Bar */}
-          <div className='h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mb-4'>
-            <div
-              className={`h-full rounded-full transition-all ${
-                kasProgressPercent >= 100 ? 'bg-emerald-500' : 'bg-[#E57373]'
-              }`}
-              style={{ width: `${kasProgressPercent}%` }}
-            />
-          </div>
-
-          {/* Members Status Grid */}
-          <div className='grid grid-cols-3 sm:grid-cols-4 gap-3'>
-            {teamMembers.map((member) => {
-              const paid = kasPaymentStatus[member.id] || false;
-              return (
-                <div
-                  key={member.id}
-                  className={`flex flex-col items-center p-2 rounded-xl transition-all ${
-                    paid
-                      ? 'bg-emerald-50 dark:bg-emerald-900/20'
-                      : 'bg-gray-50 dark:bg-gray-700'
-                  }`}
-                >
-                  <Avatar src={member.image} name={member.name} size='sm' />
-                  <p className='text-[10px] font-medium text-gray-800 dark:text-gray-200 mt-1 text-center truncate w-full'>
-                    {member.nickname}
-                  </p>
-                  {paid ? (
-                    <CheckCircle className='w-3 h-3 text-emerald-600 mt-0.5' />
-                  ) : (
-                    <AlertCircle className='w-3 h-3 text-amber-600 mt-0.5' />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          <Link
-            href='/dashboard/cashbook'
-            className='block w-full mt-4 py-2 text-sm font-medium text-[#E57373] hover:bg-[#FFF0F0] dark:hover:bg-red-900/30 rounded-lg transition-all text-center'
-          >
-            Lihat Detail Kas →
-          </Link>
-        </Card>
-
-        {/* Recent Activities */}
-        <RecentActivities />
-      </div>
     </div>
   );
 }
