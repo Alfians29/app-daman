@@ -8,6 +8,7 @@ import { CashBookChart } from '@/components/charts/CashBookChart';
 import { RecentActivities } from '@/components/RecentActivities';
 import { usersAPI, attendanceAPI, scheduleAPI, cashAPI } from '@/lib/api';
 import Link from 'next/link';
+import { useCurrentUser, User } from '@/components/AuthGuard';
 import {
   Users,
   UserCheck,
@@ -50,8 +51,6 @@ type Schedule = {
 };
 type CashEntry = { id: string; amount: number; category: string; date: string };
 
-const CURRENT_USER_ID = 'user-2';
-
 export default function Dashboard() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<
@@ -60,11 +59,14 @@ export default function Dashboard() {
   const [scheduleEntries, setScheduleEntries] = useState<Schedule[]>([]);
   const [cashEntries, setCashEntries] = useState<CashEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user: authUser, isLoading: authLoading } = useCurrentUser();
   const [currentUser, setCurrentUser] = useState<TeamMember | null>(null);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!authLoading && authUser) {
+      loadData();
+    }
+  }, [authLoading, authUser]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -79,9 +81,12 @@ export default function Dashboard() {
         (u) => u.isActive
       );
       setTeamMembers(activeUsers);
-      setCurrentUser(
-        activeUsers.find((u) => u.id === CURRENT_USER_ID) || activeUsers[0]
-      );
+      // Find user matching authenticated session
+      if (authUser?.id) {
+        setCurrentUser(
+          activeUsers.find((u) => u.id === authUser.id) || activeUsers[0]
+        );
+      }
     }
     if (attRes.success && attRes.data)
       setAttendanceRecords(attRes.data as AttendanceRecord[]);

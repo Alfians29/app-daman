@@ -187,27 +187,6 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Remember Me & Forgot Password */}
-              <div className='flex items-center justify-between'>
-                <label className='flex items-center gap-2 cursor-pointer group'>
-                  <input
-                    type='checkbox'
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className='w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-[#E57373] focus:ring-[#E57373] bg-white dark:bg-gray-700'
-                  />
-                  <span className='text-sm text-gray-600 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200 transition-colors'>
-                    Ingat saya
-                  </span>
-                </label>
-                <a
-                  href='#'
-                  className='text-sm text-[#E57373] hover:text-[#C62828] font-medium transition-colors'
-                >
-                  Lupa password?
-                </a>
-              </div>
-
               {/* Submit Button */}
               <button
                 type='submit'
@@ -224,33 +203,12 @@ export default function LoginPage() {
                 )}
               </button>
             </form>
-
-            {/* Divider */}
-            <div className='relative my-8'>
-              <div className='absolute inset-0 flex items-center'>
-                <div className='w-full border-t border-gray-200 dark:border-gray-600'></div>
-              </div>
-              <div className='relative flex justify-center text-sm'>
-                <span className='px-4 bg-white dark:bg-gray-800 text-gray-400'>
-                  atau
-                </span>
-              </div>
-            </div>
-
-            {/* Demo Login */}
-            <Link
-              href='/'
-              className='w-full py-3.5 px-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md'
-            >
-              <Sparkles className='w-5 h-5 text-gray-500 dark:text-gray-400' />
-              Masuk sebagai Demo
-            </Link>
           </div>
 
           {/* Footer */}
           <p className='text-center text-sm text-gray-400 dark:text-gray-500 mt-8'>
-            © 2024 Daman Management System. <br className='sm:hidden' />
-            Semua hak dilindungi.
+            © 2025 Daman Management System. <br className='sm:hidden' />
+            Semua hak dilindungi Bahlil.
           </p>
         </div>
       </div>

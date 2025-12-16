@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/Form';
 import { reportsAPI, jobTypesAPI, usersAPI, scheduleAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { useCurrentUser } from '@/components/AuthGuard';
 
 type ReportTask = {
   id: string;
@@ -66,8 +67,6 @@ type Schedule = {
   keterangan: string;
 };
 
-const CURRENT_USER_ID = 'user-2';
-
 export default function ReportPage() {
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split('T')[0]
@@ -81,11 +80,14 @@ export default function ReportPage() {
   const [tasks, setTasks] = useState<ReportTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const { user: authUser, isLoading: authLoading } = useCurrentUser();
   const [currentUser, setCurrentUser] = useState<TeamMember | null>(null);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!authLoading && authUser) {
+      loadData();
+    }
+  }, [authLoading, authUser]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -95,18 +97,27 @@ export default function ReportPage() {
       scheduleAPI.getAll(),
       jobTypesAPI.getAll(),
     ]);
-    if (reportsRes.success && reportsRes.data) setReports(reportsRes.data);
+    if (reportsRes.success && reportsRes.data)
+      setReports(reportsRes.data as DailyReport[]);
     if (usersRes.success && usersRes.data) {
-      const activeUsers = usersRes.data.filter((u: TeamMember) => u.isActive);
-      setTeamMembers(activeUsers);
-      setCurrentUser(
-        activeUsers.find((u: TeamMember) => u.id === CURRENT_USER_ID) ||
-          activeUsers[0]
+      const activeUsers = (usersRes.data as TeamMember[]).filter(
+        (u: TeamMember) => u.isActive
       );
+      setTeamMembers(activeUsers);
+      // Find user matching authenticated session
+      if (authUser?.id) {
+        setCurrentUser(
+          activeUsers.find((u: TeamMember) => u.id === authUser.id) ||
+            activeUsers[0]
+        );
+      }
     }
-    if (schedRes.success && schedRes.data) setScheduleEntries(schedRes.data);
+    if (schedRes.success && schedRes.data)
+      setScheduleEntries(schedRes.data as Schedule[]);
     if (jobsRes.success && jobsRes.data)
-      setJobTypes(jobsRes.data.filter((j: JobType) => j.isActive));
+      setJobTypes(
+        (jobsRes.data as JobType[]).filter((j: JobType) => j.isActive)
+      );
     setIsLoading(false);
   };
 
@@ -399,7 +410,11 @@ export default function ReportPage() {
               }`}
             >
               <div className='flex items-start gap-3'>
-                <Avatar src={member.image} name={member.name} size='md' />
+                <Avatar
+                  src={member.image || undefined}
+                  name={member.name}
+                  size='md'
+                />
                 <div className='flex-1 min-w-0'>
                   <div className='flex items-center gap-2 mb-1'>
                     <p className='font-medium text-gray-800'>{member.name}</p>
@@ -479,7 +494,7 @@ export default function ReportPage() {
           {currentUser && (
             <div className='flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-xl'>
               <Avatar
-                src={currentUser.image}
+                src={currentUser.image || undefined}
                 name={currentUser.name}
                 size='sm'
               />

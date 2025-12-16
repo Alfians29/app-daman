@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -11,12 +11,8 @@ import {
   ModalFooter,
 } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Form';
-import {
-  teamMembers,
-  attendanceRecords,
-  scheduleEntries,
-  recentActivities,
-} from '@/data/dummy';
+import { usersAPI, attendanceAPI, scheduleAPI, activitiesAPI } from '@/lib/api';
+import { useCurrentUser } from '@/components/AuthGuard';
 import {
   Mail,
   Phone,
@@ -39,24 +35,67 @@ import {
   Award,
   TrendingUp,
   Upload,
+  Loader2,
 } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 
-// Simulated current user (logged in user)
-const currentUser = teamMembers[1]; // Muhammad Alfian
+type UserData = {
+  id: string;
+  name: string;
+  nickname: string;
+  username: string;
+  email: string;
+  phone: string;
+  nik: string;
+  position: string;
+  department: string;
+  image: string | null;
+  usernameTelegram: string;
+};
+
+type AttendanceRecord = {
+  id: string;
+  memberId: string;
+  status: string;
+};
+
+type ScheduleEntry = {
+  id: string;
+  memberId: string;
+  tanggal: string;
+  keterangan: string;
+};
+
+type ActivityLog = {
+  id: string;
+  action: string;
+  target: string;
+  type: string;
+  timestamp: string;
+  userId: string;
+};
 
 export default function ProfilePage() {
+  const { user: authUser, isLoading: authLoading } = useCurrentUser();
+  const [currentUser, setCurrentUser] = useState<UserData | null>(null);
+  const [attendanceRecords, setAttendanceRecords] = useState<
+    AttendanceRecord[]
+  >([]);
+  const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([]);
+  const [recentActivities, setRecentActivities] = useState<ActivityLog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
 
   // Form states
   const [editForm, setEditForm] = useState({
-    name: currentUser.name,
-    nickname: currentUser.nickname,
-    email: currentUser.email,
-    phone: currentUser.phone,
-    usernameTelegram: currentUser.usernameTelegram,
+    name: '',
+    nickname: '',
+    email: '',
+    phone: '',
+    usernameTelegram: '',
   });
 
   const [passwordForm, setPasswordForm] = useState({
@@ -70,31 +109,87 @@ export default function ProfilePage() {
     confirm: false,
   });
 
+  useEffect(() => {
+    if (!authLoading && authUser?.id) {
+      loadData();
+    }
+  }, [authLoading, authUser]);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    const [usersRes, attRes, schedRes, activitiesRes] = await Promise.all([
+      usersAPI.getAll(),
+      attendanceAPI.getAll(),
+      scheduleAPI.getAll(),
+      activitiesAPI.getAll(),
+    ]);
+
+    if (usersRes.success && usersRes.data && authUser?.id) {
+      const userData = (usersRes.data as UserData[]).find(
+        (u: UserData) => u.id === authUser.id
+      );
+      if (userData) {
+        setCurrentUser(userData);
+        setEditForm({
+          name: userData.name || '',
+          nickname: userData.nickname || '',
+          email: userData.email || '',
+          phone: userData.phone || '',
+          usernameTelegram: userData.usernameTelegram || '',
+        });
+      }
+    }
+    if (attRes.success && attRes.data) {
+      setAttendanceRecords(attRes.data as AttendanceRecord[]);
+    }
+    if (schedRes.success && schedRes.data) {
+      setScheduleEntries(schedRes.data as ScheduleEntry[]);
+    }
+    if (activitiesRes.success && activitiesRes.data) {
+      setRecentActivities(activitiesRes.data as ActivityLog[]);
+    }
+    setIsLoading(false);
+  };
+
   // Calculate user stats
-  const userAttendance = attendanceRecords.filter(
-    (r) => r.memberId === currentUser.id
+  const userAttendance = useMemo(
+    () =>
+      currentUser
+        ? attendanceRecords.filter((r) => r.memberId === currentUser.id)
+        : [],
+    [attendanceRecords, currentUser]
   );
   const ontimeCount = userAttendance.filter(
-    (r) => r.status === 'Ontime'
+    (r) => r.status === 'ONTIME'
   ).length;
-  const lateCount = userAttendance.filter((r) => r.status === 'Telat').length;
+  const lateCount = userAttendance.filter((r) => r.status === 'TELAT').length;
   const totalAttendance = userAttendance.length;
   const ontimeRate =
     totalAttendance > 0 ? Math.round((ontimeCount / totalAttendance) * 100) : 0;
 
   // Today's schedule
   const today = new Date().toISOString().split('T')[0];
-  const todaySchedule = scheduleEntries.find(
-    (s) => s.memberId === currentUser.id && s.tanggal === today
+  const todaySchedule = useMemo(
+    () =>
+      currentUser
+        ? scheduleEntries.find(
+            (s) =>
+              s.memberId === currentUser.id && s.tanggal.split('T')[0] === today
+          )
+        : null,
+    [scheduleEntries, currentUser, today]
   );
 
-  // User activities (simulated)
-  const userActivities = recentActivities
-    .filter(
-      (a) =>
-        a.user.includes(currentUser.nickname) || a.user === currentUser.name
-    )
-    .slice(0, 5);
+  // User activities
+  const userActivities = useMemo(
+    () =>
+      currentUser
+        ? recentActivities
+            .filter((a) => a.userId === currentUser.id)
+            .slice(0, 5)
+        : [],
+    [recentActivities, currentUser]
+  );
 
   const handleEditProfile = () => {
     toast.success('Profil berhasil diperbarui!');
@@ -141,6 +236,14 @@ export default function ProfilePage() {
     }
   };
 
+  if (isLoading || !currentUser) {
+    return (
+      <div className='flex items-center justify-center min-h-[400px]'>
+        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
+      </div>
+    );
+  }
+
   return (
     <div className='space-y-6'>
       {/* Page Header with Gradient */}
@@ -171,7 +274,7 @@ export default function ProfilePage() {
                 <div className='relative inline-block mb-4'>
                   <div className='relative'>
                     <Avatar
-                      src={currentUser.image}
+                      src={currentUser.image || undefined}
                       name={currentUser.name}
                       size='xl'
                       className='w-28 h-28 ring-4 ring-white shadow-xl'
@@ -430,7 +533,7 @@ export default function ProfilePage() {
                     className='flex items-start gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors'
                   >
                     <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
                         activity.type === 'create'
                           ? 'bg-emerald-100 dark:bg-emerald-900/30'
                           : activity.type === 'update'
