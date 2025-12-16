@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useTransition } from 'react';
 import {
   FileText,
   Calendar,
@@ -14,6 +14,7 @@ import {
   Trash2,
   Settings,
   Check,
+  Loader2,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
@@ -27,97 +28,139 @@ import {
 } from '@/components/ui/Modal';
 import { Input, Select, Textarea } from '@/components/ui/Form';
 import { FileCog } from 'lucide-react';
-import {
-  teamMembers,
-  dailyReports,
-  scheduleEntries,
-  DailyReport,
-  ReportTask,
-  jobTypes as initialJobTypes,
-  JobType,
-} from '@/data/dummy';
 import toast from 'react-hot-toast';
+import { reportsAPI, jobTypesAPI, usersAPI } from '@/lib/api';
+
+type JobType = {
+  id: string;
+  name: string;
+  isActive: boolean;
+};
+
+type ReportTask = {
+  id: string;
+  jobTypeId: string;
+  jobType?: { id: string; name: string };
+  keterangan: string;
+  value: number;
+};
+
+type DailyReport = {
+  id: string;
+  memberId: string;
+  tanggal: string;
+  tasks: ReportTask[];
+  member: { id: string; name: string; nickname: string | null };
+  createdAt: string;
+  updatedAt: string;
+};
+
+type Member = {
+  id: string;
+  name: string;
+  nickname: string | null;
+  image: string | null;
+  position: string;
+};
 
 export default function AdminReportPage() {
-  const [reports, setReports] = useState<DailyReport[]>(dailyReports);
-  const [jobTypes, setJobTypes] = useState<JobType[]>(initialJobTypes);
+  const [reports, setReports] = useState<DailyReport[]>([]);
+  const [jobTypes, setJobTypes] = useState<JobType[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPending, startTransition] = useTransition();
+
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingReport, setEditingReport] = useState<DailyReport | null>(null);
-  const [editingTasks, setEditingTasks] = useState<ReportTask[]>([]);
+  const [editingTasks, setEditingTasks] = useState<
+    Array<{ id: string; jobTypeId: string; keterangan: string; value: number }>
+  >([]);
 
-  // Tab state
   const [activeTab, setActiveTab] = useState<'reports' | 'jobTypes'>('reports');
 
-  // Job Type Management
   const [showJobTypeModal, setShowJobTypeModal] = useState(false);
   const [editingJobType, setEditingJobType] = useState<JobType | null>(null);
   const [jobTypeName, setJobTypeName] = useState('');
 
-  // Filters
   const [filterDate, setFilterDate] = useState('');
   const [filterMember, setFilterMember] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Get active job types for dropdown
-  const activeJobTypes = jobTypes.filter((jt) => jt.isActive);
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  // Get schedule for a member on a date
-  const getMemberSchedule = (memberId: string, date: string) => {
-    return scheduleEntries.find(
-      (s) => s.memberId === memberId && s.tanggal === date
-    );
+  const loadData = async () => {
+    setIsLoading(true);
+    const [reportsResult, jobTypesResult, usersResult] = await Promise.all([
+      reportsAPI.getAll(),
+      jobTypesAPI.getAll(),
+      usersAPI.getAll(),
+    ]);
+
+    if (reportsResult.success) setReports(reportsResult.data as DailyReport[]);
+    if (jobTypesResult.success) setJobTypes(jobTypesResult.data as JobType[]);
+    if (usersResult.success) setMembers(usersResult.data as Member[]);
+    setIsLoading(false);
   };
 
-  // Filter reports
+  const activeJobTypes = jobTypes.filter((jt) => jt.isActive);
+
   const filteredReports = useMemo(() => {
     let result = [...reports];
 
-    // Filter by date
     if (filterDate) {
-      result = result.filter((r) => r.tanggal === filterDate);
+      result = result.filter(
+        (r) => new Date(r.tanggal).toISOString().split('T')[0] === filterDate
+      );
     }
 
-    // Filter by member
     if (filterMember !== 'all') {
       result = result.filter((r) => r.memberId === filterMember);
     }
 
-    // Search
     if (searchQuery) {
       result = result.filter(
         (r) =>
           r.tasks.some(
             (t) =>
               t.keterangan.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              t.jobType.toLowerCase().includes(searchQuery.toLowerCase())
-          ) || r.memberName.toLowerCase().includes(searchQuery.toLowerCase())
+              (t.jobType?.name || '')
+                .toLowerCase()
+                .includes(searchQuery.toLowerCase())
+          ) ||
+          (r.member?.name || '')
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase())
       );
     }
 
-    // Sort by date descending
     result.sort(
       (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
     );
-
     return result;
   }, [reports, filterDate, filterMember, searchQuery]);
 
-  // Open edit modal
   const openEditModal = (report: DailyReport) => {
     setEditingReport(report);
-    setEditingTasks([...report.tasks]);
+    setEditingTasks(
+      report.tasks.map((t) => ({
+        id: t.id,
+        jobTypeId: t.jobTypeId || t.jobType?.id || '',
+        keterangan: t.keterangan,
+        value: t.value,
+      }))
+    );
     setShowEditModal(true);
   };
 
-  // Add new task
   const addTask = () => {
     setEditingTasks([
       ...editingTasks,
-      { id: `task-${Date.now()}`, jobType: '', keterangan: '', value: 0 },
+      { id: `task-${Date.now()}`, jobTypeId: '', keterangan: '', value: 0 },
     ]);
   };
 
-  // Remove task
   const removeTask = (taskId: string) => {
     if (editingTasks.length === 1) {
       toast.error('Minimal harus ada 1 pekerjaan!');
@@ -126,10 +169,9 @@ export default function AdminReportPage() {
     setEditingTasks(editingTasks.filter((t) => t.id !== taskId));
   };
 
-  // Update task
   const updateTask = (
     taskId: string,
-    field: 'jobType' | 'keterangan' | 'value',
+    field: 'jobTypeId' | 'keterangan' | 'value',
     value: string | number
   ) => {
     setEditingTasks(
@@ -137,50 +179,49 @@ export default function AdminReportPage() {
     );
   };
 
-  // Save report
-  const saveReport = () => {
+  const saveReport = async () => {
     const hasEmptyTask = editingTasks.some(
-      (t) => !t.jobType || !t.keterangan.trim()
+      (t) => !t.jobTypeId || !t.keterangan.trim()
     );
     if (hasEmptyTask) {
       toast.error('Lengkapi semua jenis pekerjaan dan keterangannya!');
       return;
     }
 
-    if (editingReport) {
-      setReports((prev) =>
-        prev.map((r) =>
-          r.id === editingReport.id
-            ? {
-                ...r,
-                tasks: editingTasks,
-                updatedAt: new Date().toISOString(),
-              }
-            : r
-        )
-      );
-      toast.success('Report berhasil diupdate!');
-    }
+    if (!editingReport) return;
 
-    setShowEditModal(false);
-    setEditingTasks([]);
-    setEditingReport(null);
+    startTransition(async () => {
+      const result = await reportsAPI.update(editingReport.id, {
+        tasks: editingTasks.map((t) => ({
+          jobTypeId: t.jobTypeId,
+          keterangan: t.keterangan,
+          value: t.value,
+        })),
+      });
+
+      if (result.success) {
+        toast.success('Report berhasil diupdate!');
+        loadData();
+        setShowEditModal(false);
+        setEditingTasks([]);
+        setEditingReport(null);
+      } else {
+        toast.error(result.error || 'Gagal mengupdate report');
+      }
+    });
   };
 
-  // Export to Excel
   const handleExport = async () => {
     const XLSX = await import('xlsx');
 
     const exportData: Array<Record<string, string>> = [];
     filteredReports.forEach((r) => {
-      const schedule = getMemberSchedule(r.memberId, r.tanggal);
       r.tasks.forEach((task, idx) => {
         exportData.push({
-          Tanggal: r.tanggal,
-          Nama: r.memberName,
-          Jadwal: schedule?.keterangan || '-',
+          Tanggal: new Date(r.tanggal).toLocaleDateString('id-ID'),
+          Nama: r.member?.name || '-',
           No: String(idx + 1),
-          'Jenis Pekerjaan': task.jobType,
+          'Jenis Pekerjaan': task.jobType?.name || '-',
           Value: String(task.value),
           Keterangan: task.keterangan,
           'Dibuat Pada': new Date(r.createdAt).toLocaleString('id-ID'),
@@ -191,26 +232,15 @@ export default function AdminReportPage() {
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Report Harian');
-
-    ws['!cols'] = [
-      { wch: 12 },
-      { wch: 25 },
-      { wch: 12 },
-      { wch: 5 },
-      { wch: 18 },
-      { wch: 50 },
-      { wch: 20 },
-    ];
-
-    const filename = filterDate
-      ? `report_harian_${filterDate}.xlsx`
-      : 'report_harian_semua.xlsx';
-
-    XLSX.writeFile(wb, filename);
+    XLSX.writeFile(
+      wb,
+      filterDate
+        ? `report_harian_${filterDate}.xlsx`
+        : 'report_harian_semua.xlsx'
+    );
     toast.success('File Excel berhasil didownload!');
   };
 
-  // Reset filters
   const resetFilters = () => {
     setFilterDate('');
     setFilterMember('all');
@@ -219,7 +249,6 @@ export default function AdminReportPage() {
 
   const hasActiveFilters = filterDate || filterMember !== 'all' || searchQuery;
 
-  // Format date for display
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('id-ID', {
@@ -230,25 +259,7 @@ export default function AdminReportPage() {
     });
   };
 
-  // Get schedule badge style
-  const getScheduleBadge = (keterangan: string | undefined) => {
-    switch (keterangan) {
-      case 'Pagi':
-        return { bg: 'bg-blue-100', text: 'text-blue-700' };
-      case 'Malam':
-        return { bg: 'bg-purple-100', text: 'text-purple-700' };
-      case 'Piket Pagi':
-        return { bg: 'bg-emerald-100', text: 'text-emerald-700' };
-      case 'Piket Malam':
-        return { bg: 'bg-indigo-100', text: 'text-indigo-700' };
-      case 'Libur':
-        return { bg: 'bg-red-100', text: 'text-red-700' };
-      default:
-        return { bg: 'bg-gray-100', text: 'text-gray-700' };
-    }
-  };
-
-  // Job Type Management Functions
+  // Job Type Management
   const openNewJobTypeModal = () => {
     setEditingJobType(null);
     setJobTypeName('');
@@ -261,54 +272,58 @@ export default function AdminReportPage() {
     setShowJobTypeModal(true);
   };
 
-  const saveJobType = () => {
+  const saveJobType = async () => {
     if (!jobTypeName.trim()) {
       toast.error('Nama jenis pekerjaan tidak boleh kosong!');
       return;
     }
 
-    if (editingJobType) {
-      // Update
-      setJobTypes((prev) =>
-        prev.map((jt) =>
-          jt.id === editingJobType.id ? { ...jt, name: jobTypeName } : jt
-        )
-      );
-      toast.success('Jenis pekerjaan berhasil diupdate!');
-    } else {
-      // Create new
-      const newJobType: JobType = {
-        id: `jt-${Date.now()}`,
-        name: jobTypeName,
-        isActive: true,
-      };
-      setJobTypes((prev) => [...prev, newJobType]);
-      toast.success('Jenis pekerjaan berhasil ditambahkan!');
-    }
+    startTransition(async () => {
+      if (editingJobType) {
+        const result = await jobTypesAPI.update(editingJobType.id, {
+          name: jobTypeName,
+        });
+        if (result.success) {
+          toast.success('Jenis pekerjaan berhasil diupdate!');
+          loadData();
+        } else {
+          toast.error(result.error || 'Gagal mengupdate');
+        }
+      } else {
+        const result = await jobTypesAPI.create({ name: jobTypeName });
+        if (result.success) {
+          toast.success('Jenis pekerjaan berhasil ditambahkan!');
+          loadData();
+        } else {
+          toast.error(result.error || 'Gagal menambahkan');
+        }
+      }
 
-    setShowJobTypeModal(false);
-    setJobTypeName('');
-    setEditingJobType(null);
+      setShowJobTypeModal(false);
+      setJobTypeName('');
+      setEditingJobType(null);
+    });
   };
 
-  const toggleJobTypeActive = (jtId: string) => {
-    setJobTypes((prev) =>
-      prev.map((jt) =>
-        jt.id === jtId ? { ...jt, isActive: !jt.isActive } : jt
-      )
+  const toggleJobTypeActive = async (jtId: string) => {
+    startTransition(async () => {
+      const result = await jobTypesAPI.toggle(jtId);
+      if (result.success) {
+        loadData();
+      }
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className='flex items-center justify-center min-h-[400px]'>
+        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
+      </div>
     );
-  };
-
-  const deleteJobType = (jtId: string) => {
-    setJobTypes((prev) =>
-      prev.map((jt) => (jt.id === jtId ? { ...jt, isActive: false } : jt))
-    );
-    toast.success('Jenis pekerjaan berhasil dinonaktifkan!');
-  };
+  }
 
   return (
     <div className='space-y-6'>
-      {/* Page Header */}
       <PageHeader
         title='Kelola Report'
         description='Kelola semua report harian tim dan jenis pekerjaan'
@@ -324,11 +339,11 @@ export default function AdminReportPage() {
                 Download
               </button>
             )}
-
             {activeTab === 'jobTypes' && (
               <button
                 onClick={openNewJobTypeModal}
-                className='flex items-center gap-2 px-4 py-2 bg-white text-[#E57373] rounded-xl font-medium hover:bg-white/90 transition-colors'
+                disabled={isPending}
+                className='flex items-center gap-2 px-4 py-2 bg-white text-[#E57373] rounded-xl font-medium hover:bg-white/90 transition-colors disabled:opacity-50'
               >
                 <Plus className='w-4 h-4' />
                 Tambah Jenis
@@ -367,7 +382,6 @@ export default function AdminReportPage() {
       {/* Reports Tab */}
       {activeTab === 'reports' && (
         <>
-          {/* Summary Stats */}
           <div className='grid grid-cols-2 sm:grid-cols-3 gap-4'>
             <Card>
               <div className='flex items-center gap-3'>
@@ -390,7 +404,7 @@ export default function AdminReportPage() {
                 <div>
                   <p className='text-xs text-gray-500'>Total Member</p>
                   <p className='text-xl font-bold text-purple-600'>
-                    {teamMembers.length}
+                    {members.length}
                   </p>
                 </div>
               </div>
@@ -410,7 +424,6 @@ export default function AdminReportPage() {
             </Card>
           </div>
 
-          {/* Filters */}
           <Card>
             <div className='flex items-center gap-2 mb-4'>
               <Filter className='w-5 h-5 text-gray-400' />
@@ -437,24 +450,22 @@ export default function AdminReportPage() {
                   className='w-full pl-10 pr-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
                 />
               </div>
-
               <div className='flex items-center gap-2'>
                 <Calendar className='w-4 h-4 text-gray-400' />
                 <input
                   type='date'
                   value={filterDate}
                   onChange={(e) => setFilterDate(e.target.value)}
-                  className='flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
+                  className='flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm'
                 />
               </div>
-
               <select
                 value={filterMember}
                 onChange={(e) => setFilterMember(e.target.value)}
-                className='px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
+                className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
               >
                 <option value='all'>Semua Member</option>
-                {teamMembers.map((m) => (
+                {members.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name}
                   </option>
@@ -463,12 +474,10 @@ export default function AdminReportPage() {
             </div>
           </Card>
 
-          {/* Reports Table */}
           <Card>
             <h3 className='font-semibold text-gray-800 mb-4'>
               Daftar Report ({filteredReports.length})
             </h3>
-
             <div className='overflow-x-auto'>
               <table className='w-full'>
                 <thead className='bg-gray-50'>
@@ -478,9 +487,6 @@ export default function AdminReportPage() {
                     </th>
                     <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
                       Member
-                    </th>
-                    <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
-                      Jadwal
                     </th>
                     <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
                       Pekerjaan
@@ -494,25 +500,18 @@ export default function AdminReportPage() {
                   {filteredReports.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={5}
+                        colSpan={4}
                         className='px-4 py-12 text-center text-gray-500'
                       >
-                        <div className='flex flex-col items-center'>
-                          <FileText className='w-12 h-12 text-gray-300 mb-2' />
-                          <p>Tidak ada report ditemukan</p>
-                        </div>
+                        <FileText className='w-12 h-12 text-gray-300 mx-auto mb-2' />
+                        <p>Tidak ada report ditemukan</p>
                       </td>
                     </tr>
                   ) : (
                     filteredReports.map((report) => {
-                      const schedule = getMemberSchedule(
-                        report.memberId,
-                        report.tanggal
-                      );
-                      const member = teamMembers.find(
+                      const member = members.find(
                         (m) => m.id === report.memberId
                       );
-
                       return (
                         <tr key={report.id} className='hover:bg-gray-50'>
                           <td className='px-4 py-3 text-sm text-gray-600'>
@@ -521,32 +520,19 @@ export default function AdminReportPage() {
                           <td className='px-4 py-3'>
                             <div className='flex items-center gap-2'>
                               <Avatar
-                                src={member?.image || ''}
-                                name={report.memberName}
+                                src={member?.image || undefined}
+                                name={report.member?.name || '-'}
                                 size='sm'
                               />
                               <div>
                                 <p className='text-sm font-medium text-gray-800'>
-                                  {report.memberName}
+                                  {report.member?.name}
                                 </p>
                                 <p className='text-xs text-gray-500'>
                                   {member?.position}
                                 </p>
                               </div>
                             </div>
-                          </td>
-                          <td className='px-4 py-3'>
-                            {schedule && (
-                              <span
-                                className={`px-2 py-1 text-xs font-medium rounded-lg ${
-                                  getScheduleBadge(schedule.keterangan).bg
-                                } ${
-                                  getScheduleBadge(schedule.keterangan).text
-                                }`}
-                              >
-                                {schedule.keterangan}
-                              </span>
-                            )}
                           </td>
                           <td className='px-4 py-3'>
                             <div className='space-y-1'>
@@ -556,7 +542,7 @@ export default function AdminReportPage() {
                                   className='flex items-center gap-2'
                                 >
                                   <span className='px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded'>
-                                    {task.jobType}
+                                    {task.jobType?.name || '-'}
                                   </span>
                                   <span className='text-xs font-semibold text-emerald-600'>
                                     {task.value}
@@ -576,8 +562,8 @@ export default function AdminReportPage() {
                           <td className='px-4 py-3 text-center'>
                             <button
                               onClick={() => openEditModal(report)}
-                              className='p-2 hover:bg-gray-100 rounded-lg transition-colors inline-flex'
-                              title='Edit Report'
+                              disabled={isPending}
+                              className='p-2 hover:bg-gray-100 rounded-lg transition-colors inline-flex disabled:opacity-50'
                             >
                               <Edit3 className='w-4 h-4 text-gray-500' />
                             </button>
@@ -599,7 +585,6 @@ export default function AdminReportPage() {
           <h3 className='font-semibold text-gray-800 mb-4'>
             Daftar Jenis Pekerjaan ({jobTypes.length})
           </h3>
-
           <div className='space-y-2'>
             {jobTypes.map((jt) => (
               <div
@@ -630,19 +615,19 @@ export default function AdminReportPage() {
                 <div className='flex items-center gap-2'>
                   <button
                     onClick={() => toggleJobTypeActive(jt.id)}
-                    className={`p-2 rounded-lg transition-colors ${
+                    disabled={isPending}
+                    className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
                       jt.isActive
                         ? 'hover:bg-gray-100 text-gray-500'
                         : 'hover:bg-emerald-100 text-emerald-600'
                     }`}
-                    title={jt.isActive ? 'Nonaktifkan' : 'Aktifkan'}
                   >
                     <Check className='w-4 h-4' />
                   </button>
                   <button
                     onClick={() => openEditJobTypeModal(jt)}
-                    className='p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500'
-                    title='Edit'
+                    disabled={isPending}
+                    className='p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 disabled:opacity-50'
                   >
                     <Edit3 className='w-4 h-4' />
                   </button>
@@ -663,7 +648,7 @@ export default function AdminReportPage() {
           title='Edit Report'
           subtitle={
             editingReport
-              ? `${editingReport.memberName} - ${formatDate(
+              ? `${editingReport.member?.name} - ${formatDate(
                   editingReport.tanggal
                 )}`
               : ''
@@ -673,12 +658,9 @@ export default function AdminReportPage() {
         <ModalBody>
           <div className='space-y-4'>
             {editingTasks.map((task, index) => (
-              <div
-                key={task.id}
-                className='p-4 bg-gray-50 dark:bg-gray-700 rounded-xl'
-              >
+              <div key={task.id} className='p-4 bg-gray-50 rounded-xl'>
                 <div className='flex items-center justify-between mb-3'>
-                  <span className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+                  <span className='text-sm font-medium text-gray-700'>
                     Pekerjaan {index + 1}
                   </span>
                   {editingTasks.length > 1 && (
@@ -692,25 +674,16 @@ export default function AdminReportPage() {
                 </div>
 
                 <Select
-                  value={task.jobType}
+                  value={task.jobTypeId}
                   onChange={(e) =>
-                    updateTask(task.id, 'jobType', e.target.value)
+                    updateTask(task.id, 'jobTypeId', e.target.value)
                   }
                   options={[
                     { value: '', label: 'Pilih jenis pekerjaan...' },
                     ...activeJobTypes.map((jt) => ({
-                      value: jt.name,
+                      value: jt.id,
                       label: jt.name,
                     })),
-                    ...(task.jobType &&
-                    !activeJobTypes.some((jt) => jt.name === task.jobType)
-                      ? [
-                          {
-                            value: task.jobType,
-                            label: `${task.jobType} (Nonaktif)`,
-                          },
-                        ]
-                      : []),
                   ]}
                 />
 
@@ -727,7 +700,6 @@ export default function AdminReportPage() {
                       )
                     }
                     placeholder='0'
-                    min={0}
                   />
                 </div>
 
@@ -761,8 +733,12 @@ export default function AdminReportPage() {
           >
             Batal
           </Button>
-          <Button onClick={saveReport} className='flex-1'>
-            Update
+          <Button onClick={saveReport} disabled={isPending} className='flex-1'>
+            {isPending ? (
+              <Loader2 className='w-4 h-4 animate-spin' />
+            ) : (
+              'Update'
+            )}
           </Button>
         </ModalFooter>
       </Modal>
@@ -795,8 +771,14 @@ export default function AdminReportPage() {
           >
             Batal
           </Button>
-          <Button onClick={saveJobType} className='flex-1'>
-            {editingJobType ? 'Update' : 'Simpan'}
+          <Button onClick={saveJobType} disabled={isPending} className='flex-1'>
+            {isPending ? (
+              <Loader2 className='w-4 h-4 animate-spin' />
+            ) : editingJobType ? (
+              'Update'
+            ) : (
+              'Simpan'
+            )}
           </Button>
         </ModalFooter>
       </Modal>

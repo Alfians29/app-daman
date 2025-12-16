@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Search,
   Download,
@@ -16,6 +16,9 @@ import {
   LogIn,
   LogOut,
   ScrollText,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -26,204 +29,126 @@ import {
   ModalFooter,
 } from '@/components/ui/Modal';
 import toast from 'react-hot-toast';
+import { activitiesAPI } from '@/lib/api';
 
 type AuditLog = {
   id: string;
-  timestamp: string;
+  createdAt: Date;
   action: string;
-  category: 'auth' | 'data' | 'system' | 'user';
-  user: string;
-  details: string;
-  ipAddress: string;
+  target: string;
+  type: string;
+  user: { id: string; name: string; image: string | null };
+  metadata: Record<string, unknown> | null;
+  ipAddress: string | null;
+  userAgent: string | null;
 };
 
-const initialLogs: AuditLog[] = [
-  {
-    id: '1',
-    timestamp: '2024-12-10 08:30:15',
-    action: 'Login',
-    category: 'auth',
-    user: 'andrew.nugroho',
-    details: 'User login berhasil',
-    ipAddress: '192.168.1.100',
-  },
-  {
-    id: '2',
-    timestamp: '2024-12-10 08:35:22',
-    action: 'Tambah Data',
-    category: 'data',
-    user: 'muhammad.alfian',
-    details: 'Menambahkan data kehadiran untuk Budi',
-    ipAddress: '192.168.1.100',
-  },
-  {
-    id: '3',
-    timestamp: '2024-12-10 09:00:45',
-    action: 'Edit Role',
-    category: 'user',
-    user: 'andrew.nugroho',
-    details: 'Mengubah role Andi dari Member ke Admin',
-    ipAddress: '192.168.1.101',
-  },
-  {
-    id: '4',
-    timestamp: '2024-12-10 09:15:30',
-    action: 'Export Data',
-    category: 'data',
-    user: 'muhammad.alfian',
-    details: 'Export data kehadiran bulan Desember',
-    ipAddress: '192.168.1.100',
-  },
-  {
-    id: '5',
-    timestamp: '2024-12-10 10:00:00',
-    action: 'Ubah Jadwal',
-    category: 'data',
-    user: 'rahardian.arta',
-    details: 'Mengubah jadwal shift untuk tanggal 15 Desember',
-    ipAddress: '192.168.1.100',
-  },
-  {
-    id: '6',
-    timestamp: '2024-12-10 10:30:12',
-    action: 'Hapus Data',
-    category: 'data',
-    user: 'andrew.nugroho',
-    details: 'Menghapus transaksi kas ID: CAS-2024-001',
-    ipAddress: '192.168.1.101',
-  },
-  {
-    id: '7',
-    timestamp: '2024-12-10 11:00:00',
-    action: 'Backup System',
-    category: 'system',
-    user: 'system',
-    details: 'Backup otomatis database berhasil',
-    ipAddress: 'localhost',
-  },
-  {
-    id: '8',
-    timestamp: '2024-12-10 11:30:45',
-    action: 'Logout',
-    category: 'auth',
-    user: 'muhammad.alfian',
-    details: 'User logout',
-    ipAddress: '192.168.1.100',
-  },
-  {
-    id: '9',
-    timestamp: '2024-12-09 08:00:00',
-    action: 'Login',
-    category: 'auth',
-    user: 'andrew.nugroho',
-    details: 'User login berhasil',
-    ipAddress: '192.168.1.101',
-  },
-  {
-    id: '10',
-    timestamp: '2024-12-09 14:20:33',
-    action: 'Tambah Role',
-    category: 'user',
-    user: 'andrew.nugroho',
-    details: 'Menambahkan role baru: Editor',
-    ipAddress: '192.168.1.101',
-  },
-];
+const ITEMS_PER_PAGE = 20;
 
 export default function AuditLogPage() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [filterAction, setFilterAction] = useState<string>('all');
+  const [filterType, setFilterType] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const logs = initialLogs;
+  useEffect(() => {
+    loadActivities();
+  }, []);
 
-  const filteredLogs = logs.filter((log) => {
-    const matchesSearch =
-      log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.details.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      filterCategory === 'all' || log.category === filterCategory;
-    const matchesAction = filterAction === 'all' || log.action === filterAction;
-
-    // Date filter
-    let matchesDate = true;
-    const logDate = log.timestamp.split(' ')[0];
-    if (dateFrom) {
-      matchesDate = matchesDate && logDate >= dateFrom;
+  const loadActivities = async () => {
+    setIsLoading(true);
+    const result = await activitiesAPI.getAll(500);
+    if (result.success && result.data) {
+      setLogs(result.data as AuditLog[]);
     }
-    if (dateTo) {
-      matchesDate = matchesDate && logDate <= dateTo;
-    }
+    setIsLoading(false);
+  };
 
-    return matchesSearch && matchesCategory && matchesAction && matchesDate;
-  });
+  const filteredLogs = useMemo(() => {
+    return logs.filter((log) => {
+      const matchesSearch =
+        log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        log.target.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        log.user.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesType = filterType === 'all' || log.type === filterType;
 
-  const categories = [
-    { value: 'auth', label: 'Autentikasi', icon: LogIn },
-    { value: 'data', label: 'Data', icon: FileText },
-    { value: 'user', label: 'User', icon: User },
-    { value: 'system', label: 'Sistem', icon: Settings },
+      let matchesDate = true;
+      const logDate = new Date(log.createdAt).toISOString().split('T')[0];
+      if (dateFrom) matchesDate = matchesDate && logDate >= dateFrom;
+      if (dateTo) matchesDate = matchesDate && logDate <= dateTo;
+
+      return matchesSearch && matchesType && matchesDate;
+    });
+  }, [logs, searchQuery, filterType, dateFrom, dateTo]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredLogs.length / ITEMS_PER_PAGE);
+  const paginatedLogs = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredLogs.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredLogs, currentPage]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterType, dateFrom, dateTo]);
+
+  const types = [
+    { value: 'CREATE', label: 'Tambah', icon: Plus },
+    { value: 'UPDATE', label: 'Update', icon: Edit },
+    { value: 'DELETE', label: 'Hapus', icon: Trash2 },
+    { value: 'LOGIN', label: 'Login', icon: LogIn },
   ];
 
-  const actions = [...new Set(logs.map((l) => l.action))];
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'auth':
-        return 'bg-blue-100 text-blue-700';
-      case 'data':
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'CREATE':
         return 'bg-emerald-100 text-emerald-700';
-      case 'user':
+      case 'UPDATE':
+        return 'bg-blue-100 text-blue-700';
+      case 'DELETE':
+        return 'bg-red-100 text-red-700';
+      case 'LOGIN':
         return 'bg-purple-100 text-purple-700';
-      case 'system':
-        return 'bg-orange-100 text-orange-700';
       default:
         return 'bg-gray-100 text-gray-700';
     }
   };
 
-  const getActionIcon = (action: string) => {
-    if (action.includes('Login')) return <LogIn className='w-4 h-4' />;
-    if (action.includes('Logout')) return <LogOut className='w-4 h-4' />;
-    if (action.includes('Tambah')) return <Plus className='w-4 h-4' />;
-    if (action.includes('Edit') || action.includes('Ubah'))
-      return <Edit className='w-4 h-4' />;
-    if (action.includes('Hapus')) return <Trash2 className='w-4 h-4' />;
-    if (action.includes('Export')) return <Download className='w-4 h-4' />;
-    if (action.includes('Role')) return <Shield className='w-4 h-4' />;
-    return <FileText className='w-4 h-4' />;
+  const getActionIcon = (type: string) => {
+    switch (type) {
+      case 'CREATE':
+        return <Plus className='w-4 h-4' />;
+      case 'UPDATE':
+        return <Edit className='w-4 h-4' />;
+      case 'DELETE':
+        return <Trash2 className='w-4 h-4' />;
+      case 'LOGIN':
+        return <LogIn className='w-4 h-4' />;
+      default:
+        return <FileText className='w-4 h-4' />;
+    }
   };
 
   const handleExport = async () => {
     const XLSX = await import('xlsx');
-
     const exportData = filteredLogs.map((log) => ({
-      Waktu: log.timestamp,
+      Waktu: new Date(log.createdAt).toLocaleString('id-ID'),
       Aksi: log.action,
-      Kategori: log.category,
-      User: log.user,
-      Detail: log.details,
-      'IP Address': log.ipAddress,
+      Target: log.target,
+      Tipe: log.type,
+      User: log.user.name,
+      'IP Address': log.ipAddress || '-',
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Audit Log');
-
-    ws['!cols'] = [
-      { wch: 20 },
-      { wch: 15 },
-      { wch: 12 },
-      { wch: 25 },
-      { wch: 40 },
-      { wch: 15 },
-    ];
-
     XLSX.writeFile(
       wb,
       `audit_log_${new Date().toISOString().split('T')[0]}.xlsx`
@@ -236,17 +161,26 @@ export default function AuditLogPage() {
     setShowDetailModal(true);
   };
 
-  // Statistics
   const stats = {
     total: logs.length,
-    today: logs.filter((l) => l.timestamp.startsWith('2024-12-10')).length,
-    auth: logs.filter((l) => l.category === 'auth').length,
-    data: logs.filter((l) => l.category === 'data').length,
+    today: logs.filter(
+      (l) => new Date(l.createdAt).toDateString() === new Date().toDateString()
+    ).length,
+    create: logs.filter((l) => l.type === 'CREATE').length,
+    update: logs.filter((l) => l.type === 'UPDATE').length,
+    delete: logs.filter((l) => l.type === 'DELETE').length,
   };
+
+  if (isLoading) {
+    return (
+      <div className='flex items-center justify-center min-h-[400px]'>
+        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
+      </div>
+    );
+  }
 
   return (
     <div className='space-y-6'>
-      {/* Header */}
       <PageHeader
         title='Audit Log'
         description='Monitor semua aktivitas sistem'
@@ -277,34 +211,36 @@ export default function AuditLogPage() {
         </div>
         <div className='bg-white rounded-xl p-4 border border-gray-100'>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center'>
-              <Calendar className='w-5 h-5 text-blue-600' />
-            </div>
-            <div>
-              <p className='text-xs text-gray-500'>Hari Ini</p>
-              <p className='text-lg font-bold text-blue-600'>{stats.today}</p>
-            </div>
-          </div>
-        </div>
-        <div className='bg-white rounded-xl p-4 border border-gray-100'>
-          <div className='flex items-center gap-3'>
             <div className='w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center'>
-              <LogIn className='w-5 h-5 text-emerald-600' />
+              <Plus className='w-5 h-5 text-emerald-600' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Auth</p>
-              <p className='text-lg font-bold text-emerald-600'>{stats.auth}</p>
+              <p className='text-xs text-gray-500'>Tambah</p>
+              <p className='text-lg font-bold text-emerald-600'>
+                {stats.create}
+              </p>
             </div>
           </div>
         </div>
         <div className='bg-white rounded-xl p-4 border border-gray-100'>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center'>
-              <FileText className='w-5 h-5 text-purple-600' />
+            <div className='w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center'>
+              <Edit className='w-5 h-5 text-blue-600' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Data</p>
-              <p className='text-lg font-bold text-purple-600'>{stats.data}</p>
+              <p className='text-xs text-gray-500'>Update</p>
+              <p className='text-lg font-bold text-blue-600'>{stats.update}</p>
+            </div>
+          </div>
+        </div>
+        <div className='bg-white rounded-xl p-4 border border-gray-100'>
+          <div className='flex items-center gap-3'>
+            <div className='w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center'>
+              <Trash2 className='w-5 h-5 text-red-600' />
+            </div>
+            <div>
+              <p className='text-xs text-gray-500'>Hapus</p>
+              <p className='text-lg font-bold text-red-600'>{stats.delete}</p>
             </div>
           </div>
         </div>
@@ -328,58 +264,38 @@ export default function AuditLogPage() {
             <Filter className='w-4 h-4 text-gray-400' />
             <span className='text-sm text-gray-500'>Filter:</span>
           </div>
-
           <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            className='px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
           >
-            <option value='all'>Semua Kategori</option>
-            {categories.map((c) => (
+            <option value='all'>Semua Tipe</option>
+            {types.map((c) => (
               <option key={c.value} value={c.value}>
                 {c.label}
               </option>
             ))}
           </select>
-
-          <select
-            value={filterAction}
-            onChange={(e) => setFilterAction(e.target.value)}
-            className='px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-          >
-            <option value='all'>Semua Aksi</option>
-            {actions.map((a) => (
-              <option key={a} value={a}>
-                {a}
-              </option>
-            ))}
-          </select>
-
           <div className='flex items-center gap-2'>
             <Calendar className='w-4 h-4 text-gray-400' />
             <input
               type='date'
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className='px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
+              className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
             />
             <span className='text-gray-400'>-</span>
             <input
               type='date'
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className='px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
+              className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
             />
           </div>
-
-          {(filterCategory !== 'all' ||
-            filterAction !== 'all' ||
-            dateFrom ||
-            dateTo) && (
+          {(filterType !== 'all' || dateFrom || dateTo) && (
             <button
               onClick={() => {
-                setFilterCategory('all');
-                setFilterAction('all');
+                setFilterType('all');
                 setDateFrom('');
                 setDateTo('');
               }}
@@ -404,21 +320,21 @@ export default function AuditLogPage() {
                   Aksi
                 </th>
                 <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
-                  Kategori
+                  Tipe
                 </th>
                 <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
                   User
                 </th>
                 <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
-                  Detail
+                  Target
                 </th>
                 <th className='text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
-                  Aksi
+                  Detail
                 </th>
               </tr>
             </thead>
             <tbody className='divide-y divide-gray-100'>
-              {filteredLogs.length === 0 ? (
+              {paginatedLogs.length === 0 ? (
                 <tr>
                   <td
                     colSpan={6}
@@ -428,15 +344,15 @@ export default function AuditLogPage() {
                   </td>
                 </tr>
               ) : (
-                filteredLogs.map((log) => (
+                paginatedLogs.map((log) => (
                   <tr key={log.id} className='hover:bg-gray-50'>
                     <td className='px-4 py-3 text-sm text-gray-600'>
-                      {log.timestamp}
+                      {new Date(log.createdAt).toLocaleString('id-ID')}
                     </td>
                     <td className='px-4 py-3'>
                       <div className='flex items-center gap-2'>
                         <span className='text-gray-500'>
-                          {getActionIcon(log.action)}
+                          {getActionIcon(log.type)}
                         </span>
                         <span className='text-sm font-medium text-gray-800'>
                           {log.action}
@@ -445,21 +361,19 @@ export default function AuditLogPage() {
                     </td>
                     <td className='px-4 py-3'>
                       <span
-                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-lg ${getCategoryColor(
-                          log.category
+                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-lg ${getTypeColor(
+                          log.type
                         )}`}
                       >
-                        {
-                          categories.find((c) => c.value === log.category)
-                            ?.label
-                        }
+                        {types.find((c) => c.value === log.type)?.label ||
+                          log.type}
                       </span>
                     </td>
                     <td className='px-4 py-3 text-sm text-gray-600'>
-                      {log.user}
+                      {log.user.name}
                     </td>
                     <td className='px-4 py-3 text-sm text-gray-600 max-w-xs truncate'>
-                      {log.details}
+                      {log.target}
                     </td>
                     <td className='px-4 py-3 text-center'>
                       <button
@@ -475,6 +389,62 @@ export default function AuditLogPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className='flex items-center justify-between px-4 py-3 border-t border-gray-100'>
+            <p className='text-sm text-gray-500'>
+              Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} -{' '}
+              {Math.min(currentPage * ITEMS_PER_PAGE, filteredLogs.length)} dari{' '}
+              {filteredLogs.length} log
+            </p>
+            <div className='flex items-center gap-2'>
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className='p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+              >
+                <ChevronLeft className='w-4 h-4' />
+              </button>
+              <div className='flex items-center gap-1'>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === pageNum
+                          ? 'bg-[#E57373] text-white'
+                          : 'hover:bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                disabled={currentPage === totalPages}
+                className='p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+              >
+                <ChevronRight className='w-4 h-4' />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Detail Modal */}
@@ -490,63 +460,61 @@ export default function AuditLogPage() {
         <ModalBody>
           {selectedLog && (
             <div className='space-y-4'>
-              <div className='flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg'>
+              <div className='flex items-center gap-3 p-3 bg-gray-50 rounded-lg'>
                 <span className='text-gray-500'>
-                  {getActionIcon(selectedLog.action)}
+                  {getActionIcon(selectedLog.type)}
                 </span>
                 <div>
-                  <p className='font-medium text-gray-800 dark:text-white'>
+                  <p className='font-medium text-gray-800'>
                     {selectedLog.action}
                   </p>
                   <span
-                    className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-lg ${getCategoryColor(
-                      selectedLog.category
+                    className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-lg ${getTypeColor(
+                      selectedLog.type
                     )}`}
                   >
-                    {
-                      categories.find((c) => c.value === selectedLog.category)
-                        ?.label
-                    }
+                    {types.find((c) => c.value === selectedLog.type)?.label}
                   </span>
                 </div>
               </div>
 
               <div className='grid grid-cols-2 gap-4'>
                 <div>
-                  <p className='text-xs text-gray-500 dark:text-gray-400 mb-1'>
-                    Waktu
-                  </p>
-                  <p className='text-sm font-medium text-gray-800 dark:text-white'>
-                    {selectedLog.timestamp}
+                  <p className='text-xs text-gray-500 mb-1'>Waktu</p>
+                  <p className='text-sm font-medium text-gray-800'>
+                    {new Date(selectedLog.createdAt).toLocaleString('id-ID')}
                   </p>
                 </div>
                 <div>
-                  <p className='text-xs text-gray-500 dark:text-gray-400 mb-1'>
-                    IP Address
-                  </p>
-                  <p className='text-sm font-medium text-gray-800 dark:text-white'>
-                    {selectedLog.ipAddress}
+                  <p className='text-xs text-gray-500 mb-1'>IP Address</p>
+                  <p className='text-sm font-medium text-gray-800'>
+                    {selectedLog.ipAddress || '-'}
                   </p>
                 </div>
               </div>
 
               <div>
-                <p className='text-xs text-gray-500 dark:text-gray-400 mb-1'>
-                  User
-                </p>
-                <p className='text-sm font-medium text-gray-800 dark:text-white'>
-                  {selectedLog.user}
+                <p className='text-xs text-gray-500 mb-1'>User</p>
+                <p className='text-sm font-medium text-gray-800'>
+                  {selectedLog.user.name}
                 </p>
               </div>
 
               <div>
-                <p className='text-xs text-gray-500 dark:text-gray-400 mb-1'>
-                  Detail
-                </p>
-                <p className='text-sm text-gray-700 dark:text-gray-300 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg'>
-                  {selectedLog.details}
+                <p className='text-xs text-gray-500 mb-1'>Target</p>
+                <p className='text-sm text-gray-700 p-3 bg-gray-50 rounded-lg'>
+                  {selectedLog.target}
                 </p>
               </div>
+
+              {selectedLog.metadata && (
+                <div>
+                  <p className='text-xs text-gray-500 mb-1'>Metadata</p>
+                  <pre className='text-xs text-gray-700 p-3 bg-gray-50 rounded-lg overflow-auto max-h-64'>
+                    {JSON.stringify(selectedLog.metadata, null, 2)}
+                  </pre>
+                </div>
+              )}
             </div>
           )}
         </ModalBody>

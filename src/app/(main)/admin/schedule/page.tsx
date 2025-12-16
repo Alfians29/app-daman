@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useTransition } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { teamMembers, attendanceRecords } from '@/data/dummy';
 import toast from 'react-hot-toast';
 import {
   ChevronLeft,
@@ -14,6 +13,7 @@ import {
   Upload,
   FileSpreadsheet,
   CalendarCog,
+  Loader2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Avatar } from '@/components/ui/Avatar';
@@ -24,16 +24,40 @@ import {
   ModalFooter,
 } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Form';
+import { scheduleAPI, usersAPI } from '@/lib/api';
 
-type Keterangan = 'Pagi' | 'Malam' | 'Piket Pagi' | 'Piket Malam' | 'Libur';
+type Keterangan = 'PAGI' | 'MALAM' | 'PIKET_PAGI' | 'PIKET_MALAM' | 'LIBUR';
 
-const keteranganOptions: Keterangan[] = [
-  'Pagi',
-  'Malam',
-  'Piket Pagi',
-  'Piket Malam',
-  'Libur',
+type Member = {
+  id: string;
+  nik: string;
+  name: string;
+  nickname: string | null;
+  image: string | null;
+};
+
+type ScheduleEntry = {
+  id: string;
+  memberId: string;
+  tanggal: string;
+  keterangan: Keterangan;
+};
+
+const keteranganOptions: { value: Keterangan; label: string }[] = [
+  { value: 'PAGI', label: 'Pagi' },
+  { value: 'MALAM', label: 'Malam' },
+  { value: 'PIKET_PAGI', label: 'Piket Pagi' },
+  { value: 'PIKET_MALAM', label: 'Piket Malam' },
+  { value: 'LIBUR', label: 'Libur' },
 ];
+
+const keteranganLabels: Record<string, string> = {
+  PAGI: 'Pagi',
+  MALAM: 'Malam',
+  PIKET_PAGI: 'Piket Pagi',
+  PIKET_MALAM: 'Piket Malam',
+  LIBUR: 'Libur',
+};
 
 export default function AdminSchedulePage() {
   const [currentStartDate, setCurrentStartDate] = useState(() => {
@@ -43,22 +67,20 @@ export default function AdminSchedulePage() {
     return today;
   });
 
-  // Local state for schedule changes
+  const [members, setMembers] = useState<Member[]>([]);
+  const [schedules, setSchedules] = useState<ScheduleEntry[]>([]);
   const [scheduleChanges, setScheduleChanges] = useState<
     Record<string, Keterangan>
   >({});
-  const [editingCell, setEditingCell] = useState<string | null>(null);
-  const [editingMember, setEditingMember] = useState<
-    (typeof teamMembers)[0] | null
-  >(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPending, startTransition] = useTransition();
+
+  const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [editingDate, setEditingDate] = useState<Date | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Upload/Download state
   const [showImportModal, setShowImportModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Upload month/year selection
   const [importMonth, setImportMonth] = useState(new Date().getMonth());
   const [importYear, setImportYear] = useState(new Date().getFullYear());
 
@@ -76,18 +98,35 @@ export default function AdminSchedulePage() {
     'November',
     'Desember',
   ];
-
   const monthOptions = monthNames.map((name, index) => ({
     value: String(index),
     label: name,
   }));
-
   const yearOptions = [2024, 2025, 2026].map((year) => ({
     value: String(year),
     label: String(year),
   }));
 
-  // Get all days in current month
+  useEffect(() => {
+    loadData();
+  }, [currentStartDate]);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    const month = currentStartDate.getMonth() + 1;
+    const year = currentStartDate.getFullYear();
+
+    const [usersResult, scheduleResult] = await Promise.all([
+      usersAPI.getAll(),
+      scheduleAPI.getAll({ month, year }),
+    ]);
+
+    if (usersResult.success) setMembers(usersResult.data as Member[]);
+    if (scheduleResult.success)
+      setSchedules(scheduleResult.data as ScheduleEntry[]);
+    setIsLoading(false);
+  };
+
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -105,12 +144,16 @@ export default function AdminSchedulePage() {
     const newDate = new Date(currentStartDate);
     newDate.setMonth(currentStartDate.getMonth() - 1);
     setCurrentStartDate(newDate);
+    setScheduleChanges({});
+    setHasChanges(false);
   };
 
   const nextPeriod = () => {
     const newDate = new Date(currentStartDate);
     newDate.setMonth(currentStartDate.getMonth() + 1);
     setCurrentStartDate(newDate);
+    setScheduleChanges({});
+    setHasChanges(false);
   };
 
   const goToToday = () => {
@@ -131,20 +174,21 @@ export default function AdminSchedulePage() {
     const dateStr = date.toISOString().split('T')[0];
     const key = `${memberId}-${dateStr}`;
 
-    // Check local changes first
     if (scheduleChanges[key]) {
       return { keterangan: scheduleChanges[key] };
     }
 
-    return attendanceRecords.find(
-      (r) => r.memberId === memberId && r.tanggal === dateStr
-    );
+    const entry = schedules.find((s) => {
+      const entryDate = new Date(s.tanggal).toISOString().split('T')[0];
+      return s.memberId === memberId && entryDate === dateStr;
+    });
+
+    return entry ? { keterangan: entry.keterangan } : null;
   };
 
-  const handleCellClick = (member: (typeof teamMembers)[0], date: Date) => {
+  const handleCellClick = (member: Member, date: Date) => {
     setEditingMember(member);
     setEditingDate(date);
-    setEditingCell(`${member.id}-${date.toISOString().split('T')[0]}`);
   };
 
   const handleScheduleChange = (keterangan: Keterangan) => {
@@ -153,27 +197,52 @@ export default function AdminSchedulePage() {
     const dateStr = editingDate.toISOString().split('T')[0];
     const key = `${editingMember.id}-${dateStr}`;
 
-    setScheduleChanges((prev) => ({
-      ...prev,
-      [key]: keterangan,
-    }));
+    setScheduleChanges((prev) => ({ ...prev, [key]: keterangan }));
     setHasChanges(true);
-    setEditingCell(null);
     setEditingMember(null);
     setEditingDate(null);
   };
 
   const closeEditModal = () => {
-    setEditingCell(null);
     setEditingMember(null);
     setEditingDate(null);
   };
 
-  const handleSaveChanges = () => {
-    // In real app, save to database
-    console.log('Saving changes:', scheduleChanges);
-    toast.success('Jadwal berhasil disimpan!');
-    setHasChanges(false);
+  const handleSaveChanges = async () => {
+    const entries = Object.entries(scheduleChanges).map(([key, keterangan]) => {
+      const [memberId, dateStr] = key.split('-').reduce<[string, string]>(
+        (acc, part, i, arr) => {
+          if (i < arr.length - 3) acc[0] += (acc[0] ? '-' : '') + part;
+          else acc[1] += (acc[1] ? '-' : '') + part;
+          return acc;
+        },
+        ['', '']
+      );
+      return { memberId, tanggal: dateStr, keterangan };
+    });
+
+    // Rebuild entries correctly
+    const correctEntries = Object.entries(scheduleChanges).map(
+      ([key, keterangan]) => {
+        // Key format: memberId-YYYY-MM-DD
+        const parts = key.split('-');
+        const dateStr = parts.slice(-3).join('-'); // Last 3 parts are the date
+        const memberId = parts.slice(0, -3).join('-'); // Everything before is memberId
+        return { memberId, tanggal: dateStr, keterangan };
+      }
+    );
+
+    startTransition(async () => {
+      const result = await scheduleAPI.create(correctEntries);
+      if (result.success) {
+        toast.success('Jadwal berhasil disimpan!');
+        setScheduleChanges({});
+        setHasChanges(false);
+        loadData();
+      } else {
+        toast.error(result.error || 'Gagal menyimpan jadwal');
+      }
+    });
   };
 
   const handleResetChanges = () => {
@@ -181,35 +250,30 @@ export default function AdminSchedulePage() {
     setHasChanges(false);
   };
 
-  // Helper function to convert keterangan to short code
   const keteranganToShortCode = (keterangan: string) => {
     switch (keterangan) {
-      case 'Pagi':
+      case 'PAGI':
         return 'P';
-      case 'Malam':
+      case 'MALAM':
         return 'M';
-      case 'Piket Pagi':
+      case 'PIKET_PAGI':
         return 'PP';
-      case 'Piket Malam':
+      case 'PIKET_MALAM':
         return 'PM';
-      case 'Libur':
+      case 'LIBUR':
         return 'L';
       default:
         return '';
     }
   };
 
-  // Export schedule to Excel
   const handleExportSchedule = async () => {
-    // Dynamic import xlsx to reduce initial bundle size
     const XLSX = await import('xlsx');
 
-    // Create worksheet data - header rows
     const dayNumbers = periodDates.map((date) => date.getDate().toString());
     const headers = ['NIK', 'NAMA', ...dayNumbers];
 
-    // Create data rows
-    const dataRows = teamMembers.map((member) => {
+    const dataRows = members.map((member) => {
       const row: string[] = [member.nik, member.name];
       periodDates.forEach((date) => {
         const schedule = getScheduleForMember(member.id, date);
@@ -218,53 +282,42 @@ export default function AdminSchedulePage() {
       return row;
     });
 
-    // Combine headers and data
     const wsData = [headers, ...dataRows];
-
-    // Create worksheet and workbook
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Jadwal');
 
-    // Set column widths
     ws['!cols'] = [
-      { wch: 12 }, // NIK column
-      { wch: 15 }, // NAMA column
-      ...periodDates.map(() => ({ wch: 4 })), // Date columns (narrow)
+      { wch: 12 },
+      { wch: 15 },
+      ...periodDates.map(() => ({ wch: 4 })),
     ];
 
-    // Generate filename with month
     const filename = `jadwal_${currentStartDate
       .toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
       .replace(' ', '_')}.xlsx`;
-
-    // Download file
     XLSX.writeFile(wb, filename);
-
     toast.success('File Excel jadwal berhasil didownload!');
   };
 
-  // Helper function to convert short code to keterangan (direct mapping)
   const shortCodeToKeterangan = (code: string): Keterangan | null => {
     const upperCode = code?.toUpperCase()?.trim();
-
     switch (upperCode) {
       case 'P':
-        return 'Pagi';
+        return 'PAGI';
       case 'M':
-        return 'Malam';
+        return 'MALAM';
       case 'PP':
-        return 'Piket Pagi';
+        return 'PIKET_PAGI';
       case 'PM':
-        return 'Piket Malam';
+        return 'PIKET_MALAM';
       case 'L':
-        return 'Libur';
+        return 'LIBUR';
       default:
         return null;
     }
   };
 
-  // Import schedule from Excel
   const handleImportSchedule = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -272,9 +325,7 @@ export default function AdminSchedulePage() {
     if (!file) return;
 
     try {
-      // Dynamic import xlsx
       const XLSX = await import('xlsx');
-
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
       const sheetName = workbook.SheetNames[0];
@@ -293,11 +344,9 @@ export default function AdminSchedulePage() {
       const newChanges: Record<string, Keterangan> = {};
       let count = 0;
 
-      // Use selected month/year from import modal
       const baseMonth = importMonth;
       const baseYear = importYear;
 
-      // Parse day numbers from headers (skip NIK and NAMA columns)
       const dayColumns: number[] = [];
       for (let i = 2; i < headers.length; i++) {
         const dayNum = parseInt(headers[i]);
@@ -306,14 +355,12 @@ export default function AdminSchedulePage() {
         }
       }
 
-      // Process data rows
       for (let rowIndex = 1; rowIndex < jsonData.length; rowIndex++) {
         const row = jsonData[rowIndex] as string[];
         const nik = row[0]?.toString();
         const nama = row[1];
 
-        // Find member by NIK or name
-        const member = teamMembers.find(
+        const member = members.find(
           (m) =>
             m.nik === nik ||
             m.name?.toLowerCase() === nama?.toLowerCase() ||
@@ -328,12 +375,8 @@ export default function AdminSchedulePage() {
           ) {
             const code = row[colIndex];
             const dayNum = dayColumns[colIndex - 2];
-
-            // Create date from day number
             const date = new Date(baseYear, baseMonth, dayNum);
             const dateStr = date.toISOString().split('T')[0];
-
-            // Convert short code to keterangan
             const keterangan = shortCodeToKeterangan(code);
 
             if (keterangan) {
@@ -352,12 +395,11 @@ export default function AdminSchedulePage() {
       } else {
         toast.error('Tidak ada data jadwal yang valid dalam file.');
       }
-    } catch (error) {
+    } catch {
       toast.error('Format file tidak valid.');
     }
     setShowImportModal(false);
 
-    // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -365,15 +407,15 @@ export default function AdminSchedulePage() {
 
   const getKeteranganStyle = (keterangan: string) => {
     switch (keterangan) {
-      case 'Pagi':
+      case 'PAGI':
         return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'Malam':
+      case 'MALAM':
         return 'bg-gray-200 text-gray-700 border-gray-300';
-      case 'Piket Pagi':
+      case 'PIKET_PAGI':
         return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case 'Piket Malam':
+      case 'PIKET_MALAM':
         return 'bg-purple-100 text-purple-700 border-purple-200';
-      case 'Libur':
+      case 'LIBUR':
         return 'bg-red-100 text-red-700 border-red-200';
       default:
         return 'bg-gray-100 text-gray-500 border-gray-200';
@@ -381,20 +423,7 @@ export default function AdminSchedulePage() {
   };
 
   const getKeteranganShort = (keterangan: string) => {
-    switch (keterangan) {
-      case 'Pagi':
-        return 'P';
-      case 'Malam':
-        return 'M';
-      case 'Piket Pagi':
-        return 'PP';
-      case 'Piket Malam':
-        return 'PM';
-      case 'Libur':
-        return 'L';
-      default:
-        return '-';
-    }
+    return keteranganToShortCode(keterangan) || '-';
   };
 
   const isToday = (date: Date) => {
@@ -406,9 +435,16 @@ export default function AdminSchedulePage() {
     return date.getDay() === 0 || date.getDay() === 6;
   };
 
+  if (isLoading) {
+    return (
+      <div className='flex items-center justify-center min-h-[400px]'>
+        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
+      </div>
+    );
+  }
+
   return (
     <div className='space-y-6'>
-      {/* Page Header */}
       <PageHeader
         title='Kelola Jadwal'
         description='Edit jadwal kerja anggota tim per member atau per tanggal'
@@ -440,9 +476,14 @@ export default function AdminSchedulePage() {
                 </button>
                 <button
                   onClick={handleSaveChanges}
-                  className='flex items-center gap-2 px-4 py-2 bg-white text-[#E57373] rounded-xl font-medium hover:bg-white/90 transition-colors'
+                  disabled={isPending}
+                  className='flex items-center gap-2 px-4 py-2 bg-white text-[#E57373] rounded-xl font-medium hover:bg-white/90 transition-colors disabled:opacity-50'
                 >
-                  <Save className='w-4 h-4' />
+                  {isPending ? (
+                    <Loader2 className='w-4 h-4 animate-spin' />
+                  ) : (
+                    <Save className='w-4 h-4' />
+                  )}
                   Simpan
                 </button>
               </>
@@ -454,20 +495,19 @@ export default function AdminSchedulePage() {
       {/* Legend */}
       <div className='flex flex-wrap gap-3'>
         {keteranganOptions.map((ket) => (
-          <div key={ket} className='flex items-center gap-2 text-sm'>
+          <div key={ket.value} className='flex items-center gap-2 text-sm'>
             <span
               className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${getKeteranganStyle(
-                ket
+                ket.value
               )}`}
             >
-              {getKeteranganShort(ket)}
+              {getKeteranganShort(ket.value)}
             </span>
-            <span className='text-gray-600'>{ket}</span>
+            <span className='text-gray-600'>{ket.label}</span>
           </div>
         ))}
       </div>
 
-      {/* Schedule Card */}
       <Card>
         {/* Period Navigation */}
         <div className='flex items-center justify-between mb-6'>
@@ -494,7 +534,6 @@ export default function AdminSchedulePage() {
           </button>
         </div>
 
-        {/* Info Banner */}
         {hasChanges && (
           <div className='mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700'>
             <span className='font-medium'>
@@ -535,17 +574,21 @@ export default function AdminSchedulePage() {
               </tr>
             </thead>
             <tbody>
-              {teamMembers.map((member) => (
+              {members.map((member) => (
                 <tr
                   key={member.id}
                   className='border-b border-gray-100 hover:bg-gray-50'
                 >
                   <td className='py-3 px-2 sticky left-0 bg-white'>
                     <div className='flex items-center gap-2'>
-                      <Avatar src={member.image} name={member.name} size='sm' />
+                      <Avatar
+                        src={member.image || undefined}
+                        name={member.name}
+                        size='sm'
+                      />
                       <div className='min-w-0'>
                         <p className='text-sm font-medium text-gray-800 truncate'>
-                          {member.nickname}
+                          {member.nickname || member.name}
                         </p>
                       </div>
                     </div>
@@ -568,7 +611,12 @@ export default function AdminSchedulePage() {
                               ? getKeteranganStyle(schedule.keterangan)
                               : 'bg-gray-50 text-gray-300 border border-dashed border-gray-200'
                           } ${isChanged ? 'ring-2 ring-amber-400' : ''}`}
-                          title={schedule?.keterangan || 'Belum ada jadwal'}
+                          title={
+                            schedule
+                              ? keteranganLabels[schedule.keterangan] ||
+                                schedule.keterangan
+                              : 'Belum ada jadwal'
+                          }
                         >
                           {schedule
                             ? getKeteranganShort(schedule.keterangan)
@@ -594,15 +642,14 @@ export default function AdminSchedulePage() {
           title='Edit Jadwal'
           subtitle={
             editingMember && editingDate
-              ? `${editingMember.nickname} - ${editingDate.toLocaleDateString(
-                  'id-ID',
-                  {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                  }
-                )}`
+              ? `${
+                  editingMember.nickname || editingMember.name
+                } - ${editingDate.toLocaleDateString('id-ID', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })}`
               : ''
           }
           onClose={closeEditModal}
@@ -616,22 +663,22 @@ export default function AdminSchedulePage() {
                   : null;
               return (
                 <button
-                  key={ket}
-                  onClick={() => handleScheduleChange(ket)}
+                  key={ket.value}
+                  onClick={() => handleScheduleChange(ket.value)}
                   className={`w-full px-4 py-3 text-left rounded-lg flex items-center gap-3 transition-colors ${
-                    currentSchedule?.keterangan === ket
+                    currentSchedule?.keterangan === ket.value
                       ? 'bg-gray-100 ring-2 ring-[#E57373]'
                       : 'hover:bg-gray-50 border border-gray-200'
                   }`}
                 >
                   <span
                     className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${getKeteranganStyle(
-                      ket
+                      ket.value
                     )}`}
                   >
-                    {getKeteranganShort(ket)}
+                    {getKeteranganShort(ket.value)}
                   </span>
-                  <span className='font-medium text-gray-700'>{ket}</span>
+                  <span className='font-medium text-gray-700'>{ket.label}</span>
                 </button>
               );
             })}
@@ -665,13 +712,8 @@ export default function AdminSchedulePage() {
               <p className='text-sm text-emerald-700'>
                 <strong>Format file yang didukung:</strong> Excel (.xlsx, .xls)
               </p>
-              <p className='text-xs text-emerald-600 mt-1'>
-                Gunakan file hasil download atau buat file Excel dengan format
-                yang sama.
-              </p>
             </div>
 
-            {/* Month/Year Selector */}
             <div className='p-4 bg-blue-50 border border-blue-200 rounded-lg'>
               <p className='text-sm text-blue-700 font-medium mb-3'>
                 Pilih bulan untuk jadwal yang akan diupload:
@@ -706,58 +748,6 @@ export default function AdminSchedulePage() {
                   className='hidden'
                 />
               </label>
-            </div>
-
-            <div className='text-xs text-gray-500'>
-              <p className='font-medium mb-2'>Format Excel:</p>
-              <div className='bg-gray-100 p-3 rounded overflow-x-auto'>
-                <table className='text-[10px] border-collapse w-full'>
-                  <thead>
-                    <tr className='bg-gray-200'>
-                      <th className='border border-gray-300 px-2 py-1'>NIK</th>
-                      <th className='border border-gray-300 px-2 py-1'>NAMA</th>
-                      <th className='border border-gray-300 px-2 py-1'>1</th>
-                      <th className='border border-gray-300 px-2 py-1'>2</th>
-                      <th className='border border-gray-300 px-2 py-1'>3</th>
-                      <th className='border border-gray-300 px-2 py-1'>...</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className='border border-gray-300 px-2 py-1'>
-                        19930282
-                      </td>
-                      <td className='border border-gray-300 px-2 py-1'>
-                        ANDREW
-                      </td>
-                      <td className='border border-gray-300 px-2 py-1'>P</td>
-                      <td className='border border-gray-300 px-2 py-1'>M</td>
-                      <td className='border border-gray-300 px-2 py-1'>L</td>
-                      <td className='border border-gray-300 px-2 py-1'>...</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div className='mt-2 space-y-1'>
-                <p className='text-gray-600 font-medium'>Kode jadwal:</p>
-                <div className='flex flex-wrap gap-2'>
-                  <span className='px-2 py-0.5 bg-blue-100 text-blue-700 rounded'>
-                    P = Pagi
-                  </span>
-                  <span className='px-2 py-0.5 bg-gray-200 text-gray-700 rounded'>
-                    M = Malam
-                  </span>
-                  <span className='px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded'>
-                    PP = Piket Pagi
-                  </span>
-                  <span className='px-2 py-0.5 bg-purple-100 text-purple-700 rounded'>
-                    PM = Piket Malam
-                  </span>
-                  <span className='px-2 py-0.5 bg-red-100 text-red-700 rounded'>
-                    L = Libur
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
         </ModalBody>

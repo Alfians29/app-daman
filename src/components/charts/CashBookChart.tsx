@@ -12,11 +12,32 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { cashFlowData } from '@/data/dummy';
+
+type CashFlowDataItem = {
+  name: string;
+  masuk: number;
+  keluar: number;
+  saldo: number;
+};
 
 interface CashBookChartProps {
-  data?: typeof cashFlowData;
+  data?: CashFlowDataItem[];
 }
+
+const defaultData: CashFlowDataItem[] = [
+  { name: 'Jan', masuk: 0, keluar: 0, saldo: 0 },
+  { name: 'Feb', masuk: 0, keluar: 0, saldo: 0 },
+  { name: 'Mar', masuk: 0, keluar: 0, saldo: 0 },
+  { name: 'Apr', masuk: 0, keluar: 0, saldo: 0 },
+  { name: 'Mei', masuk: 0, keluar: 0, saldo: 0 },
+  { name: 'Jun', masuk: 0, keluar: 0, saldo: 0 },
+  { name: 'Jul', masuk: 0, keluar: 0, saldo: 0 },
+  { name: 'Agu', masuk: 0, keluar: 0, saldo: 0 },
+  { name: 'Sep', masuk: 0, keluar: 0, saldo: 0 },
+  { name: 'Okt', masuk: 0, keluar: 0, saldo: 0 },
+  { name: 'Nov', masuk: 0, keluar: 0, saldo: 0 },
+  { name: 'Des', masuk: 0, keluar: 0, saldo: 0 },
+];
 
 const formatCurrency = (value: number) => {
   if (value >= 1000000) {
@@ -28,7 +49,7 @@ const formatCurrency = (value: number) => {
   return value.toString();
 };
 
-function CashBookChartContent({ data = cashFlowData }: CashBookChartProps) {
+function CashBookChartContent({ data = defaultData }: CashBookChartProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

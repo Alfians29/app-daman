@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import {
   Search,
   Edit2,
@@ -13,8 +13,8 @@ import {
   Filter,
   BarChart3,
   ClipboardCheck,
+  Loader2,
 } from 'lucide-react';
-import { attendanceRecords, teamMembers, AttendanceRecord } from '@/data/dummy';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
 import {
@@ -26,29 +26,48 @@ import {
 } from '@/components/ui/Modal';
 import { Input, Select } from '@/components/ui/Form';
 import toast from 'react-hot-toast';
+import { attendanceAPI, usersAPI } from '@/lib/api';
 
-type Keterangan = 'Pagi' | 'Malam' | 'Piket Pagi' | 'Piket Malam' | 'Libur';
+type AttendanceRecord = {
+  id: string;
+  memberId: string;
+  tanggal: string;
+  jamAbsen: string;
+  keterangan: string;
+  status: string;
+  member: { id: string; name: string; image: string | null };
+};
+
+type Member = {
+  id: string;
+  name: string;
+  position: string;
+  image: string | null;
+};
 
 type AttendanceForm = {
   memberId: string;
   tanggal: string;
   jamAbsen: string;
-  keterangan: Keterangan;
-  status: 'Ontime' | 'Telat';
+  keterangan: string;
+  status: string;
 };
 
-const memberOptions = [
-  { value: '', label: 'Pilih member' },
-  ...teamMembers.map((m) => ({ value: m.id, label: m.name })),
+const keteranganOptions = [
+  { value: 'PAGI', label: 'Pagi' },
+  { value: 'MALAM', label: 'Malam' },
+  { value: 'PIKET_PAGI', label: 'Piket Pagi' },
+  { value: 'PIKET_MALAM', label: 'Piket Malam' },
+  { value: 'LIBUR', label: 'Libur' },
 ];
 
-const keteranganOptions: { value: Keterangan; label: string }[] = [
-  { value: 'Pagi', label: 'Pagi' },
-  { value: 'Malam', label: 'Malam' },
-  { value: 'Piket Pagi', label: 'Piket Pagi' },
-  { value: 'Piket Malam', label: 'Piket Malam' },
-  { value: 'Libur', label: 'Libur' },
-];
+const keteranganLabels: Record<string, string> = {
+  PAGI: 'Pagi',
+  MALAM: 'Malam',
+  PIKET_PAGI: 'Piket Pagi',
+  PIKET_MALAM: 'Piket Malam',
+  LIBUR: 'Libur',
+};
 
 export default function AdminAttendancePage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,9 +76,10 @@ export default function AdminAttendancePage() {
   );
   const [filterKeterangan, setFilterKeterangan] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-
-  // Local records state
-  const [records, setRecords] = useState<AttendanceRecord[]>(attendanceRecords);
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPending, startTransition] = useTransition();
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -75,15 +95,37 @@ export default function AdminAttendancePage() {
     memberId: '',
     tanggal: new Date().toISOString().split('T')[0],
     jamAbsen: '08:00',
-    keterangan: 'Pagi',
-    status: 'Ontime',
+    keterangan: 'PAGI',
+    status: 'ONTIME',
   });
 
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    const [attendanceResult, usersResult] = await Promise.all([
+      attendanceAPI.getAll(),
+      usersAPI.getAll(),
+    ]);
+
+    if (attendanceResult.success) {
+      setRecords(attendanceResult.data as AttendanceRecord[]);
+    }
+    if (usersResult.success) {
+      setMembers(usersResult.data as Member[]);
+    }
+    setIsLoading(false);
+  };
+
   const filteredRecords = records.filter((record) => {
-    const matchesSearch = record.memberName
+    const memberName = record.member?.name || '';
+    const matchesSearch = memberName
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
-    const matchesDate = record.tanggal === selectedDate;
+    const recordDate = new Date(record.tanggal).toISOString().split('T')[0];
+    const matchesDate = recordDate === selectedDate;
     const matchesKeterangan =
       filterKeterangan === 'all' || record.keterangan === filterKeterangan;
     const matchesStatus =
@@ -92,116 +134,91 @@ export default function AdminAttendancePage() {
   });
 
   const keteranganColors: Record<string, string> = {
-    Pagi: 'bg-blue-100 text-blue-700',
-    Malam: 'bg-purple-100 text-purple-700',
-    'Piket Pagi': 'bg-emerald-100 text-emerald-700',
-    'Piket Malam': 'bg-orange-100 text-orange-700',
-    Libur: 'bg-red-100 text-red-700',
+    PAGI: 'bg-blue-100 text-blue-700',
+    MALAM: 'bg-purple-100 text-purple-700',
+    PIKET_PAGI: 'bg-emerald-100 text-emerald-700',
+    PIKET_MALAM: 'bg-orange-100 text-orange-700',
+    LIBUR: 'bg-red-100 text-red-700',
   };
 
-  // Get summary for selected date
   const summary = {
-    total: teamMembers.length,
-    hadir: filteredRecords.filter((r) => r.keterangan !== 'Libur').length,
-    libur: filteredRecords.filter((r) => r.keterangan === 'Libur').length,
+    total: members.length,
+    hadir: filteredRecords.filter((r) => r.keterangan !== 'LIBUR').length,
+    libur: filteredRecords.filter((r) => r.keterangan === 'LIBUR').length,
   };
 
-  // Get member statistics
-  const getMemberStats = () => {
-    const stats: Record<
-      string,
-      {
-        name: string;
-        total: number;
-        ontime: number;
-        telat: number;
-        libur: number;
-      }
-    > = {};
-
-    records.forEach((record) => {
-      if (!stats[record.memberId]) {
-        stats[record.memberId] = {
-          name: record.memberName,
-          total: 0,
-          ontime: 0,
-          telat: 0,
-          libur: 0,
-        };
-      }
-      stats[record.memberId].total++;
-      if (record.keterangan === 'Libur') {
-        stats[record.memberId].libur++;
-      } else if (record.status === 'Ontime') {
-        stats[record.memberId].ontime++;
-      } else {
-        stats[record.memberId].telat++;
-      }
-    });
-
-    return Object.values(stats);
-  };
+  const memberOptions = [
+    { value: '', label: 'Pilih member' },
+    ...members.map((m) => ({ value: m.id, label: m.name })),
+  ];
 
   // Add attendance
-  const handleAdd = () => {
-    const member = teamMembers.find((m) => m.id === formData.memberId);
-    if (!member) {
+  const handleAdd = async () => {
+    if (!formData.memberId) {
       toast.error('Pilih member terlebih dahulu!');
       return;
     }
 
-    const newRecord: AttendanceRecord = {
-      id: `att-${Date.now()}`,
-      memberId: member.id,
-      memberName: member.name,
-      memberImg: member.image,
-      position: member.position,
-      tanggal: formData.tanggal,
-      jamAbsen: formData.jamAbsen,
-      keterangan: formData.keterangan,
-      status: formData.status,
-    };
+    startTransition(async () => {
+      const result = await attendanceAPI.create({
+        memberId: formData.memberId,
+        tanggal: formData.tanggal,
+        jamAbsen: formData.jamAbsen,
+        keterangan: formData.keterangan,
+        status: formData.status,
+      });
 
-    setRecords([newRecord, ...records]);
-    setShowAddModal(false);
-    resetForm();
-    toast.success('Data kehadiran berhasil ditambahkan!');
+      if (result.success) {
+        toast.success('Data kehadiran berhasil ditambahkan!');
+        loadData();
+        setShowAddModal(false);
+        resetForm();
+      } else {
+        toast.error(result.error || 'Gagal menambahkan data');
+      }
+    });
   };
 
   // Edit attendance
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!selectedRecord) return;
-    const member = teamMembers.find((m) => m.id === formData.memberId);
 
-    setRecords(
-      records.map((r) =>
-        r.id === selectedRecord.id
-          ? {
-              ...r,
-              memberId: formData.memberId,
-              memberName: member?.name || r.memberName,
-              position: member?.position || r.position,
-              tanggal: formData.tanggal,
-              jamAbsen: formData.jamAbsen,
-              keterangan: formData.keterangan,
-              status: formData.status,
-            }
-          : r
-      )
-    );
-    setShowEditModal(false);
-    setSelectedRecord(null);
-    resetForm();
-    toast.success('Data kehadiran berhasil diubah!');
+    startTransition(async () => {
+      const result = await attendanceAPI.update(selectedRecord.id, {
+        tanggal: formData.tanggal,
+        jamAbsen: formData.jamAbsen,
+        keterangan: formData.keterangan,
+        status: formData.status,
+      });
+
+      if (result.success) {
+        toast.success('Data kehadiran berhasil diubah!');
+        loadData();
+        setShowEditModal(false);
+        setSelectedRecord(null);
+        resetForm();
+      } else {
+        toast.error(result.error || 'Gagal mengubah data');
+      }
+    });
   };
 
   // Delete attendance
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selectedRecord) return;
-    setRecords(records.filter((r) => r.id !== selectedRecord.id));
-    setShowDeleteModal(false);
-    setSelectedRecord(null);
-    toast.success('Data kehadiran berhasil dihapus!');
+
+    startTransition(async () => {
+      const result = await attendanceAPI.delete(selectedRecord.id);
+
+      if (result.success) {
+        toast.success('Data kehadiran berhasil dihapus!');
+        loadData();
+        setShowDeleteModal(false);
+        setSelectedRecord(null);
+      } else {
+        toast.error(result.error || 'Gagal menghapus data');
+      }
+    });
   };
 
   // Export to Excel
@@ -209,27 +226,16 @@ export default function AdminAttendancePage() {
     const XLSX = await import('xlsx');
 
     const exportData = filteredRecords.map((r) => ({
-      Tanggal: r.tanggal,
-      Nama: r.memberName,
-      Posisi: r.position,
+      Tanggal: new Date(r.tanggal).toLocaleDateString('id-ID'),
+      Nama: r.member?.name || '-',
       'Jam Absen': r.jamAbsen,
-      Keterangan: r.keterangan,
+      Keterangan: keteranganLabels[r.keterangan] || r.keterangan,
       Status: r.status,
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Kehadiran');
-
-    ws['!cols'] = [
-      { wch: 12 },
-      { wch: 20 },
-      { wch: 15 },
-      { wch: 10 },
-      { wch: 12 },
-      { wch: 10 },
-    ];
-
     XLSX.writeFile(wb, `kehadiran_${selectedDate}.xlsx`);
     toast.success('File Excel berhasil didownload!');
   };
@@ -239,8 +245,8 @@ export default function AdminAttendancePage() {
       memberId: '',
       tanggal: new Date().toISOString().split('T')[0],
       jamAbsen: '08:00',
-      keterangan: 'Pagi',
-      status: 'Ontime',
+      keterangan: 'PAGI',
+      status: 'ONTIME',
     });
   };
 
@@ -248,7 +254,7 @@ export default function AdminAttendancePage() {
     setSelectedRecord(record);
     setFormData({
       memberId: record.memberId,
-      tanggal: record.tanggal,
+      tanggal: new Date(record.tanggal).toISOString().split('T')[0],
       jamAbsen: record.jamAbsen,
       keterangan: record.keterangan,
       status: record.status,
@@ -267,6 +273,14 @@ export default function AdminAttendancePage() {
     setSelectedRecord(null);
     resetForm();
   };
+
+  if (isLoading) {
+    return (
+      <div className='flex items-center justify-center min-h-[400px]'>
+        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
+      </div>
+    );
+  }
 
   return (
     <div className='space-y-6'>
@@ -296,7 +310,8 @@ export default function AdminAttendancePage() {
                 resetForm();
                 setShowAddModal(true);
               }}
-              className='flex items-center gap-2 px-4 py-2 bg-white text-[#E57373] rounded-xl font-medium hover:bg-white/90 transition-colors'
+              disabled={isPending}
+              className='flex items-center gap-2 px-4 py-2 bg-white text-[#E57373] rounded-xl font-medium hover:bg-white/90 transition-colors disabled:opacity-50'
             >
               <Plus className='w-4 h-4' />
               Tambah
@@ -365,7 +380,6 @@ export default function AdminAttendancePage() {
           />
         </div>
 
-        {/* Additional Filters */}
         <div className='flex flex-wrap items-center gap-3'>
           <div className='flex items-center gap-2'>
             <Filter className='w-4 h-4 text-gray-400' />
@@ -391,8 +405,8 @@ export default function AdminAttendancePage() {
             className='px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
           >
             <option value='all'>Semua Status</option>
-            <option value='Ontime'>Ontime</option>
-            <option value='Telat'>Telat</option>
+            <option value='ONTIME'>Ontime</option>
+            <option value='TELAT'>Telat</option>
           </select>
 
           {(filterKeterangan !== 'all' || filterStatus !== 'all') && (
@@ -419,9 +433,6 @@ export default function AdminAttendancePage() {
                   Nama
                 </th>
                 <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
-                  Posisi
-                </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
                   Jam Absen
                 </th>
                 <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
@@ -439,7 +450,7 @@ export default function AdminAttendancePage() {
               {filteredRecords.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={5}
                     className='px-4 py-8 text-center text-gray-500'
                   >
                     Tidak ada data kehadiran untuk tanggal ini
@@ -451,19 +462,16 @@ export default function AdminAttendancePage() {
                     <td className='px-4 py-3'>
                       <div className='flex items-center gap-3'>
                         <div className='w-8 h-8 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center text-white text-xs font-medium'>
-                          {record.memberName
+                          {(record.member?.name || '?')
                             .split(' ')
                             .map((n) => n[0])
                             .join('')
                             .slice(0, 2)}
                         </div>
                         <span className='text-sm font-medium text-gray-800'>
-                          {record.memberName}
+                          {record.member?.name || '-'}
                         </span>
                       </div>
-                    </td>
-                    <td className='px-4 py-3 text-sm text-gray-600'>
-                      {record.position}
                     </td>
                     <td className='px-4 py-3 text-sm text-gray-600'>
                       {record.jamAbsen}
@@ -475,31 +483,34 @@ export default function AdminAttendancePage() {
                           'bg-gray-100 text-gray-700'
                         }`}
                       >
-                        {record.keterangan}
+                        {keteranganLabels[record.keterangan] ||
+                          record.keterangan}
                       </span>
                     </td>
                     <td className='px-4 py-3'>
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-medium rounded-lg ${
-                          record.status === 'Ontime'
+                          record.status === 'ONTIME'
                             ? 'bg-emerald-100 text-emerald-700'
                             : 'bg-amber-100 text-amber-700'
                         }`}
                       >
-                        {record.status}
+                        {record.status === 'ONTIME' ? 'Ontime' : 'Telat'}
                       </span>
                     </td>
                     <td className='px-4 py-3'>
                       <div className='flex items-center justify-center gap-2'>
                         <button
                           onClick={() => openEditModal(record)}
-                          className='p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors'
+                          disabled={isPending}
+                          className='p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50'
                         >
                           <Edit2 size={16} />
                         </button>
                         <button
                           onClick={() => openDeleteModal(record)}
-                          className='p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors'
+                          disabled={isPending}
+                          className='p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50'
                         >
                           <Trash2 size={16} />
                         </button>
@@ -532,8 +543,8 @@ export default function AdminAttendancePage() {
                 setFormData({ ...formData, memberId: e.target.value })
               }
               options={memberOptions}
+              disabled={showEditModal}
             />
-
             <Input
               label='Tanggal'
               type='date'
@@ -542,7 +553,6 @@ export default function AdminAttendancePage() {
                 setFormData({ ...formData, tanggal: e.target.value })
               }
             />
-
             <Input
               label='Jam Absen'
               type='time'
@@ -551,28 +561,24 @@ export default function AdminAttendancePage() {
                 setFormData({ ...formData, jamAbsen: e.target.value })
               }
             />
-
             <Select
               label='Keterangan'
               value={formData.keterangan}
               onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  keterangan: e.target.value as Keterangan,
-                })
+                setFormData({ ...formData, keterangan: e.target.value })
               }
               options={keteranganOptions}
             />
-
             <div>
-              <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>
                 Status
               </label>
               <div className='flex gap-2'>
                 <button
-                  onClick={() => setFormData({ ...formData, status: 'Ontime' })}
+                  type='button'
+                  onClick={() => setFormData({ ...formData, status: 'ONTIME' })}
                   className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-                    formData.status === 'Ontime'
+                    formData.status === 'ONTIME'
                       ? 'bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
@@ -580,9 +586,10 @@ export default function AdminAttendancePage() {
                   Ontime
                 </button>
                 <button
-                  onClick={() => setFormData({ ...formData, status: 'Telat' })}
+                  type='button'
+                  onClick={() => setFormData({ ...formData, status: 'TELAT' })}
                   className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-                    formData.status === 'Telat'
+                    formData.status === 'TELAT'
                       ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-500'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
@@ -599,10 +606,16 @@ export default function AdminAttendancePage() {
           </Button>
           <Button
             onClick={showAddModal ? handleAdd : handleEdit}
-            disabled={!formData.memberId}
+            disabled={isPending || !formData.memberId}
             className='flex-1'
           >
-            {showAddModal ? 'Tambah' : 'Simpan'}
+            {isPending ? (
+              <Loader2 className='w-4 h-4 animate-spin' />
+            ) : showAddModal ? (
+              'Tambah'
+            ) : (
+              'Simpan'
+            )}
           </Button>
         </ModalFooter>
       </Modal>
@@ -613,7 +626,7 @@ export default function AdminAttendancePage() {
         onClose={() => setShowDeleteModal(false)}
         onConfirm={handleDelete}
         title='Hapus Data Kehadiran?'
-        message={`Data kehadiran ${selectedRecord?.memberName} pada tanggal ${selectedRecord?.tanggal} akan dihapus permanen.`}
+        message={`Data kehadiran ${selectedRecord?.member?.name} akan dihapus permanen.`}
         confirmText='Hapus'
         cancelText='Batal'
         variant='danger'
@@ -630,61 +643,9 @@ export default function AdminAttendancePage() {
           onClose={() => setShowStatsModal(false)}
         />
         <ModalBody>
-          <div className='space-y-3 max-h-[60vh] overflow-y-auto pr-2'>
-            {getMemberStats().length === 0 ? (
-              <p className='text-center text-gray-500 py-8'>
-                Belum ada data kehadiran
-              </p>
-            ) : (
-              getMemberStats().map((stats, index) => {
-                const total = stats.ontime + stats.telat;
-                const ontimePercent =
-                  total > 0 ? Math.round((stats.ontime / total) * 100) : 0;
-                return (
-                  <div
-                    key={index}
-                    className='p-4 bg-gray-50 dark:bg-gray-700 rounded-xl'
-                  >
-                    <div className='flex items-center justify-between mb-2'>
-                      <p className='font-medium text-gray-800 dark:text-white'>
-                        {stats.name}
-                      </p>
-                      <p className='text-sm font-bold text-emerald-600'>
-                        {ontimePercent}% Ontime
-                      </p>
-                    </div>
-                    <div className='flex gap-4 text-sm'>
-                      <div className='flex items-center gap-1'>
-                        <span className='w-2 h-2 rounded-full bg-emerald-500' />
-                        <span className='text-gray-600 dark:text-gray-400'>
-                          Ontime: {stats.ontime}
-                        </span>
-                      </div>
-                      <div className='flex items-center gap-1'>
-                        <span className='w-2 h-2 rounded-full bg-amber-500' />
-                        <span className='text-gray-600 dark:text-gray-400'>
-                          Telat: {stats.telat}
-                        </span>
-                      </div>
-                      <div className='flex items-center gap-1'>
-                        <span className='w-2 h-2 rounded-full bg-gray-400' />
-                        <span className='text-gray-600 dark:text-gray-400'>
-                          Libur: {stats.libur}
-                        </span>
-                      </div>
-                    </div>
-                    {/* Progress bar */}
-                    <div className='mt-2 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden'>
-                      <div
-                        className='h-full bg-emerald-500'
-                        style={{ width: `${ontimePercent}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
+          <p className='text-center text-gray-500 py-8'>
+            Statistik akan tersedia setelah ada lebih banyak data kehadiran.
+          </p>
         </ModalBody>
         <ModalFooter>
           <Button
