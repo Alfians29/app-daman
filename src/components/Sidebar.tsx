@@ -263,22 +263,31 @@ export default function Sidebar() {
           {isUserMenuOpen && (
             <div className='absolute bottom-full left-3 right-3 mb-2 bg-white dark:bg-gray-700 rounded-xl shadow-xl border border-gray-100 dark:border-gray-600 overflow-hidden'>
               {/* Theme Toggle */}
-              <button
-                onClick={toggleTheme}
-                className='w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors'
-              >
-                {isDarkMode ? (
-                  <>
-                    <Sun size={18} className='text-amber-500' />
-                    <span>Mode Terang</span>
-                  </>
-                ) : (
-                  <>
+              <div className='flex items-center justify-between gap-3 px-4 py-3'>
+                <div className='flex items-center gap-3'>
+                  {isDarkMode ? (
                     <Moon size={18} className='text-indigo-500' />
-                    <span>Mode Gelap</span>
-                  </>
-                )}
-              </button>
+                  ) : (
+                    <Sun size={18} className='text-amber-500' />
+                  )}
+                  <span className='text-sm text-gray-700 dark:text-gray-200'>
+                    Mode Gelap
+                  </span>
+                </div>
+                {/* Toggle Switch */}
+                <button
+                  onClick={toggleTheme}
+                  className={`relative w-11 h-6 rounded-full transition-colors duration-300 ${
+                    isDarkMode ? 'bg-[#E57373]' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${
+                      isDarkMode ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
 
               {/* Settings / Profile */}
               <Link

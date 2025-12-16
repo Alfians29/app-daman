@@ -659,7 +659,7 @@ export default function AttendancePage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className='flex items-center justify-between mt-4 pt-4 border-t'>
+          <div className='flex items-center justify-between mt-4 pt-4 border-t border-gray-200'>
             <p className='text-sm text-gray-500'>
               Halaman {currentPage} dari {totalPages}
             </p>

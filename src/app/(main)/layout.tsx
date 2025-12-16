@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import { Toaster } from 'react-hot-toast';
 import { SettingsProvider } from '@/context/SettingsContext';
@@ -9,6 +11,13 @@ export default function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+
+  // Scroll to top when route changes
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
   return (
     <SettingsProvider>
       <div className='flex min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300'>
