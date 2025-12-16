@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { usersAPI, scheduleAPI } from '@/lib/api';
+import { useCurrentUser } from '@/components/AuthGuard';
 import {
   ChevronLeft,
   ChevronRight,
@@ -31,8 +32,6 @@ type Schedule = {
   keterangan: string;
 };
 
-const CURRENT_USER_ID = 'user-2';
-
 export default function SchedulePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showMySchedule, setShowMySchedule] = useState(false);
@@ -45,11 +44,14 @@ export default function SchedulePage() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [scheduleEntries, setScheduleEntries] = useState<Schedule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user: authUser, isLoading: authLoading } = useCurrentUser();
   const [currentUser, setCurrentUser] = useState<TeamMember | null>(null);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!authLoading && authUser) {
+      loadData();
+    }
+  }, [authLoading, authUser]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -59,17 +61,20 @@ export default function SchedulePage() {
     ]);
 
     if (usersResult.success && usersResult.data) {
-      const activeUsers = usersResult.data.filter(
+      const activeUsers = (usersResult.data as TeamMember[]).filter(
         (u: TeamMember) => u.isActive
       );
       setTeamMembers(activeUsers);
-      setCurrentUser(
-        activeUsers.find((u: TeamMember) => u.id === CURRENT_USER_ID) ||
-          activeUsers[0]
-      );
+      // Find user matching authenticated session
+      if (authUser?.id) {
+        setCurrentUser(
+          activeUsers.find((u: TeamMember) => u.id === authUser.id) ||
+            activeUsers[0]
+        );
+      }
     }
     if (schedResult.success && schedResult.data) {
-      setScheduleEntries(schedResult.data);
+      setScheduleEntries(schedResult.data as Schedule[]);
     }
     setIsLoading(false);
   };
@@ -236,7 +241,7 @@ export default function SchedulePage() {
           <div className='flex flex-col lg:flex-row lg:items-center gap-4'>
             <div className='flex items-center gap-4 flex-1'>
               <Avatar
-                src={currentUser.image}
+                src={currentUser.image || undefined}
                 name={currentUser.name}
                 size='lg'
               />
@@ -417,7 +422,7 @@ export default function SchedulePage() {
                     <td className='py-2 px-2 sticky left-0 bg-white'>
                       <div className='flex items-center gap-2'>
                         <Avatar
-                          src={member.image}
+                          src={member.image || undefined}
                           name={member.name}
                           size='sm'
                         />

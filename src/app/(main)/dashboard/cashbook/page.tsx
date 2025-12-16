@@ -23,6 +23,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Modal, ModalHeader, ModalBody } from '@/components/ui/Modal';
 import { cashAPI, usersAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
+import { useCurrentUser } from '@/components/AuthGuard';
 
 type CashEntry = {
   id: string;
@@ -44,7 +45,6 @@ type TeamMember = {
   isActive: boolean;
 };
 
-const CURRENT_USER_ID = 'user-2';
 const monthNames = [
   'Jan',
   'Feb',
@@ -73,11 +73,14 @@ export default function CashBookPage() {
   const [cashEntries, setCashEntries] = useState<CashEntry[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user: authUser, isLoading: authLoading } = useCurrentUser();
   const [currentUser, setCurrentUser] = useState<TeamMember | null>(null);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!authLoading && authUser) {
+      loadData();
+    }
+  }, [authLoading, authUser]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -92,10 +95,13 @@ export default function CashBookPage() {
         (u: TeamMember) => u.isActive
       );
       setTeamMembers(activeUsers);
-      setCurrentUser(
-        activeUsers.find((u: TeamMember) => u.id === CURRENT_USER_ID) ||
-          activeUsers[0]
-      );
+      // Find user matching authenticated session
+      if (authUser?.id) {
+        setCurrentUser(
+          activeUsers.find((u: TeamMember) => u.id === authUser.id) ||
+            activeUsers[0]
+        );
+      }
     }
     setIsLoading(false);
   };

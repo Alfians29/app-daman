@@ -7,62 +7,102 @@ export async function POST(request: NextRequest) {
   try {
     const { username, password } = await request.json();
 
-    // Find user by username (case-insensitive)
+    if (!username || !password) {
+      return NextResponse.json(
+        { success: false, error: 'Username dan password harus diisi' },
+        { status: 400 }
+      );
+    }
+
+    // Find user by username or nik
     const user = await prisma.user.findFirst({
       where: {
-        OR: [
-          { nik: username },
-          { name: { contains: username, mode: 'insensitive' } },
-        ],
+        OR: [{ username: username }, { nik: username }],
       },
-      include: { role: true },
+      include: {
+        role: {
+          include: {
+            rolePermissions: {
+              include: { permission: true },
+            },
+          },
+        },
+      },
     });
 
     if (!user) {
       return NextResponse.json(
-        { success: false, error: 'User tidak ditemukan' },
+        { success: false, error: 'Username atau password salah' },
         { status: 401 }
       );
     }
 
+    // Check password
+    if (user.password !== password) {
+      return NextResponse.json(
+        { success: false, error: 'Username atau password salah' },
+        { status: 401 }
+      );
+    }
+
+    // Check if user is active
     if (!user.isActive) {
       return NextResponse.json(
-        { success: false, error: 'Akun tidak aktif' },
-        { status: 401 }
+        { success: false, error: 'Akun Anda telah dinonaktifkan' },
+        { status: 403 }
       );
     }
 
-    // Simple password check (no hashing as per user request)
-    if (user.password && user.password !== password) {
-      return NextResponse.json(
-        { success: false, error: 'Password salah' },
-        { status: 401 }
-      );
-    }
+    // Update last login
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date() },
+    });
 
     // Log login activity
     await logActivity({
-      action: `User "${user.name}" berhasil login`,
+      action: 'melakukan login',
       target: 'Auth',
       userId: user.id,
       type: 'LOGIN',
-      metadata: { username, roleName: user.role?.name },
+      metadata: {
+        loginTime: new Date().toISOString(),
+        username: user.username,
+        roleName: user.role?.name,
+      },
     });
+
+    // Prepare user data with permissions
+    const permissions =
+      user.role?.rolePermissions?.map((rp) => rp.permission.code) || [];
 
     return NextResponse.json({
       success: true,
       data: {
         id: user.id,
+        nik: user.nik,
+        username: user.username,
         name: user.name,
         nickname: user.nickname,
+        email: user.email,
+        position: user.position,
+        department: user.department,
         image: user.image,
-        role: user.role,
+        usernameTelegram: user.usernameTelegram,
+        phone: user.phone,
+        roleId: user.roleId,
+        isActive: user.isActive,
+        role: {
+          id: user.role?.id,
+          name: user.role?.name,
+          permissions: permissions,
+        },
       },
     });
   } catch (error) {
     console.error('Error during login:', error);
     return NextResponse.json(
-      { success: false, error: 'Login gagal' },
+      { success: false, error: 'Terjadi kesalahan saat login' },
       { status: 500 }
     );
   }

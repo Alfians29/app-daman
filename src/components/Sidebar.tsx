@@ -26,14 +26,10 @@ import {
   Clock,
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { teamMembers } from '@/data/dummy';
 import { Avatar } from './ui/Avatar';
 import Image from 'next/image';
-
-// Simulasi role admin (ganti dengan auth context nanti)
-const isAdmin = true;
-const isSuperAdmin = true;
-const currentUser = teamMembers[1]; // Muhammad Alfian
+import { useCurrentUser } from './AuthGuard';
+import toast from 'react-hot-toast';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -64,6 +60,13 @@ export default function Sidebar() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const { user: currentUser, logout } = useCurrentUser();
+
+  // Determine role-based access
+  const isAdmin =
+    currentUser?.role?.name === 'Admin' ||
+    currentUser?.role?.name === 'Superadmin';
+  const isSuperAdmin = currentUser?.role?.name === 'Superadmin';
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -301,13 +304,16 @@ export default function Sidebar() {
               </Link>
 
               {/* Logout */}
-              <Link
-                href='/sign-in/login'
+              <button
+                onClick={() => {
+                  toast.success('Logout berhasil!');
+                  logout();
+                }}
                 className='w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-gray-100 dark:border-gray-600'
               >
                 <LogOut size={18} />
                 <span>Logout</span>
-              </Link>
+              </button>
             </div>
           )}
 
@@ -316,13 +322,17 @@ export default function Sidebar() {
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
             className='w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-200'
           >
-            <Avatar src={currentUser.image} name={currentUser.name} size='md' />
+            <Avatar
+              src={currentUser?.image as string | undefined}
+              name={(currentUser?.name as string) || 'User'}
+              size='md'
+            />
             <div className='flex-1 min-w-0 text-left'>
               <p className='text-sm font-semibold text-gray-800 dark:text-white truncate'>
-                {currentUser.nickname}
+                {currentUser?.nickname || currentUser?.name || 'User'}
               </p>
               <p className='text-xs text-gray-500 dark:text-gray-400 truncate'>
-                {currentUser.position}
+                {currentUser?.role?.name || 'Member'}
               </p>
             </div>
             <ChevronUp
