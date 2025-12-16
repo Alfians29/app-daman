@@ -607,21 +607,21 @@ export default function CashBookPage() {
         <>
           {/* Modal Overlay */}
           <div
-            className='fixed inset-0 bg-black/50 backdrop-blur-sm z-50 animate-fade-in'
+            className='fixed top-0 left-0 right-0 bottom-0 w-full h-full bg-black/50 z-999'
             onClick={() => setSelectedMonth(null)}
           />
 
           {/* Modal Content */}
           <div
-            className='fixed inset-0 z-[60] flex items-center justify-center p-4'
+            className='fixed top-0 left-0 right-0 bottom-0 w-full h-full z-1000 flex items-center justify-center p-4'
             onClick={() => setSelectedMonth(null)}
           >
             <div
-              className='bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden animate-fade-in'
+              className='bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden animate-fade-in flex flex-col'
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className='flex items-center justify-between p-5 bg-gradient-to-r from-[#E57373] to-[#EF5350]'>
+              <div className='flex items-center justify-between p-5 bg-gradient-to-r from-[#E57373] to-[#EF5350] shrink-0'>
                 <div>
                   <h3 className='text-lg font-bold text-white'>
                     Pembayaran Kas {selectedMonthData.monthName}{' '}
@@ -641,7 +641,7 @@ export default function CashBookPage() {
               </div>
 
               {/* Modal Body */}
-              <div className='p-5 overflow-y-auto max-h-[60vh]'>
+              <div className='p-5 overflow-y-auto flex-1'>
                 {/* Progress Summary */}
                 <div className='mb-4'>
                   <div className='flex items-center justify-between mb-2'>
@@ -735,7 +735,7 @@ export default function CashBookPage() {
               </div>
 
               {/* Modal Footer */}
-              <div className='p-4 bg-gray-50'>
+              <div className='p-4 bg-gray-50 shrink-0'>
                 <button
                   onClick={() => setSelectedMonth(null)}
                   className='w-full py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-xl transition-colors'
