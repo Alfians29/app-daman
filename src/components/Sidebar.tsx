@@ -23,6 +23,7 @@ import {
   Sun,
   Moon,
   ChevronUp,
+  Clock,
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { teamMembers } from '@/data/dummy';
@@ -49,6 +50,7 @@ const adminNavItems = [
   { href: '/admin/report', label: 'Kelola Report', icon: FileCog },
   { href: '/admin/cash', label: 'Kelola Kas', icon: Banknote },
   { href: '/admin/attendance', label: 'Kelola Kehadiran', icon: ClipboardList },
+  { href: '/admin/shift', label: 'Kelola Shift', icon: Clock },
 ];
 
 const superAdminNavItems = [
