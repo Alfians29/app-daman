@@ -136,18 +136,15 @@ function AttendanceChartContent({
 
   if (!mounted) {
     return (
-      <div className='w-full h-[300px] bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 animate-pulse rounded-xl' />
+      <div className='w-full h-[300px] bg-linear-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 animate-pulse rounded-xl' />
     );
   }
 
   const chartData = data || generateDefaultData();
 
-  const filteredData =
-    period === '1bulan'
-      ? chartData.slice(-1)
-      : period === '6bulan'
-      ? chartData.slice(-6)
-      : chartData;
+  // Data is already filtered by period in the parent component
+  // For 1bulan: 4 weeks, for 6bulan: 6 months, for 1tahun: 12 months
+  const filteredData = chartData;
 
   // Get active shift types from settings or use defaults
   const activeShifts =
@@ -162,8 +159,8 @@ function AttendanceChartContent({
         ];
 
   return (
-    <div className='w-full h-[300px]'>
-      <ResponsiveContainer width='100%' height='100%'>
+    <div className='w-full'>
+      <ResponsiveContainer width='100%' height={300}>
         <AreaChart
           data={filteredData}
           margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
@@ -241,7 +238,7 @@ export const AttendanceChart = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className='w-full h-[300px] bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 animate-pulse rounded-xl' />
+      <div className='w-full h-[300px] bg-linear-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 animate-pulse rounded-xl' />
     ),
   }
 );

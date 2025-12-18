@@ -9,15 +9,13 @@ import {
   Building,
   AtSign,
   Search,
-  Filter,
-  X,
   Users,
   Crown,
   User,
   ChevronDown,
-  Loader2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { SkeletonPage } from '@/components/ui/Skeleton';
 import {
   Modal,
   ModalHeader,
@@ -91,11 +89,7 @@ export default function AboutPage() {
   const hasActiveFilters = searchQuery || filterPosition !== 'all';
 
   if (isLoading) {
-    return (
-      <div className='flex items-center justify-center min-h-[400px]'>
-        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
-      </div>
-    );
+    return <SkeletonPage />;
   }
 
   return (
@@ -213,7 +207,7 @@ export default function AboutPage() {
                                 className='w-14 h-14 rounded-full object-cover'
                               />
                             ) : (
-                              <div className='w-14 h-14 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                              <div className='w-14 h-14 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
                                 <span className='text-xl font-bold text-white'>
                                   {deptLeader.name
                                     .split(' ')
@@ -264,7 +258,7 @@ export default function AboutPage() {
                                 className='w-10 h-10 rounded-full object-cover'
                               />
                             ) : (
-                              <div className='w-10 h-10 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                              <div className='w-10 h-10 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
                                 <span className='text-sm font-bold text-white'>
                                   {member.name
                                     .split(' ')
@@ -323,7 +317,7 @@ export default function AboutPage() {
                       className='w-14 h-14 rounded-full object-cover'
                     />
                   ) : (
-                    <div className='w-14 h-14 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                    <div className='w-14 h-14 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
                       <span className='text-xl font-bold text-white'>
                         {member.name
                           .split(' ')
@@ -396,7 +390,7 @@ export default function AboutPage() {
                       className='w-20 h-20 rounded-full object-cover ring-2 ring-transparent group-hover:ring-[#E57373] transition-all'
                     />
                   ) : (
-                    <div className='w-20 h-20 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center ring-2 ring-transparent group-hover:ring-[#E57373] transition-all'>
+                    <div className='w-20 h-20 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center ring-2 ring-transparent group-hover:ring-[#E57373] transition-all'>
                       <span className='text-2xl font-bold text-white'>
                         {selectedMember.name
                           .split(' ')
@@ -525,7 +519,7 @@ export default function AboutPage() {
                 className='w-64 h-64 mx-auto rounded-2xl object-cover shadow-xl'
               />
             ) : (
-              <div className='w-64 h-64 mx-auto rounded-2xl bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+              <div className='w-64 h-64 mx-auto rounded-2xl bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
                 <span className='text-6xl font-bold text-white'>
                   {selectedMember?.name
                     .split(' ')

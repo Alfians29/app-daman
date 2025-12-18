@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useTransition } from 'react';
 import {
-  Search,
   Edit2,
   Trash2,
   Check,
@@ -10,14 +9,13 @@ import {
   Calendar,
   Plus,
   Download,
-  Filter,
-  BarChart3,
   ClipboardCheck,
   Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { FilterBar } from '@/components/ui/FilterBar';
+import { SkeletonPage } from '@/components/ui/Skeleton';
 import {
   Modal,
   ModalHeader,
@@ -97,7 +95,7 @@ export default function AdminAttendancePage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showStatsModal, setShowStatsModal] = useState(false);
+
   const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(
     null
   );
@@ -331,11 +329,7 @@ export default function AdminAttendancePage() {
   };
 
   if (isLoading) {
-    return (
-      <div className='flex items-center justify-center min-h-[400px]'>
-        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
-      </div>
-    );
+    return <SkeletonPage />;
   }
 
   return (
@@ -347,13 +341,6 @@ export default function AdminAttendancePage() {
         icon={ClipboardCheck}
         actions={
           <>
-            <button
-              onClick={() => setShowStatsModal(true)}
-              className='flex items-center gap-2 px-4 py-2 bg-white/20 text-white border border-white/30 rounded-xl font-medium hover:bg-white/30 transition-colors'
-            >
-              <BarChart3 className='w-4 h-4' />
-              Statistik
-            </button>
             <button
               onClick={handleExport}
               className='flex items-center gap-2 px-4 py-2 bg-white/20 text-white border border-white/30 rounded-xl font-medium hover:bg-white/30 transition-colors'
@@ -457,10 +444,10 @@ export default function AdminAttendancePage() {
       />
 
       {/* Table */}
-      <div className='bg-white rounded-xl border border-gray-100 overflow-hidden'>
+      <div className='bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden'>
         <div className='overflow-x-auto'>
           <table className='w-full'>
-            <thead className='bg-gray-50'>
+            <thead className='bg-gray-50 dark:bg-gray-700/50'>
               <tr>
                 <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
                   Nama
@@ -491,7 +478,10 @@ export default function AdminAttendancePage() {
                 </tr>
               ) : (
                 filteredRecords.map((record) => (
-                  <tr key={record.id} className='hover:bg-gray-50'>
+                  <tr
+                    key={record.id}
+                    className='hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                  >
                     <td className='px-4 py-3'>
                       <div className='flex items-center gap-3'>
                         {record.member?.image ? (
@@ -501,7 +491,7 @@ export default function AdminAttendancePage() {
                             className='w-8 h-8 rounded-full object-cover'
                           />
                         ) : (
-                          <div className='w-8 h-8 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center text-white text-xs font-medium'>
+                          <div className='w-8 h-8 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center text-white text-xs font-medium'>
                             {(record.member?.name || '?')
                               .split(' ')
                               .map((n) => n[0])
@@ -671,32 +661,6 @@ export default function AdminAttendancePage() {
         cancelText='Batal'
         variant='danger'
       />
-
-      {/* Statistics Modal */}
-      <Modal
-        isOpen={showStatsModal}
-        onClose={() => setShowStatsModal(false)}
-        size='lg'
-      >
-        <ModalHeader
-          title='Statistik Kehadiran'
-          onClose={() => setShowStatsModal(false)}
-        />
-        <ModalBody>
-          <p className='text-center text-gray-500 py-8'>
-            Statistik akan tersedia setelah ada lebih banyak data kehadiran.
-          </p>
-        </ModalBody>
-        <ModalFooter>
-          <Button
-            variant='secondary'
-            onClick={() => setShowStatsModal(false)}
-            className='flex-1'
-          >
-            Tutup
-          </Button>
-        </ModalFooter>
-      </Modal>
     </div>
   );
 }

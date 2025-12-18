@@ -16,6 +16,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { SkeletonPage } from '@/components/ui/Skeleton';
 import {
   Modal,
   ModalHeader,
@@ -520,11 +521,7 @@ export default function AdminSchedulePage() {
   };
 
   if (isLoading) {
-    return (
-      <div className='flex items-center justify-center min-h-[400px]'>
-        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
-      </div>
-    );
+    return <SkeletonPage />;
   }
 
   return (
@@ -672,7 +669,7 @@ export default function AdminSchedulePage() {
                           className='w-8 h-8 rounded-full object-cover'
                         />
                       ) : (
-                        <div className='w-8 h-8 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                        <div className='w-8 h-8 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
                           <span className='text-xs font-bold text-white'>
                             {member.name
                               .split(' ')

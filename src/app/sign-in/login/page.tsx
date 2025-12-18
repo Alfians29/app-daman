@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, Eye, EyeOff, LogIn, Lock, User, Sparkles } from 'lucide-react';
-import Link from 'next/link';
+import { Eye, EyeOff, LogIn, Lock, User, Sparkles } from 'lucide-react';
 import Image from 'next/image';
 import { authAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -11,7 +10,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -52,7 +50,7 @@ export default function LoginPage() {
   return (
     <div className='min-h-screen flex bg-gray-50 dark:bg-gray-900 transition-colors duration-300'>
       {/* Left Side - Hero/Branding */}
-      <div className='hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#E57373] via-[#EF5350] to-[#C62828] relative overflow-hidden'>
+      <div className='hidden lg:flex lg:w-1/2 bg-linear-to-br from-[#E57373] via-[#EF5350] to-[#C62828] relative overflow-hidden'>
         {/* Decorative Elements */}
         <div className='absolute top-0 left-0 w-full h-full'>
           <div className='absolute top-20 left-20 w-64 h-64 bg-white/10 rounded-full blur-3xl' />
@@ -64,7 +62,14 @@ export default function LoginPage() {
         <div className='relative z-10 flex flex-col justify-center items-center w-full p-12 text-white'>
           <div className='w-50 h-35 rounded-3xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-8 shadow-2xl'>
             {/* <Users className='w-12 h-12' /> */}
-            <Image src='/logoputih.png' alt='Logo' width={150} height={150} />
+            <Image
+              src='/logoputih.png'
+              alt='Logo'
+              width={150}
+              height={150}
+              style={{ width: 'auto', height: 'auto' }}
+              loading='eager'
+            />
           </div>
           <h1 className='text-4xl font-bold mb-4'>Daman</h1>
           <p className='text-xl text-white/80 mb-8'>Management System</p>
@@ -105,8 +110,14 @@ export default function LoginPage() {
         <div className='w-full max-w-md'>
           {/* Mobile Logo */}
           <div className='lg:hidden text-center mb-8'>
-            <div className='inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#E57373] to-[#C62828] shadow-lg mb-4'>
-              <Image src='/logoputih.png' alt='Logo' width={55} height={55} />
+            <div className='inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-linear-to-br from-[#E57373] to-[#C62828] shadow-lg mb-4'>
+              <Image
+                src='/logoputih.png'
+                alt='Logo'
+                width={55}
+                height={55}
+                style={{ width: 'auto', height: 'auto' }}
+              />
             </div>
             <h1 className='text-2xl font-bold text-gray-800 dark:text-white'>
               Daman
@@ -191,7 +202,7 @@ export default function LoginPage() {
               <button
                 type='submit'
                 disabled={isLoading}
-                className='w-full py-4 px-4 bg-gradient-to-r from-[#E57373] to-[#EF5350] text-white font-semibold rounded-xl shadow-lg shadow-red-200 dark:shadow-red-900/30 hover:shadow-xl hover:shadow-red-300 dark:hover:shadow-red-900/50 hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0'
+                className='w-full py-4 px-4 bg-linear-to-r from-[#E57373] to-[#EF5350] text-white font-semibold rounded-xl shadow-lg shadow-red-200 dark:shadow-red-900/30 hover:shadow-xl hover:shadow-red-300 dark:hover:shadow-red-900/50 hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0'
               >
                 {isLoading ? (
                   <div className='w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin' />

@@ -26,7 +26,6 @@ import {
   Clock,
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { Avatar } from './ui/Avatar';
 import Image from 'next/image';
 import { useCurrentUser } from './AuthGuard';
 import { usersAPI } from '@/lib/api';
@@ -311,7 +310,14 @@ export default function Sidebar() {
         <div className='h-16 flex items-center px-5 border-b border-gray-100 dark:border-gray-700'>
           <div className='flex items-center gap-3'>
             <div className='w-18 h-10 rounded-lg bg-[#E57373] flex items-center justify-center shadow-lg shadow-red-200/50'>
-              <Image src='/logoputih.png' alt='Logo' width={55} height={55} />
+              <Image
+                src='/logoputih.png'
+                alt='Logo'
+                width={150}
+                height={150}
+                style={{ width: 'auto', height: 'auto' }}
+                loading='eager'
+              />
             </div>
             <div>
               <h1 className='text-lg font-bold text-gray-800 dark:text-white'>
@@ -403,7 +409,7 @@ export default function Sidebar() {
                 className='w-10 h-10 rounded-full object-cover'
               />
             ) : (
-              <div className='w-10 h-10 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+              <div className='w-10 h-10 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
                 <span className='text-sm font-bold text-white'>
                   {(userData?.name || (currentUser?.name as string) || 'U')
                     .split(' ')

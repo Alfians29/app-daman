@@ -3,14 +3,11 @@
 import { useState, useEffect, useTransition } from 'react';
 import {
   Plus,
-  Search,
   Edit2,
   Trash2,
   ArrowUpCircle,
   ArrowDownCircle,
-  Calendar,
   Download,
-  Filter,
   WalletCards,
   Wallet,
   Loader2,
@@ -18,6 +15,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { FilterBar } from '@/components/ui/FilterBar';
+import { SkeletonPage } from '@/components/ui/Skeleton';
 import {
   Modal,
   ModalHeader,
@@ -364,11 +362,7 @@ export default function AdminCashPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className='flex items-center justify-center min-h-[400px]'>
-        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
-      </div>
-    );
+    return <SkeletonPage />;
   }
 
   return (

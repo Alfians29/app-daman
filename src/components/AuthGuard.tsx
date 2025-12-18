@@ -3,6 +3,8 @@
 import { useEffect, useState, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
+import { useSessionTimeout } from '@/hooks/useSessionTimeout';
+import toast from 'react-hot-toast';
 
 export interface User {
   id: string;
@@ -27,6 +29,32 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+
+  // Session timeout - auto logout after 30 minutes of inactivity
+  useSessionTimeout({
+    timeoutMinutes: 30,
+    warningMinutes: 5,
+    enabled: isAuthenticated,
+    onWarning: () => {
+      toast(
+        'Sesi Anda akan berakhir dalam 5 menit karena tidak ada aktivitas',
+        {
+          icon: '⚠️',
+          duration: 10000,
+          style: {
+            background: '#FEF3C7',
+            color: '#92400E',
+            border: '1px solid #F59E0B',
+          },
+        }
+      );
+    },
+    onTimeout: () => {
+      toast.error('Sesi Anda telah berakhir. Silakan login kembali.', {
+        duration: 5000,
+      });
+    },
+  });
 
   useEffect(() => {
     checkAuth();

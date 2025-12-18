@@ -3,7 +3,6 @@
 import { useState, useEffect, useTransition } from 'react';
 import {
   Plus,
-  Search,
   Edit2,
   Trash2,
   Shield,
@@ -17,6 +16,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { SkeletonPage } from '@/components/ui/Skeleton';
 import {
   Modal,
   ModalHeader,
@@ -254,11 +254,7 @@ export default function ManageRolesPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className='flex items-center justify-center min-h-[400px]'>
-        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
-      </div>
-    );
+    return <SkeletonPage />;
   }
 
   return (

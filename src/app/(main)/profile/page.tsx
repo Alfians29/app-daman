@@ -11,6 +11,7 @@ import {
   ModalFooter,
 } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Form';
+import { SkeletonProfile } from '@/components/ui/Skeleton';
 import {
   usersAPI,
   attendanceAPI,
@@ -382,11 +383,7 @@ export default function ProfilePage() {
   };
 
   if (isLoading || !currentUser) {
-    return (
-      <div className='flex items-center justify-center min-h-[400px]'>
-        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
-      </div>
-    );
+    return <SkeletonProfile />;
   }
 
   return (
@@ -425,7 +422,7 @@ export default function ProfilePage() {
                         className='w-28 h-28 rounded-full object-cover ring-4 ring-white shadow-xl'
                       />
                     ) : (
-                      <div className='w-28 h-28 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center ring-4 ring-white shadow-xl'>
+                      <div className='w-28 h-28 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center ring-4 ring-white shadow-xl'>
                         <span className='text-3xl font-bold text-white'>
                           {currentUser.name
                             .split(' ')

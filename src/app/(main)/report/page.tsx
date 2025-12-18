@@ -12,10 +12,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Trash2,
-  Loader2,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { SkeletonPage } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/Button';
 import {
   Modal,
@@ -331,12 +331,7 @@ export default function ReportPage() {
     ? hasReportForDate(currentUser.id, selectedDate)
     : true;
 
-  if (isLoading)
-    return (
-      <div className='flex items-center justify-center min-h-[400px]'>
-        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
-      </div>
-    );
+  if (isLoading) return <SkeletonPage />;
 
   return (
     <div className='space-y-6'>
@@ -473,7 +468,7 @@ export default function ReportPage() {
                     className='w-10 h-10 rounded-full object-cover'
                   />
                 ) : (
-                  <div className='w-10 h-10 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                  <div className='w-10 h-10 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
                     <span className='text-sm font-bold text-white'>
                       {member.name
                         .split(' ')
@@ -643,7 +638,7 @@ export default function ReportPage() {
                   className='w-8 h-8 rounded-full object-cover'
                 />
               ) : (
-                <div className='w-8 h-8 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                <div className='w-8 h-8 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
                   <span className='text-xs font-bold text-white'>
                     {currentUser.name
                       .split(' ')

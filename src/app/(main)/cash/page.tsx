@@ -7,18 +7,15 @@ import {
   ArrowDownCircle,
   User,
   Users,
-  Calendar,
-  Filter,
-  X,
   ChevronLeft,
   ChevronRight,
-  Loader2,
   CheckCircle,
   TrendingUp,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { FilterBar } from '@/components/ui/FilterBar';
+import { SkeletonPage } from '@/components/ui/Skeleton';
 import { Modal, ModalHeader, ModalBody } from '@/components/ui/Modal';
 import { cashAPI, usersAPI, cashSettingsAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
@@ -291,12 +288,7 @@ export default function CashBookPage() {
     searchQuery || dateFrom || dateTo || filterCategory !== 'all';
   const handleFilterChange = () => setCurrentPage(1);
 
-  if (isLoading)
-    return (
-      <div className='flex items-center justify-center min-h-[400px]'>
-        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
-      </div>
-    );
+  if (isLoading) return <SkeletonPage />;
 
   const currentMonth = new Date().getMonth();
 
@@ -710,7 +702,7 @@ export default function CashBookPage() {
                               className='w-8 h-8 rounded-full object-cover'
                             />
                           ) : (
-                            <div className='w-8 h-8 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                            <div className='w-8 h-8 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
                               <span className='text-xs font-bold text-white'>
                                 {(tx.member?.name || 'U')
                                   .split(' ')
@@ -871,7 +863,7 @@ export default function CashBookPage() {
                         className='w-8 h-8 rounded-full object-cover flex-shrink-0'
                       />
                     ) : (
-                      <div className='w-8 h-8 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center flex-shrink-0'>
+                      <div className='w-8 h-8 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center flex-shrink-0'>
                         <span className='text-xs font-bold text-white'>
                           {member.name
                             .split(' ')

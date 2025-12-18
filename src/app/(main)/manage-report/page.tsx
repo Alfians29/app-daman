@@ -3,12 +3,9 @@
 import { useState, useMemo, useEffect, useTransition } from 'react';
 import {
   FileText,
-  Calendar,
   Edit3,
-  X,
   Download,
   Filter,
-  Search,
   User,
   Plus,
   Trash2,
@@ -19,6 +16,7 @@ import {
 import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { FilterBar } from '@/components/ui/FilterBar';
+import { SkeletonPage } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/Button';
 import {
   Modal,
@@ -313,11 +311,7 @@ export default function AdminReportPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className='flex items-center justify-center min-h-[400px]'>
-        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
-      </div>
-    );
+    return <SkeletonPage />;
   }
 
   return (
@@ -501,7 +495,7 @@ export default function AdminReportPage() {
                                   className='w-8 h-8 rounded-full object-cover'
                                 />
                               ) : (
-                                <div className='w-8 h-8 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                                <div className='w-8 h-8 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
                                   <span className='text-xs font-bold text-white'>
                                     {(report.member?.name || 'U')
                                       .split(' ')
