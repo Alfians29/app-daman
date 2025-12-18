@@ -23,12 +23,12 @@ import {
   Sunrise,
   CheckCircle,
   ArrowRight,
-  Loader2,
   ArrowDownCircle,
   ArrowUpCircle,
 } from 'lucide-react';
 import { AttendanceChart } from '@/components/charts/AttendanceChart';
 import { CashBookChart } from '@/components/charts/CashBookChart';
+import { SkeletonPage } from '@/components/ui/Skeleton';
 
 type TeamMember = {
   id: string;
@@ -69,6 +69,9 @@ export default function Dashboard() {
   const [shiftSettings, setShiftSettings] = useState<
     { shiftType: string; name: string; color: string | null }[]
   >([]);
+  const [chartPeriod, setChartPeriod] = useState<
+    '1bulan' | '6bulan' | '1tahun'
+  >('1tahun');
 
   useEffect(() => {
     if (!authLoading && authUser) {
@@ -100,7 +103,6 @@ export default function Dashboard() {
     if (attRes.success && attRes.data)
       setAttendanceRecords(attRes.data as AttendanceRecord[]);
     if (schedRes.success && schedRes.data) {
-      console.log('Schedule data received:', schedRes.data);
       setScheduleEntries(schedRes.data as Schedule[]);
     }
     if (cashRes.success && cashRes.data)
@@ -242,12 +244,77 @@ export default function Dashboard() {
 
   const scheduleChartData = useMemo(() => {
     const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth();
     // Get all active shift types from settings
     const activeShiftTypes =
       shiftSettings.length > 0
         ? shiftSettings.map((s) => s.shiftType)
         : ['PAGI', 'MALAM', 'PIKET_PAGI', 'PIKET_MALAM', 'LIBUR'];
 
+    // For 1 month view - generate weekly data
+    if (chartPeriod === '1bulan') {
+      const weekNames = ['Minggu 1', 'Minggu 2', 'Minggu 3', 'Minggu 4'];
+      const targetMonth = `${currentYear}-${String(currentMonth + 1).padStart(
+        2,
+        '0'
+      )}`;
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+      return weekNames.map((name, weekIndex) => {
+        const weekStart = weekIndex * 7 + 1;
+        const weekEnd = Math.min(weekStart + 6, daysInMonth);
+
+        const weekSchedules = scheduleEntries.filter((s) => {
+          if (!s.tanggal.startsWith(targetMonth)) return false;
+          const day = parseInt(s.tanggal.substring(8, 10));
+          return day >= weekStart && day <= weekEnd;
+        });
+
+        const dataPoint: { name: string; [key: string]: string | number } = {
+          name,
+        };
+        activeShiftTypes.forEach((shiftType) => {
+          dataPoint[shiftType] = weekSchedules.filter(
+            (s) => s.keterangan === shiftType
+          ).length;
+        });
+
+        return dataPoint;
+      });
+    }
+
+    // For 6 months - generate last 6 months data
+    if (chartPeriod === '6bulan') {
+      const last6Months: { name: string; monthStr: string }[] = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(currentYear, currentMonth - i, 1);
+        const monthIndex = d.getMonth();
+        const year = d.getFullYear();
+        last6Months.push({
+          name: monthNames[monthIndex],
+          monthStr: `${year}-${String(monthIndex + 1).padStart(2, '0')}`,
+        });
+      }
+
+      return last6Months.map(({ name, monthStr }) => {
+        const monthSchedules = scheduleEntries.filter((s) =>
+          s.tanggal.startsWith(monthStr)
+        );
+
+        const dataPoint: { name: string; [key: string]: string | number } = {
+          name,
+        };
+        activeShiftTypes.forEach((shiftType) => {
+          dataPoint[shiftType] = monthSchedules.filter(
+            (s) => s.keterangan === shiftType
+          ).length;
+        });
+
+        return dataPoint;
+      });
+    }
+
+    // For 1 year - generate all 12 months
     return monthNames.map((name, index) => {
       const targetMonth = `${currentYear}-${String(index + 1).padStart(
         2,
@@ -269,7 +336,7 @@ export default function Dashboard() {
 
       return dataPoint;
     });
-  }, [scheduleEntries, shiftSettings]);
+  }, [scheduleEntries, shiftSettings, chartPeriod]);
 
   // Filter: Only TA members for attendance/schedule stats
   const taTeamMembers = teamMembers.filter(
@@ -415,12 +482,7 @@ export default function Dashboard() {
     return defaultLabels[k] || k;
   };
 
-  if (isLoading)
-    return (
-      <div className='flex items-center justify-center min-h-[400px]'>
-        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
-      </div>
-    );
+  if (isLoading) return <SkeletonPage />;
 
   return (
     <div className='space-y-6'>
@@ -435,7 +497,7 @@ export default function Dashboard() {
                 className='w-14 h-14 rounded-full object-cover'
               />
             ) : (
-              <div className='w-14 h-14 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+              <div className='w-14 h-14 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
                 <span className='text-xl font-bold text-white'>
                   {currentUser.name
                     .split(' ')
@@ -499,7 +561,7 @@ export default function Dashboard() {
                   className='w-14 h-14 rounded-full object-cover'
                 />
               ) : (
-                <div className='w-14 h-14 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                <div className='w-14 h-14 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
                   <span className='text-xl font-bold text-white'>
                     {earliestMember.name
                       .split(' ')
@@ -539,7 +601,7 @@ export default function Dashboard() {
                   className='w-14 h-14 rounded-full object-cover'
                 />
               ) : (
-                <div className='w-14 h-14 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                <div className='w-14 h-14 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
                   <span className='text-xl font-bold text-white'>
                     {latestMember.name
                       .split(' ')
@@ -712,29 +774,59 @@ export default function Dashboard() {
         <Card>
           <div className='flex items-center justify-between mb-4'>
             <div>
-              <h3 className='font-semibold text-gray-800'>Kehadiran Tim</h3>
-              <p className='text-sm text-gray-500'>Statistik bulanan</p>
+              <h3 className='font-semibold text-gray-800 dark:text-gray-100'>
+                Kehadiran Tim
+              </h3>
+              <p className='text-sm text-gray-500 dark:text-gray-400'>
+                Statistik bulanan
+              </p>
             </div>
-            <Link
-              href='/attendance'
-              className='text-sm text-[#E57373] hover:underline flex items-center gap-1'
-            >
-              Lihat Semua <ArrowRight className='w-3 h-3' />
-            </Link>
+            <div className='flex items-center gap-2'>
+              <div className='flex rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden'>
+                {(['1bulan', '6bulan', '1tahun'] as const).map((period) => (
+                  <button
+                    key={period}
+                    onClick={() => setChartPeriod(period)}
+                    className={`px-2 py-1 text-xs font-medium transition-colors ${
+                      chartPeriod === period
+                        ? 'bg-[#E57373] text-white'
+                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {period === '1bulan'
+                      ? '1 Bln'
+                      : period === '6bulan'
+                      ? '6 Bln'
+                      : '1 Thn'}
+                  </button>
+                ))}
+              </div>
+              <Link
+                href='/attendance'
+                className='text-sm text-[#E57373] hover:underline flex items-center gap-1'
+              >
+                <ArrowRight className='w-3 h-3' />
+              </Link>
+            </div>
           </div>
           <AttendanceChart
             data={scheduleChartData}
             shiftSettings={shiftSettings}
+            period={chartPeriod}
           />
         </Card>
         <Card>
           <div className='flex items-center justify-between mb-4'>
             <div>
-              <h3 className='font-semibold text-gray-800'>Arus Kas Tim</h3>
-              <p className='text-sm text-gray-500'>Pemasukan & pengeluaran</p>
+              <h3 className='font-semibold text-gray-800 dark:text-gray-100'>
+                Arus Kas Tim
+              </h3>
+              <p className='text-sm text-gray-500 dark:text-gray-400'>
+                Pemasukan & pengeluaran
+              </p>
             </div>
             <Link
-              href='/dashboard/cashbook'
+              href='/cash'
               className='text-sm text-[#E57373] hover:underline flex items-center gap-1'
             >
               Lihat Semua <ArrowRight className='w-3 h-3' />
@@ -810,7 +902,7 @@ export default function Dashboard() {
                               className='w-6 h-6 rounded-full object-cover'
                             />
                           ) : (
-                            <div className='w-6 h-6 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                            <div className='w-6 h-6 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
                               <span className='text-[8px] font-bold text-white'>
                                 {member!.name
                                   .split(' ')

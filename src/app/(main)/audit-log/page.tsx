@@ -2,27 +2,20 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import {
-  Search,
   Download,
-  Filter,
-  Calendar,
-  User,
-  Settings,
-  Shield,
   FileText,
   Trash2,
   Edit,
   Plus,
   LogIn,
-  LogOut,
   ScrollText,
-  Loader2,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { FilterBar } from '@/components/ui/FilterBar';
+import { SkeletonPage } from '@/components/ui/Skeleton';
 import {
   Modal,
   ModalHeader,
@@ -173,11 +166,7 @@ export default function AuditLogPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className='flex items-center justify-center min-h-[400px]'>
-        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
-      </div>
-    );
+    return <SkeletonPage />;
   }
 
   return (

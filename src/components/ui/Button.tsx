@@ -20,7 +20,7 @@ export function Button({
 
   const variantClasses = {
     primary:
-      'bg-gradient-to-r from-[#E57373] to-[#EF5350] text-white hover:from-[#EF5350] hover:to-[#E57373] focus:ring-[#E57373] shadow-md hover:shadow-lg',
+      'bg-linear-to-r from-[#E57373] to-[#EF5350] text-white hover:from-[#EF5350] hover:to-[#E57373] focus:ring-[#E57373] shadow-md hover:shadow-lg',
     secondary:
       'bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-300',
     outline:

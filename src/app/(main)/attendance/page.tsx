@@ -5,20 +5,18 @@ import {
   Users,
   Clock,
   Calendar,
-  Filter,
   CheckCircle,
   XCircle,
   Sun,
   Moon,
-  X,
   ChevronLeft,
   ChevronRight,
   UserCheck,
-  Loader2,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { FilterBar } from '@/components/ui/FilterBar';
+import { SkeletonPage } from '@/components/ui/Skeleton';
 import { attendanceAPI, usersAPI, scheduleAPI, shiftsAPI } from '@/lib/api';
 import { useCurrentUser } from '@/components/AuthGuard';
 import { getShiftColorClasses, getLocalDateString } from '@/lib/utils';
@@ -315,11 +313,7 @@ export default function AttendancePage() {
     filterStatus !== 'all';
 
   if (isLoading) {
-    return (
-      <div className='flex items-center justify-center min-h-[400px]'>
-        <Loader2 className='w-8 h-8 animate-spin text-[#E57373]' />
-      </div>
-    );
+    return <SkeletonPage />;
   }
 
   return (
@@ -348,7 +342,7 @@ export default function AttendancePage() {
       {/* My Progress Stats */}
       {showMyHistory && currentUser && (
         <div className='space-y-4'>
-          <Card className='bg-gradient-to-r from-[#E57373] to-[#C62828] text-white'>
+          <Card className='bg-linear-to-r from-[#E57373] to-[#C62828] text-white'>
             <div className='flex flex-col lg:flex-row lg:items-center gap-4'>
               <div className='flex items-center gap-4 flex-1'>
                 {currentUser.image ? (
@@ -625,7 +619,7 @@ export default function AttendancePage() {
                               className='w-8 h-8 rounded-full object-cover'
                             />
                           ) : (
-                            <div className='w-8 h-8 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                            <div className='w-8 h-8 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
                               <span className='text-xs font-bold text-white'>
                                 {(record.member?.name || 'U')
                                   .split(' ')

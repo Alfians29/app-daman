@@ -14,7 +14,7 @@ export function PageHeader({
   actions,
 }: PageHeaderProps) {
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#E57373] to-[#EF5350] p-6 text-white">
+    <div className="relative overflow-hidden rounded-2xl bg-linear-to-r from-[#E57373] to-[#EF5350] p-6 text-white">
       {/* Decorative circles */}
       <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full" />
       <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/10 rounded-full" />

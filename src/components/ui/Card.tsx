@@ -104,7 +104,7 @@ export function SummaryCard({
           )}
         </div>
         <div
-          className={`w-12 h-12 rounded-xl bg-gradient-to-br ${colorClasses[color]} flex items-center justify-center text-white shadow-lg transition-transform duration-300 hover:scale-110`}
+          className={`w-12 h-12 rounded-xl bg-linear-to-br ${colorClasses[color]} flex items-center justify-center text-white shadow-lg transition-transform duration-300 hover:scale-110`}
         >
           {icon}
         </div>
@@ -112,7 +112,7 @@ export function SummaryCard({
 
       {/* Decorative element */}
       <div
-        className={`absolute -right-8 -bottom-8 w-24 h-24 rounded-full bg-gradient-to-br ${colorClasses[color]} opacity-10 dark:opacity-20 transition-transform duration-500 hover:scale-150`}
+        className={`absolute -right-8 -bottom-8 w-24 h-24 rounded-full bg-linear-to-br ${colorClasses[color]} opacity-10 dark:opacity-20 transition-transform duration-500 hover:scale-150`}
       />
     </div>
   );

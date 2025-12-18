@@ -79,7 +79,7 @@ export function FilterBar({
       {/* Header with icon */}
       <div className='flex items-center justify-between'>
         <div className='flex items-center gap-2'>
-          <div className='w-6 h-6 rounded-md bg-gradient-to-br from-[#ea9898] to-[#E57373] flex items-center justify-center'>
+          <div className='w-6 h-6 rounded-md bg-linear-to-br from-[#ea9898] to-[#E57373] flex items-center justify-center'>
             <SlidersHorizontal className='w-3.5 h-3.5 text-white' />
           </div>
           <span className='font-semibold text-gray-800 dark:text-gray-100'>
@@ -89,7 +89,7 @@ export function FilterBar({
         {showReset && hasActiveFilters && onReset && (
           <button
             onClick={onReset}
-            className='flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-gradient-to-r from-[#E57373] to-[#EF5350] hover:from-[#EF5350] hover:to-[#E57373] rounded-lg shadow-md shadow-red-200/50 dark:shadow-red-900/30 transition-all hover:shadow-lg hover:shadow-red-200/70 dark:hover:shadow-red-900/50 hover:-translate-y-0.5'
+            className='flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-linear-to-r from-[#E57373] to-[#EF5350] hover:from-[#EF5350] hover:to-[#E57373] rounded-lg shadow-md shadow-red-200/50 dark:shadow-red-900/30 transition-all hover:shadow-lg hover:shadow-red-200/70 dark:hover:shadow-red-900/50 hover:-translate-y-0.5'
           >
             <X className='w-3 h-3' />
             Reset Filter
@@ -102,7 +102,7 @@ export function FilterBar({
         {/* Search Input */}
         {onSearchChange && (
           <div className='relative flex-1 group'>
-            <div className='absolute inset-0 bg-gradient-to-r from-[#E57373]/20 to-[#EF5350]/20 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition-opacity' />
+            <div className='absolute inset-0 bg-linear-to-r from-[#E57373]/20 to-[#EF5350]/20 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition-opacity' />
             <Search className='absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500 group-focus-within:text-[#E57373] transition-colors' />
             <input
               type='text'
@@ -136,7 +136,7 @@ export function FilterBar({
                 }`}
               >
                 {activeTab === tab.value && (
-                  <div className='absolute inset-0 bg-gradient-to-r from-[#E57373] to-[#EF5350] rounded-lg' />
+                  <div className='absolute inset-0 bg-linear-to-r from-[#E57373] to-[#EF5350] rounded-lg' />
                 )}
                 <span className='relative'>{tab.label}</span>
               </button>
@@ -263,7 +263,7 @@ export function QuickSearch({
 }: QuickSearchProps) {
   return (
     <div className={`relative group ${className}`}>
-      <div className='absolute inset-0 bg-gradient-to-r from-[#E57373]/10 to-[#EF5350]/10 rounded-xl opacity-0 group-focus-within:opacity-100 blur-sm transition-opacity' />
+      <div className='absolute inset-0 bg-linear-to-r from-[#E57373]/10 to-[#EF5350]/10 rounded-xl opacity-0 group-focus-within:opacity-100 blur-sm transition-opacity' />
       <Search className='absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500 group-focus-within:text-[#E57373] transition-colors' />
       <input
         type='text'
@@ -313,7 +313,7 @@ export function FilterTabs({
           }`}
         >
           {activeTab === tab.value && (
-            <div className='absolute inset-0 bg-gradient-to-r from-[#E57373] to-[#EF5350] rounded-lg shadow-md shadow-red-200/50 dark:shadow-red-900/30' />
+            <div className='absolute inset-0 bg-linear-to-r from-[#E57373] to-[#EF5350] rounded-lg shadow-md shadow-red-200/50 dark:shadow-red-900/30' />
           )}
           <span className='relative'>{tab.label}</span>
         </button>

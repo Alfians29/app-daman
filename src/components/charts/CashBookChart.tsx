@@ -97,13 +97,13 @@ function CashBookChartContent({ data = defaultData }: CashBookChartProps) {
 
   if (!mounted) {
     return (
-      <div className='w-full h-[300px] bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 animate-pulse rounded-xl' />
+      <div className='w-full h-[300px] bg-linear-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 animate-pulse rounded-xl' />
     );
   }
 
   return (
-    <div className='w-full h-[300px]'>
-      <ResponsiveContainer width='100%' height='100%'>
+    <div className='w-full'>
+      <ResponsiveContainer width='100%' height={300}>
         <AreaChart
           data={data}
           margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
@@ -198,7 +198,7 @@ export const CashBookChart = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className='w-full h-[300px] bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 animate-pulse rounded-xl' />
+      <div className='w-full h-[300px] bg-linear-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 animate-pulse rounded-xl' />
     ),
   }
 );
