@@ -60,6 +60,8 @@ const getShiftIcon = (shiftType: string) => {
       return Sun;
     case 'PIKET_MALAM':
       return Sunset;
+    case 'PAGI_MALAM':
+      return Clock;
     case 'LIBUR':
       return Coffee;
     default:
@@ -73,6 +75,7 @@ const formatShiftType = (shiftType: string) => {
     MALAM: 'Malam',
     PIKET_PAGI: 'Piket Pagi',
     PIKET_MALAM: 'Piket Malam',
+    PAGI_MALAM: 'Pagi Malam',
     LIBUR: 'Libur',
   };
   return mapping[shiftType] || shiftType;
@@ -312,18 +315,6 @@ export default function ManageShiftPage() {
         }
       />
 
-      {/* Search */}
-      <div className='relative'>
-        <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400' />
-        <input
-          type='text'
-          placeholder='Cari shift...'
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className='w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-        />
-      </div>
-
       {/* Stats */}
       <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
         <Card className='text-center'>
@@ -499,6 +490,7 @@ export default function ManageShiftPage() {
                 <option value=''>Pilih tipe shift</option>
                 <option value='PAGI'>Pagi</option>
                 <option value='MALAM'>Malam</option>
+                <option value='PAGI_MALAM'>Pagi Malam</option>
                 <option value='PIKET_PAGI'>Piket Pagi</option>
                 <option value='PIKET_MALAM'>Piket Malam</option>
                 <option value='LIBUR'>Libur</option>

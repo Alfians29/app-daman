@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { FilterBar } from '@/components/ui/FilterBar';
 import {
   Modal,
   ModalHeader,
@@ -191,7 +192,7 @@ export default function AuditLogPage() {
             className='flex items-center gap-2 px-4 py-2 bg-white/20 text-white border border-white/30 rounded-xl font-medium hover:bg-white/30 transition-colors'
           >
             <Download className='w-4 h-4' />
-            Export Excel
+            Download
           </button>
         }
       />
@@ -247,65 +248,31 @@ export default function AuditLogPage() {
       </div>
 
       {/* Search & Filters */}
-      <div className='flex flex-col gap-3'>
-        <div className='relative'>
-          <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400' />
-          <input
-            type='text'
-            placeholder='Cari log aktivitas...'
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className='w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-          />
-        </div>
-
-        <div className='flex flex-wrap items-center gap-3'>
-          <div className='flex items-center gap-2'>
-            <Filter className='w-4 h-4 text-gray-400' />
-            <span className='text-sm text-gray-500'>Filter:</span>
-          </div>
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
-          >
-            <option value='all'>Semua Tipe</option>
-            {types.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-          <div className='flex items-center gap-2'>
-            <Calendar className='w-4 h-4 text-gray-400' />
-            <input
-              type='date'
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
-            />
-            <span className='text-gray-400'>-</span>
-            <input
-              type='date'
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
-            />
-          </div>
-          {(filterType !== 'all' || dateFrom || dateTo) && (
-            <button
-              onClick={() => {
-                setFilterType('all');
-                setDateFrom('');
-                setDateTo('');
-              }}
-              className='text-xs text-[#E57373] hover:underline'
-            >
-              Reset Filter
-            </button>
-          )}
-        </div>
-      </div>
+      <FilterBar
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder='Cari log aktivitas...'
+        showDateRange
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
+        selects={[
+          {
+            value: filterType,
+            onChange: setFilterType,
+            options: types,
+            placeholder: 'Semua Tipe',
+          },
+        ]}
+        showReset
+        onReset={() => {
+          setSearchQuery('');
+          setFilterType('all');
+          setDateFrom('');
+          setDateTo('');
+        }}
+      />
 
       {/* Log Table */}
       <div className='bg-white rounded-xl border border-gray-100 overflow-hidden'>
@@ -478,19 +445,11 @@ export default function AuditLogPage() {
                 </div>
               </div>
 
-              <div className='grid grid-cols-2 gap-4'>
-                <div>
-                  <p className='text-xs text-gray-500 mb-1'>Waktu</p>
-                  <p className='text-sm font-medium text-gray-800'>
-                    {new Date(selectedLog.createdAt).toLocaleString('id-ID')}
-                  </p>
-                </div>
-                <div>
-                  <p className='text-xs text-gray-500 mb-1'>IP Address</p>
-                  <p className='text-sm font-medium text-gray-800'>
-                    {selectedLog.ipAddress || '-'}
-                  </p>
-                </div>
+              <div>
+                <p className='text-xs text-gray-500 mb-1'>Waktu</p>
+                <p className='text-sm font-medium text-gray-800'>
+                  {new Date(selectedLog.createdAt).toLocaleString('id-ID')}
+                </p>
               </div>
 
               <div>

@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { TransactionCategory } from '@prisma/client';
-import { logActivity, SYSTEM_USER_ID } from '@/lib/activity-logger';
+import { logActivity, getUserIdFromRequest } from '@/lib/activity-logger';
+
+/**
+ * Parse date string as local timezone date
+ */
+function parseLocalDate(dateStr: string): Date {
+  if (dateStr.includes('T')) return new Date(dateStr);
+  return new Date(dateStr + 'T12:00:00');
+}
 
 // GET all cash entries
 export async function GET(request: NextRequest) {
@@ -18,6 +26,8 @@ export async function GET(request: NextRequest) {
     if (month && year) {
       const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
       const endDate = new Date(parseInt(year), parseInt(month), 0);
+      // Set endDate to end of day to include all records on the last day
+      endDate.setHours(23, 59, 59, 999);
       where.date = {
         gte: startDate,
         lte: endDate,
@@ -27,9 +37,9 @@ export async function GET(request: NextRequest) {
     const entries = await prisma.cashEntry.findMany({
       where,
       include: {
-        member: { select: { id: true, name: true } },
+        member: { select: { id: true, name: true, image: true } },
       },
-      orderBy: { date: 'desc' },
+      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
     });
 
     // Calculate totals
@@ -66,13 +76,12 @@ export async function POST(request: NextRequest) {
       memberId,
     } = await request.json();
 
-    const count = await prisma.cashEntry.count();
-    const newId = `cash-${count + 1}`;
+    const newId = `cash-${Date.now()}`;
 
     const entry = await prisma.cashEntry.create({
       data: {
         id: newId,
-        date: new Date(date),
+        date: parseLocalDate(date),
         description,
         transactionCategory: transactionCategory || null,
         category: category.toUpperCase() as TransactionCategory,
@@ -84,7 +93,7 @@ export async function POST(request: NextRequest) {
     await logActivity({
       action: `Created cash entry: ${description}`,
       target: 'CashEntry',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'CREATE',
       metadata: { entryId: newId, category, amount },
     });

@@ -34,8 +34,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const count = await prisma.attendance.count();
-    const newId = `att-${count + 1}`;
+    const newId = `att-${Date.now()}`;
 
     const record = await prisma.attendance.create({
       data: {

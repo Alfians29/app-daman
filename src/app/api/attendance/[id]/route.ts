@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { AttendanceStatus, ShiftType } from '@prisma/client';
-import { logActivity, SYSTEM_USER_ID } from '@/lib/activity-logger';
+import { logActivity, getUserIdFromRequest } from '@/lib/activity-logger';
+
+/**
+ * Parse date string as local timezone date
+ */
+function parseLocalDate(dateStr: string): Date {
+  if (dateStr.includes('T')) return new Date(dateStr);
+  return new Date(dateStr + 'T12:00:00');
+}
 
 // GET single attendance
 export async function GET(
@@ -48,7 +56,7 @@ export async function PUT(
     const record = await prisma.attendance.update({
       where: { id },
       data: {
-        tanggal: body.tanggal ? new Date(body.tanggal) : undefined,
+        tanggal: body.tanggal ? parseLocalDate(body.tanggal) : undefined,
         jamAbsen: body.jamAbsen,
         keterangan: body.keterangan as ShiftType,
         status: body.status as AttendanceStatus,
@@ -59,7 +67,7 @@ export async function PUT(
     await logActivity({
       action: `Updated attendance for "${before?.member?.name}"`,
       target: 'Attendance',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'UPDATE',
       metadata: {
         before: {
@@ -101,7 +109,7 @@ export async function DELETE(
     await logActivity({
       action: `Deleted attendance for "${record?.member?.name}"`,
       target: 'Attendance',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'DELETE',
       metadata: {
         deletedData: {

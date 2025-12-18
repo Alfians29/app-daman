@@ -17,8 +17,8 @@ import {
   Loader2,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
-import { Avatar } from '@/components/ui/Avatar';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { FilterBar } from '@/components/ui/FilterBar';
 import { Button } from '@/components/ui/Button';
 import {
   Modal,
@@ -110,9 +110,7 @@ export default function AdminReportPage() {
     let result = [...reports];
 
     if (filterDate) {
-      result = result.filter(
-        (r) => new Date(r.tanggal).toISOString().split('T')[0] === filterDate
-      );
+      result = result.filter((r) => r.tanggal.substring(0, 10) === filterDate);
     }
 
     if (filterMember !== 'all') {
@@ -424,55 +422,32 @@ export default function AdminReportPage() {
             </Card>
           </div>
 
-          <Card>
-            <div className='flex items-center gap-2 mb-4'>
-              <Filter className='w-5 h-5 text-gray-400' />
-              <h3 className='font-semibold text-gray-800'>Filter</h3>
-              {hasActiveFilters && (
-                <button
-                  onClick={resetFilters}
-                  className='ml-auto text-xs text-[#E57373] hover:underline flex items-center gap-1'
-                >
-                  <X className='w-3 h-3' />
-                  Reset
-                </button>
-              )}
-            </div>
-
-            <div className='grid grid-cols-1 sm:grid-cols-3 gap-3'>
-              <div className='relative'>
-                <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400' />
-                <input
-                  type='text'
-                  placeholder='Cari report...'
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className='w-full pl-10 pr-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-                />
-              </div>
-              <div className='flex items-center gap-2'>
-                <Calendar className='w-4 h-4 text-gray-400' />
-                <input
-                  type='date'
-                  value={filterDate}
-                  onChange={(e) => setFilterDate(e.target.value)}
-                  className='flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm'
-                />
-              </div>
-              <select
-                value={filterMember}
-                onChange={(e) => setFilterMember(e.target.value)}
-                className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
-              >
-                <option value='all'>Semua Member</option>
-                {members.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </Card>
+          <FilterBar
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder='Cari report...'
+            selects={[
+              {
+                value: filterMember,
+                onChange: setFilterMember,
+                options: members.map((m) => ({
+                  value: m.id,
+                  label: m.name,
+                })),
+                placeholder: 'Semua Member',
+              },
+            ]}
+            showReset
+            onReset={resetFilters}
+            rightContent={
+              <input
+                type='date'
+                value={filterDate}
+                onChange={(e) => setFilterDate(e.target.value)}
+                className='px-4 py-2.5 rounded-xl border-2 border-gray-100 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-700/50 text-gray-800 dark:text-gray-100 focus:bg-white dark:focus:bg-gray-700 focus:border-[#E57373]/30 dark:focus:border-[#E57373]/50 focus:outline-none focus:ring-4 focus:ring-[#E57373]/10 dark:focus:ring-[#E57373]/20 transition-all'
+              />
+            }
+          />
 
           <Card>
             <h3 className='font-semibold text-gray-800 mb-4'>
@@ -519,11 +494,24 @@ export default function AdminReportPage() {
                           </td>
                           <td className='px-4 py-3'>
                             <div className='flex items-center gap-2'>
-                              <Avatar
-                                src={member?.image || undefined}
-                                name={report.member?.name || '-'}
-                                size='sm'
-                              />
+                              {member?.image ? (
+                                <img
+                                  src={member.image}
+                                  alt={report.member?.name || '-'}
+                                  className='w-8 h-8 rounded-full object-cover'
+                                />
+                              ) : (
+                                <div className='w-8 h-8 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                                  <span className='text-xs font-bold text-white'>
+                                    {(report.member?.name || 'U')
+                                      .split(' ')
+                                      .map((n) => n[0])
+                                      .join('')
+                                      .slice(0, 2)
+                                      .toUpperCase()}
+                                  </span>
+                                </div>
+                              )}
                               <div>
                                 <p className='text-sm font-medium text-gray-800'>
                                   {report.member?.name}

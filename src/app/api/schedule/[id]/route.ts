@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { ShiftType } from '@prisma/client';
-import { logActivity, SYSTEM_USER_ID } from '@/lib/activity-logger';
+import { logActivity, getUserIdFromRequest } from '@/lib/activity-logger';
+
+/**
+ * Parse date string as local timezone date
+ */
+function parseLocalDate(dateStr: string): Date {
+  if (dateStr.includes('T')) return new Date(dateStr);
+  return new Date(dateStr + 'T12:00:00');
+}
 
 // PUT update schedule
 export async function PUT(
@@ -22,7 +30,7 @@ export async function PUT(
       where: { id },
       data: {
         keterangan: body.keterangan as ShiftType,
-        tanggal: body.tanggal ? new Date(body.tanggal) : undefined,
+        tanggal: body.tanggal ? parseLocalDate(body.tanggal) : undefined,
       },
       include: { member: true },
     });
@@ -30,7 +38,7 @@ export async function PUT(
     await logActivity({
       action: `Updated schedule for "${before?.member?.name}"`,
       target: 'Schedule',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'UPDATE',
       metadata: {
         before: { keterangan: before?.keterangan },
@@ -64,7 +72,7 @@ export async function DELETE(
     await logActivity({
       action: `Deleted schedule for "${schedule?.member?.name}"`,
       target: 'Schedule',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'DELETE',
       metadata: {
         deletedData: {

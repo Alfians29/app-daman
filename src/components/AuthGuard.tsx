@@ -13,6 +13,7 @@ export interface User {
   role?: {
     id?: string;
     name: string;
+    permissions?: string[];
   };
   [key: string]: unknown; // Allow additional properties
 }

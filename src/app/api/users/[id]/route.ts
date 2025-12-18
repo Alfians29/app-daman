@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { logActivity, SYSTEM_USER_ID } from '@/lib/activity-logger';
+import { logActivity, getUserIdFromRequest } from '@/lib/activity-logger';
 
 // GET single user
 export async function GET(
@@ -38,6 +38,10 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
+    // Sanitize unique fields: convert empty strings to null
+    if (body.usernameTelegram === '') body.usernameTelegram = null;
+    if (body.phone === '') body.phone = null;
+
     // Get before state
     const before = await prisma.user.findUnique({ where: { id } });
 
@@ -46,7 +50,7 @@ export async function PUT(
     await logActivity({
       action: `Updated user "${user.name}"`,
       target: 'User',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'UPDATE',
       metadata: {
         before: {
@@ -69,8 +73,47 @@ export async function PUT(
     });
 
     return NextResponse.json({ success: true, data: user });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error updating user:', error);
+
+    // Handle Prisma unique constraint errors
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'P2002'
+    ) {
+      const target = (error as { meta?: { target?: string[] } }).meta?.target;
+      if (target?.includes('nik')) {
+        return NextResponse.json(
+          { success: false, error: 'NIK sudah terdaftar' },
+          { status: 400 }
+        );
+      }
+      if (target?.includes('username')) {
+        return NextResponse.json(
+          { success: false, error: 'Username sudah digunakan' },
+          { status: 400 }
+        );
+      }
+      if (target?.includes('email')) {
+        return NextResponse.json(
+          { success: false, error: 'Email sudah terdaftar' },
+          { status: 400 }
+        );
+      }
+      if (target?.includes('usernameTelegram')) {
+        return NextResponse.json(
+          { success: false, error: 'Username Telegram sudah digunakan' },
+          { status: 400 }
+        );
+      }
+      return NextResponse.json(
+        { success: false, error: 'Data sudah ada (duplikat)' },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
       { success: false, error: 'Failed to update user' },
       { status: 500 }
@@ -91,7 +134,7 @@ export async function DELETE(
     await logActivity({
       action: `Deleted user "${user?.name || id}"`,
       target: 'User',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'DELETE',
       metadata: {
         deletedData: {
@@ -139,7 +182,7 @@ export async function PATCH(
         user.name
       }"`,
       target: 'User',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'UPDATE',
       metadata: {
         before: { isActive: user.isActive },

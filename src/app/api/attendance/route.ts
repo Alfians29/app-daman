@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { ShiftType, AttendanceStatus, AttendanceSource } from '@prisma/client';
-import { logActivity, SYSTEM_USER_ID } from '@/lib/activity-logger';
+import { logActivity, getUserIdFromRequest } from '@/lib/activity-logger';
+
+/**
+ * Parse date string as local timezone date
+ */
+function parseLocalDate(dateStr: string): Date {
+  if (dateStr.includes('T')) return new Date(dateStr);
+  return new Date(dateStr + 'T12:00:00');
+}
 
 // GET all attendance records
 export async function GET(request: NextRequest) {
@@ -12,12 +20,12 @@ export async function GET(request: NextRequest) {
 
     const where: Record<string, unknown> = {};
     if (memberId) where.memberId = memberId;
-    if (date) where.tanggal = new Date(date);
+    if (date) where.tanggal = parseLocalDate(date);
 
     const records = await prisma.attendance.findMany({
       where,
       include: { member: { select: { id: true, name: true, image: true } } },
-      orderBy: { tanggal: 'desc' },
+      orderBy: [{ tanggal: 'desc' }, { createdAt: 'desc' }],
     });
 
     return NextResponse.json({ success: true, data: records });
@@ -36,8 +44,7 @@ export async function POST(request: NextRequest) {
     const { memberId, tanggal, jamAbsen, keterangan, status, source } =
       await request.json();
 
-    const count = await prisma.attendance.count();
-    const newId = `att-${count + 1}`;
+    const newId = `att-${Date.now()}`;
 
     // Get member info for logging
     const member = await prisma.user.findUnique({ where: { id: memberId } });
@@ -46,7 +53,7 @@ export async function POST(request: NextRequest) {
       data: {
         id: newId,
         memberId,
-        tanggal: new Date(tanggal),
+        tanggal: parseLocalDate(tanggal),
         jamAbsen,
         keterangan: keterangan as ShiftType,
         status: (status || 'ONTIME') as AttendanceStatus,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { logActivity, SYSTEM_USER_ID } from '@/lib/activity-logger';
+import { logActivity, getUserIdFromRequest } from '@/lib/activity-logger';
 
 // PUT update job type
 export async function PUT(
@@ -19,7 +19,7 @@ export async function PUT(
     await logActivity({
       action: `Updated job type "${jobType.name}"`,
       target: 'JobType',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'UPDATE',
       metadata: {
         before: { name: before?.name, isActive: before?.isActive },
@@ -50,7 +50,7 @@ export async function DELETE(
     await logActivity({
       action: `Deleted job type "${jobType?.name || id}"`,
       target: 'JobType',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'DELETE',
       metadata: { deletedData: { id, name: jobType?.name } },
     });
@@ -91,7 +91,7 @@ export async function PATCH(
         jobType.name
       }"`,
       target: 'JobType',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'UPDATE',
       metadata: {
         before: { isActive: jobType.isActive },

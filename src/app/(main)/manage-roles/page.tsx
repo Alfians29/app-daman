@@ -332,18 +332,6 @@ export default function ManageRolesPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className='relative'>
-        <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400' />
-        <input
-          type='text'
-          placeholder='Cari role...'
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className='w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-        />
-      </div>
-
       {/* Roles Grid */}
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
         {filteredRoles.map((role) => (
