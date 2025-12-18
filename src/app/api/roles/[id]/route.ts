@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { logActivity, SYSTEM_USER_ID } from '@/lib/activity-logger';
+import { logActivity, getUserIdFromRequest } from '@/lib/activity-logger';
 
 // GET single role
 export async function GET(
@@ -57,11 +57,11 @@ export async function PUT(
         const perms = await prisma.permission.findMany({
           where: { code: { in: permissions } },
         });
-        let rpCounter = await prisma.rolePermission.count();
-        for (const perm of perms) {
+        for (let i = 0; i < perms.length; i++) {
+          const perm = perms[i];
           await prisma.rolePermission.create({
             data: {
-              id: `rp-${++rpCounter}`,
+              id: `rp-${Date.now()}-${i}`,
               roleId: id,
               permissionId: perm.id,
             },
@@ -73,7 +73,7 @@ export async function PUT(
     await logActivity({
       action: `Updated role "${role.name}"`,
       target: 'Role',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'UPDATE',
       metadata: {
         before: {
@@ -123,7 +123,7 @@ export async function DELETE(
     await logActivity({
       action: `Deleted role "${role?.name || id}"`,
       target: 'Role',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'DELETE',
       metadata: {
         deletedData: { id, name: role?.name, description: role?.description },

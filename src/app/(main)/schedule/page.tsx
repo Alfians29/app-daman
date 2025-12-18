@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Card } from '@/components/ui/Card';
-import { Avatar } from '@/components/ui/Avatar';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { usersAPI, scheduleAPI } from '@/lib/api';
+import { usersAPI, scheduleAPI, shiftsAPI } from '@/lib/api';
 import { useCurrentUser } from '@/components/AuthGuard';
+import { getShiftColorClasses } from '@/lib/utils';
 import {
   ChevronLeft,
   ChevronRight,
@@ -21,6 +21,7 @@ type TeamMember = {
   name: string;
   nickname: string | null;
   position: string;
+  department: string;
   image: string | null;
   isActive: boolean;
 };
@@ -43,6 +44,12 @@ export default function SchedulePage() {
 
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [scheduleEntries, setScheduleEntries] = useState<Schedule[]>([]);
+  const [shiftColors, setShiftColors] = useState<Record<string, string | null>>(
+    {}
+  );
+  const [shiftSettings, setShiftSettings] = useState<
+    { shiftType: string; name: string; color: string | null }[]
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user: authUser, isLoading: authLoading } = useCurrentUser();
   const [currentUser, setCurrentUser] = useState<TeamMember | null>(null);
@@ -61,8 +68,9 @@ export default function SchedulePage() {
     ]);
 
     if (usersResult.success && usersResult.data) {
+      // Filter: Only show Data Management - TA for Schedule
       const activeUsers = (usersResult.data as TeamMember[]).filter(
-        (u: TeamMember) => u.isActive
+        (u: TeamMember) => u.isActive && u.department === 'Data Management - TA'
       );
       setTeamMembers(activeUsers);
       // Find user matching authenticated session
@@ -75,6 +83,24 @@ export default function SchedulePage() {
     }
     if (schedResult.success && schedResult.data) {
       setScheduleEntries(schedResult.data as Schedule[]);
+      // Get shift colors from API response
+      const resultWithColors = schedResult as unknown as {
+        shiftColors?: Record<string, string | null>;
+      };
+      if (resultWithColors.shiftColors) {
+        setShiftColors(resultWithColors.shiftColors);
+      }
+    }
+    // Also fetch shift settings for legend
+    const shiftsResult = await shiftsAPI.getAll();
+    if (shiftsResult.success && shiftsResult.data) {
+      const shifts = shiftsResult.data as {
+        shiftType: string;
+        name: string;
+        color: string | null;
+        isActive: boolean;
+      }[];
+      setShiftSettings(shifts.filter((s) => s.isActive));
     }
     setIsLoading(false);
   };
@@ -136,18 +162,32 @@ export default function SchedulePage() {
   }, [teamMembers, searchQuery, showMySchedule, selectedMemberId, currentUser]);
 
   const getScheduleForMember = (memberId: string, date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    // Use local date format YYYY-MM-DD for comparison
+    const dateStr = `${date.getFullYear()}-${String(
+      date.getMonth() + 1
+    ).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     return scheduleEntries.find(
-      (s) => s.memberId === memberId && s.tanggal.split('T')[0] === dateStr
+      // Extract date part directly from ISO string (first 10 characters)
+      (s) => s.memberId === memberId && s.tanggal.substring(0, 10) === dateStr
     );
   };
 
   const getKeteranganStyle = (keterangan: string) => {
+    // Use dynamic color from shift settings if available
+    const shiftColor = shiftColors[keterangan];
+    if (shiftColor) {
+      const colorClasses = getShiftColorClasses(shiftColor);
+      return `${colorClasses.bg} ${colorClasses.text}`;
+    }
+
+    // Fallback to default colors if not configured in shift settings
     switch (keterangan) {
       case 'PAGI':
         return 'bg-blue-100 text-blue-700';
       case 'MALAM':
         return 'bg-gray-200 text-gray-700';
+      case 'PAGI_MALAM':
+        return 'bg-amber-100 text-amber-700';
       case 'PIKET_PAGI':
         return 'bg-emerald-100 text-emerald-700';
       case 'PIKET_MALAM':
@@ -169,6 +209,8 @@ export default function SchedulePage() {
         return 'PP';
       case 'PIKET_MALAM':
         return 'PM';
+      case 'PAGI_MALAM':
+        return 'P&M';
       case 'LIBUR':
         return 'L';
       default:
@@ -180,18 +222,58 @@ export default function SchedulePage() {
     date.toDateString() === new Date().toDateString();
   const isWeekend = (date: Date) => date.getDay() === 0 || date.getDay() === 6;
 
+  // Calculate custom period: 16th of previous month to 15th of current month
+  const getPeriodDates = () => {
+    const year = currentStartDate.getFullYear();
+    const month = currentStartDate.getMonth();
+
+    // Start: 16th of previous month
+    const startDate = new Date(year, month - 1, 16);
+    // End: 15th of current month
+    const endDate = new Date(year, month, 15);
+
+    return { startDate, endDate };
+  };
+
+  const { startDate: periodStart, endDate: periodEnd } = getPeriodDates();
+
+  // Helper to format date to YYYY-MM-DD string
+  const toDateStr = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const periodStartStr = toDateStr(periodStart);
+  const periodEndStr = toDateStr(periodEnd);
+
+  const getPeriodLabel = () => {
+    const startMonth = periodStart.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+    });
+    const endMonth = periodEnd.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+    return `${startMonth} - ${endMonth}`;
+  };
+
   const myMonthSchedules = scheduleEntries.filter((s) => {
     if (!currentUser || s.memberId !== currentUser.id) return false;
-    const scheduleDate = new Date(s.tanggal);
-    return (
-      scheduleDate.getMonth() === currentStartDate.getMonth() &&
-      scheduleDate.getFullYear() === currentStartDate.getFullYear()
-    );
+    // Extract date portion from ISO string (first 10 chars: YYYY-MM-DD)
+    const scheduleDateStr = s.tanggal.substring(0, 10);
+    // Filter by custom period using string comparison (YYYY-MM-DD format sorts correctly)
+    return scheduleDateStr >= periodStartStr && scheduleDateStr <= periodEndStr;
   });
 
   const myScheduleSummary = {
     PAGI: myMonthSchedules.filter((s) => s.keterangan === 'PAGI').length,
     MALAM: myMonthSchedules.filter((s) => s.keterangan === 'MALAM').length,
+    PAGI_MALAM: myMonthSchedules.filter((s) => s.keterangan === 'PAGI_MALAM')
+      .length,
     PIKET_PAGI: myMonthSchedules.filter((s) => s.keterangan === 'PIKET_PAGI')
       .length,
     PIKET_MALAM: myMonthSchedules.filter((s) => s.keterangan === 'PIKET_MALAM')
@@ -240,20 +322,33 @@ export default function SchedulePage() {
         <Card className='bg-gradient-to-r from-[#E57373] to-[#C62828] text-white'>
           <div className='flex flex-col lg:flex-row lg:items-center gap-4'>
             <div className='flex items-center gap-4 flex-1'>
-              <Avatar
-                src={currentUser.image || undefined}
-                name={currentUser.name}
-                size='lg'
-              />
+              {currentUser.image ? (
+                <img
+                  src={currentUser.image}
+                  alt={currentUser.name}
+                  className='w-14 h-14 rounded-full object-cover'
+                />
+              ) : (
+                <div className='w-14 h-14 rounded-full bg-white/20 flex items-center justify-center'>
+                  <span className='text-xl font-bold text-white'>
+                    {currentUser.name
+                      .split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </span>
+                </div>
+              )}
               <div>
                 <p className='font-semibold text-lg'>{currentUser.name}</p>
                 <p className='text-white/80 text-sm'>{currentUser.position}</p>
                 <p className='text-white/60 text-xs mt-1'>
-                  Jadwal {getMonthLabel()}
+                  Periode: {getPeriodLabel()}
                 </p>
               </div>
             </div>
-            <div className='grid grid-cols-3 sm:grid-cols-5 gap-3'>
+            <div className='grid grid-cols-3 sm:grid-cols-6 gap-3'>
               <div className='text-center'>
                 <p className='text-xl font-bold'>{myScheduleSummary.PAGI}</p>
                 <p className='text-xs text-white/80'>Pagi</p>
@@ -261,6 +356,12 @@ export default function SchedulePage() {
               <div className='text-center'>
                 <p className='text-xl font-bold'>{myScheduleSummary.MALAM}</p>
                 <p className='text-xs text-white/80'>Malam</p>
+              </div>
+              <div className='text-center'>
+                <p className='text-xl font-bold'>
+                  {myScheduleSummary.PAGI_MALAM}
+                </p>
+                <p className='text-xs text-white/80'>P&M</p>
               </div>
               <div className='text-center'>
                 <p className='text-xl font-bold'>
@@ -283,68 +384,39 @@ export default function SchedulePage() {
         </Card>
       )}
 
-      {/* Legend */}
+      {/* Legend - Dynamic from shift settings */}
       <div className='flex flex-wrap gap-3'>
-        <div className='flex items-center gap-2 text-sm'>
-          <span className='w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold'>
-            P
-          </span>
-          <span className='text-gray-600'>Pagi</span>
-        </div>
-        <div className='flex items-center gap-2 text-sm'>
-          <span className='w-6 h-6 rounded-lg bg-gray-200 text-gray-700 flex items-center justify-center text-xs font-bold'>
-            M
-          </span>
-          <span className='text-gray-600'>Malam</span>
-        </div>
-        <div className='flex items-center gap-2 text-sm'>
-          <span className='w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold'>
-            PP
-          </span>
-          <span className='text-gray-600'>Piket Pagi</span>
-        </div>
-        <div className='flex items-center gap-2 text-sm'>
-          <span className='w-6 h-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold'>
-            PM
-          </span>
-          <span className='text-gray-600'>Piket Malam</span>
-        </div>
-        <div className='flex items-center gap-2 text-sm'>
-          <span className='w-6 h-6 rounded-lg bg-red-100 text-red-700 flex items-center justify-center text-xs font-bold'>
-            L
-          </span>
-          <span className='text-gray-600'>Libur</span>
-        </div>
+        {(shiftSettings.length > 0
+          ? shiftSettings
+          : [
+              { shiftType: 'PAGI', name: 'Pagi', color: 'blue' },
+              { shiftType: 'MALAM', name: 'Malam', color: 'gray' },
+              { shiftType: 'PIKET_PAGI', name: 'Piket Pagi', color: 'emerald' },
+              {
+                shiftType: 'PIKET_MALAM',
+                name: 'Piket Malam',
+                color: 'purple',
+              },
+              { shiftType: 'PAGI_MALAM', name: 'Pagi Malam', color: 'amber' },
+              { shiftType: 'LIBUR', name: 'Libur', color: 'red' },
+            ]
+        ).map((shift) => {
+          const colorClasses = getShiftColorClasses(shift.color);
+          return (
+            <div
+              key={shift.shiftType}
+              className='flex items-center gap-2 text-sm'
+            >
+              <span
+                className={`w-6 h-6 rounded-lg ${colorClasses.bg} ${colorClasses.text} flex items-center justify-center text-xs font-bold`}
+              >
+                {getKeteranganShort(shift.shiftType)}
+              </span>
+              <span className='text-gray-600'>{shift.name}</span>
+            </div>
+          );
+        })}
       </div>
-
-      {/* Filter */}
-      {!showMySchedule && (
-        <div className='flex flex-col sm:flex-row gap-3'>
-          <div className='flex items-center gap-2'>
-            <Filter className='w-4 h-4 text-gray-400' />
-            <span className='text-sm text-gray-500'>Filter:</span>
-          </div>
-          <input
-            type='text'
-            placeholder='Cari nama member...'
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className='flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm'
-          />
-          <select
-            value={selectedMemberId}
-            onChange={(e) => setSelectedMemberId(e.target.value)}
-            className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
-          >
-            <option value='all'>Semua Member</option>
-            {teamMembers.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.nickname || m.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
 
       {/* Schedule Card */}
       <Card>
@@ -421,11 +493,24 @@ export default function SchedulePage() {
                   >
                     <td className='py-2 px-2 sticky left-0 bg-white'>
                       <div className='flex items-center gap-2'>
-                        <Avatar
-                          src={member.image || undefined}
-                          name={member.name}
-                          size='sm'
-                        />
+                        {member.image ? (
+                          <img
+                            src={member.image}
+                            alt={member.name}
+                            className='w-8 h-8 rounded-full object-cover'
+                          />
+                        ) : (
+                          <div className='w-8 h-8 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                            <span className='text-xs font-bold text-white'>
+                              {member.name
+                                .split(' ')
+                                .map((n) => n[0])
+                                .join('')
+                                .slice(0, 2)
+                                .toUpperCase()}
+                            </span>
+                          </div>
+                        )}
                         <p className='text-sm font-medium text-gray-800 truncate'>
                           {member.nickname || member.name}
                         </p>

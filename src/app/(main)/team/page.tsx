@@ -18,7 +18,6 @@ import {
   Loader2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Avatar } from '@/components/ui/Avatar';
 import {
   Modal,
   ModalHeader,
@@ -49,6 +48,7 @@ export default function AboutPage() {
   const [showOrgChart, setShowOrgChart] = useState(true);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
 
   useEffect(() => {
     loadMembers();
@@ -58,7 +58,7 @@ export default function AboutPage() {
     setIsLoading(true);
     const result = await usersAPI.getAll();
     if (result.success && result.data) {
-      setTeamMembers(result.data.filter((m: TeamMember) => m.isActive));
+      setTeamMembers((result.data as TeamMember[]).filter((m) => m.isActive));
     }
     setIsLoading(false);
   };
@@ -165,91 +165,139 @@ export default function AboutPage() {
         </div>
 
         {showOrgChart && (
-          <div className='mt-6'>
-            {teamLeader && (
-              <div className='flex flex-col items-center'>
-                <div
-                  className='flex flex-col items-center cursor-pointer hover:opacity-80'
-                  onClick={() => setSelectedMember(teamLeader)}
-                >
-                  <div className='relative'>
-                    <Avatar
-                      src={teamLeader.image}
-                      name={teamLeader.name}
-                      size='lg'
-                    />
-                    <div className='absolute -bottom-1 -right-1 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center'>
-                      <Crown className='w-3 h-3 text-white' />
-                    </div>
-                  </div>
-                  <p className='mt-2 font-semibold text-gray-800'>
-                    {teamLeader.nickname || teamLeader.name}
-                  </p>
-                  <span className='text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-lg'>
-                    Team Leader
-                  </span>
-                </div>
-                <div className='w-px h-8 bg-gray-200 my-2' />
-                <div className='w-3/4 h-px bg-gray-200' />
-              </div>
-            )}
+          <div className='mt-6 space-y-8'>
+            {/* Group by department */}
+            {Array.from(new Set(teamMembers.map((m) => m.department))).map(
+              (dept) => {
+                const deptMembers = teamMembers.filter(
+                  (m) => m.department === dept
+                );
+                const deptLeader = deptMembers.find(
+                  (m) => m.position === 'Team Leader'
+                );
+                const deptMemberList = deptMembers.filter(
+                  (m) => m.position === 'Member'
+                );
 
-            <div className='flex flex-wrap justify-center gap-4 mt-4'>
-              {members.map((member) => (
-                <div
-                  key={member.id}
-                  className='flex flex-col items-center cursor-pointer hover:opacity-80 w-20'
-                  onClick={() => setSelectedMember(member)}
-                >
-                  <div className='w-px h-4 bg-gray-200 -mt-4 mb-2' />
-                  <Avatar src={member.image} name={member.name} size='md' />
-                  <p className='mt-1 text-xs font-medium text-gray-800 text-center truncate w-full'>
-                    {member.nickname || member.name}
-                  </p>
-                  <span className='text-[10px] text-gray-500'>Member</span>
-                </div>
-              ))}
-            </div>
+                return (
+                  <div
+                    key={dept}
+                    className='border border-gray-300 rounded-xl p-4 bg-gray-50/50'
+                  >
+                    {/* Department Header */}
+                    <div className='flex items-center gap-2 mb-4'>
+                      <Building className='w-4 h-4 text-[#E57373]' />
+                      <span className='text-sm font-semibold text-gray-700'>
+                        {dept}
+                      </span>
+                      <span className='text-xs text-gray-500'>
+                        ({deptMembers.length} anggota)
+                      </span>
+                    </div>
+
+                    {/* Team Leader for this department */}
+                    {deptLeader && (
+                      <div className='flex flex-col items-center'>
+                        <div
+                          className='flex flex-col items-center cursor-pointer hover:opacity-80'
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedMember(deptLeader);
+                          }}
+                        >
+                          <div className='relative'>
+                            {deptLeader.image ? (
+                              <img
+                                src={deptLeader.image}
+                                alt={deptLeader.name}
+                                className='w-14 h-14 rounded-full object-cover'
+                              />
+                            ) : (
+                              <div className='w-14 h-14 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                                <span className='text-xl font-bold text-white'>
+                                  {deptLeader.name
+                                    .split(' ')
+                                    .map((n) => n[0])
+                                    .join('')
+                                    .slice(0, 2)
+                                    .toUpperCase()}
+                                </span>
+                              </div>
+                            )}
+                            <div className='absolute -bottom-1 -right-1 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center'>
+                              <Crown className='w-3 h-3 text-white' />
+                            </div>
+                          </div>
+                          <p className='mt-2 font-semibold text-gray-800 text-sm'>
+                            {deptLeader.nickname || deptLeader.name}
+                          </p>
+                          <span className='text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-lg'>
+                            Team Leader
+                          </span>
+                        </div>
+                        {deptMemberList.length > 0 && (
+                          <>
+                            <div className='w-px h-6 bg-gray-300 my-2' />
+                            <div className='w-2/3 h-px bg-gray-300' />
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Members for this department */}
+                    {deptMemberList.length > 0 && (
+                      <div className='flex flex-wrap justify-center gap-4 mt-4'>
+                        {deptMemberList.map((member) => (
+                          <div
+                            key={member.id}
+                            className='flex flex-col items-center cursor-pointer hover:opacity-80 w-20'
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedMember(member);
+                            }}
+                          >
+                            <div className='w-px h-4 bg-gray-300 -mt-4 mb-2' />
+                            {member.image ? (
+                              <img
+                                src={member.image}
+                                alt={member.name}
+                                className='w-10 h-10 rounded-full object-cover'
+                              />
+                            ) : (
+                              <div className='w-10 h-10 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                                <span className='text-sm font-bold text-white'>
+                                  {member.name
+                                    .split(' ')
+                                    .map((n) => n[0])
+                                    .join('')
+                                    .slice(0, 2)
+                                    .toUpperCase()}
+                                </span>
+                              </div>
+                            )}
+                            <p className='mt-1 text-xs font-medium text-gray-800 text-center truncate w-full'>
+                              {member.nickname || member.name}
+                            </p>
+                            <span className='text-[10px] text-gray-500'>
+                              Member
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* No leader, show all as list */}
+                    {!deptLeader && deptMemberList.length === 0 && (
+                      <p className='text-sm text-gray-400 text-center'>
+                        Belum ada anggota
+                      </p>
+                    )}
+                  </div>
+                );
+              }
+            )}
           </div>
         )}
-      </Card>
-
-      {/* Search & Filter */}
-      <Card>
-        <div className='flex items-center gap-2 mb-4'>
-          <Filter className='w-5 h-5 text-gray-400' />
-          <h3 className='font-semibold text-gray-800'>Filter & Cari</h3>
-          {hasActiveFilters && (
-            <button
-              onClick={resetFilters}
-              className='ml-auto text-xs text-[#E57373] hover:underline flex items-center gap-1'
-            >
-              <X className='w-3 h-3' /> Reset
-            </button>
-          )}
-        </div>
-
-        <div className='flex flex-col sm:flex-row gap-3'>
-          <div className='relative flex-1'>
-            <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400' />
-            <input
-              type='text'
-              placeholder='Cari nama, NIK, atau jabatan...'
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className='w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-            />
-          </div>
-          <select
-            value={filterPosition}
-            onChange={(e) => setFilterPosition(e.target.value)}
-            className='px-4 py-2 rounded-lg border border-gray-200 text-sm'
-          >
-            <option value='all'>Semua Posisi</option>
-            <option value='Team Leader'>Team Leader</option>
-            <option value='Member'>Member</option>
-          </select>
-        </div>
       </Card>
 
       {/* Member Grid */}
@@ -268,7 +316,24 @@ export default function AboutPage() {
             >
               <div className='flex items-center gap-3'>
                 <div className='relative'>
-                  <Avatar src={member.image} name={member.name} size='lg' />
+                  {member.image ? (
+                    <img
+                      src={member.image}
+                      alt={member.name}
+                      className='w-14 h-14 rounded-full object-cover'
+                    />
+                  ) : (
+                    <div className='w-14 h-14 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                      <span className='text-xl font-bold text-white'>
+                        {member.name
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .slice(0, 2)
+                          .toUpperCase()}
+                      </span>
+                    </div>
+                  )}
                   {member.position === 'Team Leader' && (
                     <div className='absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center'>
                       <Crown className='w-2.5 h-2.5 text-white' />
@@ -320,17 +385,36 @@ export default function AboutPage() {
           {selectedMember && (
             <>
               <div className='text-center mb-6'>
-                <div className='relative inline-block'>
-                  <Avatar
-                    src={selectedMember.image}
-                    name={selectedMember.name}
-                    size='xl'
-                  />
+                <div
+                  className='relative inline-block cursor-pointer group'
+                  onClick={() => setShowPhotoModal(true)}
+                >
+                  {selectedMember.image ? (
+                    <img
+                      src={selectedMember.image}
+                      alt={selectedMember.name}
+                      className='w-20 h-20 rounded-full object-cover ring-2 ring-transparent group-hover:ring-[#E57373] transition-all'
+                    />
+                  ) : (
+                    <div className='w-20 h-20 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center ring-2 ring-transparent group-hover:ring-[#E57373] transition-all'>
+                      <span className='text-2xl font-bold text-white'>
+                        {selectedMember.name
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .slice(0, 2)
+                          .toUpperCase()}
+                      </span>
+                    </div>
+                  )}
                   {selectedMember.position === 'Team Leader' && (
                     <div className='absolute -bottom-1 -right-1 w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center'>
                       <Crown className='w-4 h-4 text-white' />
                     </div>
                   )}
+                  <div className='absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center'>
+                    <Search className='w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity' />
+                  </div>
                 </div>
                 <h4 className='mt-3 text-xl font-bold text-gray-800'>
                   {selectedMember.name}
@@ -419,6 +503,51 @@ export default function AboutPage() {
           <Button
             variant='secondary'
             onClick={() => setSelectedMember(null)}
+            className='flex-1'
+          >
+            Tutup
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Photo Preview Modal */}
+      <Modal
+        isOpen={showPhotoModal && !!selectedMember}
+        onClose={() => setShowPhotoModal(false)}
+        size='sm'
+      >
+        <ModalBody>
+          <div className='text-center py-4'>
+            {selectedMember?.image ? (
+              <img
+                src={selectedMember.image}
+                alt={selectedMember.name}
+                className='w-64 h-64 mx-auto rounded-2xl object-cover shadow-xl'
+              />
+            ) : (
+              <div className='w-64 h-64 mx-auto rounded-2xl bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                <span className='text-6xl font-bold text-white'>
+                  {selectedMember?.name
+                    .split(' ')
+                    .map((n) => n[0])
+                    .join('')
+                    .slice(0, 2)
+                    .toUpperCase()}
+                </span>
+              </div>
+            )}
+            <h4 className='mt-4 text-lg font-bold text-gray-800'>
+              {selectedMember?.name}
+            </h4>
+            <p className='text-sm text-gray-500'>
+              {selectedMember?.position} • {selectedMember?.department}
+            </p>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            variant='secondary'
+            onClick={() => setShowPhotoModal(false)}
             className='flex-1'
           >
             Tutup

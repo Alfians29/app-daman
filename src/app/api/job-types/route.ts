@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { logActivity, SYSTEM_USER_ID } from '@/lib/activity-logger';
+import { logActivity, getUserIdFromRequest } from '@/lib/activity-logger';
 
 // GET all job types
 export async function GET() {
   try {
     const jobTypes = await prisma.jobType.findMany({
-      orderBy: { name: 'asc' },
+      orderBy: { createdAt: 'desc' },
     });
     return NextResponse.json({ success: true, data: jobTypes });
   } catch (error) {
@@ -23,8 +23,7 @@ export async function POST(request: NextRequest) {
   try {
     const { name } = await request.json();
 
-    const count = await prisma.jobType.count();
-    const newId = `job-${count + 1}`;
+    const newId = `job-${Date.now()}`;
 
     const jobType = await prisma.jobType.create({
       data: { id: newId, name, isActive: true },
@@ -33,7 +32,7 @@ export async function POST(request: NextRequest) {
     await logActivity({
       action: `Created job type "${name}"`,
       target: 'JobType',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'CREATE',
       metadata: { jobTypeId: newId },
     });

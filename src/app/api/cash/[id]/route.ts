@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { TransactionCategory } from '@prisma/client';
-import { logActivity, SYSTEM_USER_ID } from '@/lib/activity-logger';
+import { logActivity, getUserIdFromRequest } from '@/lib/activity-logger';
+
+/**
+ * Parse date string as local timezone date
+ */
+function parseLocalDate(dateStr: string): Date {
+  if (dateStr.includes('T')) return new Date(dateStr);
+  return new Date(dateStr + 'T12:00:00');
+}
 
 // PUT update cash entry
 export async function PUT(
@@ -25,7 +33,7 @@ export async function PUT(
     const entry = await prisma.cashEntry.update({
       where: { id },
       data: {
-        date: date ? new Date(date) : undefined,
+        date: date ? parseLocalDate(date) : undefined,
         description,
         transactionCategory,
         category: category
@@ -39,7 +47,7 @@ export async function PUT(
     await logActivity({
       action: `Updated cash entry: ${entry.description}`,
       target: 'CashEntry',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'UPDATE',
       metadata: {
         before: {
@@ -78,7 +86,7 @@ export async function DELETE(
     await logActivity({
       action: `Deleted cash entry: ${entry?.description || id}`,
       target: 'CashEntry',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'DELETE',
       metadata: {
         deletedData: {

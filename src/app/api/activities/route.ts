@@ -34,8 +34,7 @@ export async function POST(request: NextRequest) {
     const { action, target, userId, type, metadata, ipAddress, userAgent } =
       await request.json();
 
-    const count = await prisma.activity.count();
-    const newId = `act-${count + 1}`;
+    const newId = `act-${Date.now()}`;
 
     const activity = await prisma.activity.create({
       data: {

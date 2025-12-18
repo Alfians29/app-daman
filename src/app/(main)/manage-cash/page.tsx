@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { FilterBar } from '@/components/ui/FilterBar';
 import {
   Modal,
   ModalHeader,
@@ -26,7 +27,8 @@ import {
 } from '@/components/ui/Modal';
 import { Input, Select } from '@/components/ui/Form';
 import toast from 'react-hot-toast';
-import { cashAPI, usersAPI } from '@/lib/api';
+import { cashAPI, usersAPI, cashSettingsAPI } from '@/lib/api';
+import { getLocalDateString } from '@/lib/utils';
 
 type CashEntry = {
   id: string;
@@ -52,6 +54,7 @@ type TransactionForm = {
   category: 'income' | 'expense';
   amount: number;
   memberId: string;
+  selectedMonths: string[]; // For Kas Bulanan multi-month selection
 };
 
 const incomeCategories = [
@@ -83,13 +86,35 @@ export default function AdminCashPage() {
   const [selectedEntry, setSelectedEntry] = useState<CashEntry | null>(null);
 
   const [formData, setFormData] = useState<TransactionForm>({
-    date: new Date().toISOString().split('T')[0],
+    date: getLocalDateString(),
     transactionCategory: 'Kas Bulanan',
     description: '',
     category: 'income',
     amount: 0,
     memberId: '',
+    selectedMonths: [],
   });
+
+  // Cash settings
+  const [monthlyFee, setMonthlyFee] = useState<number>(15000);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [tempMonthlyFee, setTempMonthlyFee] = useState<number>(15000);
+  const currentYear = new Date().getFullYear();
+
+  const MONTHS = [
+    { value: '01', label: 'Januari' },
+    { value: '02', label: 'Februari' },
+    { value: '03', label: 'Maret' },
+    { value: '04', label: 'April' },
+    { value: '05', label: 'Mei' },
+    { value: '06', label: 'Juni' },
+    { value: '07', label: 'Juli' },
+    { value: '08', label: 'Agustus' },
+    { value: '09', label: 'September' },
+    { value: '10', label: 'Oktober' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'Desember' },
+  ];
 
   useEffect(() => {
     loadData();
@@ -97,13 +122,19 @@ export default function AdminCashPage() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [cashResult, usersResult] = await Promise.all([
+    const [cashResult, usersResult, settingsResult] = await Promise.all([
       cashAPI.getAll(),
       usersAPI.getAll(),
+      cashSettingsAPI.getAll(),
     ]);
 
     if (cashResult.success) setEntries(cashResult.data as CashEntry[]);
     if (usersResult.success) setMembers(usersResult.data as Member[]);
+    if (settingsResult.success && settingsResult.data) {
+      const fee = parseInt(settingsResult.data['monthly_fee'] || '15000', 10);
+      setMonthlyFee(fee);
+      setTempMonthlyFee(fee);
+    }
     setIsLoading(false);
   };
 
@@ -117,17 +148,17 @@ export default function AdminCashPage() {
       memberFilter === 'all' || entry.memberId === memberFilter;
 
     let matchesDate = true;
-    const entryDate = new Date(entry.date).toISOString().split('T')[0];
+    const entryDate = getLocalDateString(new Date(entry.date));
     if (dateFrom) matchesDate = matchesDate && entryDate >= dateFrom;
     if (dateTo) matchesDate = matchesDate && entryDate <= dateTo;
 
     return matchesSearch && matchesFilter && matchesMember && matchesDate;
   });
 
-  const totalIncome = filteredEntries
+  const totalIncome = entries
     .filter((e) => e.category === 'INCOME')
     .reduce((sum, e) => sum + Number(e.amount), 0);
-  const totalExpense = filteredEntries
+  const totalExpense = entries
     .filter((e) => e.category === 'EXPENSE')
     .reduce((sum, e) => sum + Number(e.amount), 0);
 
@@ -222,30 +253,100 @@ export default function AdminCashPage() {
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Kas');
-    XLSX.writeFile(wb, `kas_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(wb, `kas_${getLocalDateString()}.xlsx`);
     toast.success('File Excel berhasil didownload!');
+  };
+
+  // Save monthly fee setting
+  const handleSaveSettings = async () => {
+    startTransition(async () => {
+      const result = await cashSettingsAPI.save(
+        'monthly_fee',
+        String(tempMonthlyFee),
+        'Tarif kas bulanan per orang'
+      );
+      if (result.success) {
+        setMonthlyFee(tempMonthlyFee);
+        toast.success('Pengaturan kas berhasil disimpan!');
+        setShowSettingsModal(false);
+      } else {
+        toast.error('Gagal menyimpan pengaturan');
+      }
+    });
+  };
+
+  // Toggle month selection
+  const toggleMonth = (monthValue: string) => {
+    const newMonths = formData.selectedMonths.includes(monthValue)
+      ? formData.selectedMonths.filter((m) => m !== monthValue)
+      : [...formData.selectedMonths, monthValue].sort();
+
+    // Auto-generate description
+    const selectedLabels = MONTHS.filter((m) =>
+      newMonths.includes(m.value)
+    ).map((m) => m.label);
+    const description =
+      selectedLabels.length > 0
+        ? `Kas bulan ${selectedLabels.join(', ')} ${currentYear}`
+        : '';
+
+    // Auto-calculate amount
+    const amount = newMonths.length * monthlyFee;
+
+    setFormData({
+      ...formData,
+      selectedMonths: newMonths,
+      description,
+      amount,
+    });
   };
 
   const resetForm = () => {
     setFormData({
-      date: new Date().toISOString().split('T')[0],
+      date: getLocalDateString(),
       transactionCategory: 'Kas Bulanan',
       description: '',
       category: 'income',
       amount: 0,
       memberId: '',
+      selectedMonths: [],
     });
   };
 
   const openEditModal = (entry: CashEntry) => {
     setSelectedEntry(entry);
+    // Parse selected months from description if it's Kas Bulanan
+    let parsedMonths: string[] = [];
+    if (entry.transactionCategory === 'Kas Bulanan' && entry.description) {
+      // Try to extract months from description like "Iuran bulan Januari, Februari 2025"
+      const monthLabels = [
+        'Januari',
+        'Februari',
+        'Maret',
+        'April',
+        'Mei',
+        'Juni',
+        'Juli',
+        'Agustus',
+        'September',
+        'Oktober',
+        'November',
+        'Desember',
+      ];
+      monthLabels.forEach((label, idx) => {
+        if (entry.description.includes(label)) {
+          parsedMonths.push(String(idx + 1).padStart(2, '0'));
+        }
+      });
+    }
     setFormData({
-      date: new Date(entry.date).toISOString().split('T')[0],
+      date: getLocalDateString(new Date(entry.date)),
       transactionCategory: entry.transactionCategory || 'Lain-lain',
       description: entry.description,
       category: entry.category.toLowerCase() as 'income' | 'expense',
       amount: Number(entry.amount),
       memberId: entry.memberId || '',
+      selectedMonths: parsedMonths,
     });
     setShowEditModal(true);
   };
@@ -278,6 +379,13 @@ export default function AdminCashPage() {
         icon={WalletCards}
         actions={
           <>
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              className='flex items-center gap-2 px-4 py-2 bg-white/20 text-white border border-white/30 rounded-xl font-medium hover:bg-white/30 transition-colors'
+            >
+              <WalletCards className='w-4 h-4' />
+              Pengaturan
+            </button>
             <button
               onClick={handleExport}
               className='flex items-center gap-2 px-4 py-2 bg-white/20 text-white border border-white/30 rounded-xl font-medium hover:bg-white/30 transition-colors'
@@ -344,85 +452,42 @@ export default function AdminCashPage() {
       </div>
 
       {/* Search & Filter */}
-      <div className='flex flex-col gap-3'>
-        <div className='flex flex-col sm:flex-row gap-3'>
-          <div className='relative flex-1'>
-            <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400' />
-            <input
-              type='text'
-              placeholder='Cari transaksi...'
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className='w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-            />
-          </div>
-          <div className='flex gap-2'>
-            {(['all', 'income', 'expense'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-4 py-2 text-sm font-medium rounded-xl transition-colors ${
-                  filter === f
-                    ? 'bg-[#E57373] text-white'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                }`}
-              >
-                {f === 'all'
-                  ? 'Semua'
-                  : f === 'income'
-                  ? 'Pemasukan'
-                  : 'Pengeluaran'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className='flex flex-wrap items-center gap-3'>
-          <div className='flex items-center gap-2'>
-            <Calendar className='w-4 h-4 text-gray-400' />
-            <span className='text-sm text-gray-500'>Tanggal:</span>
-          </div>
-          <input
-            type='date'
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
-          />
-          <span className='text-gray-400'>-</span>
-          <input
-            type='date'
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
-          />
-          {(dateFrom || dateTo) && (
-            <button
-              onClick={() => {
-                setDateFrom('');
-                setDateTo('');
-              }}
-              className='text-xs text-[#E57373] hover:underline'
-            >
-              Reset
-            </button>
-          )}
-          <div className='flex items-center gap-2 ml-auto'>
-            <Filter className='w-4 h-4 text-gray-400' />
-            <select
-              value={memberFilter}
-              onChange={(e) => setMemberFilter(e.target.value)}
-              className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
-            >
-              <option value='all'>Semua Member</option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.nickname || m.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
+      <FilterBar
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder='Cari transaksi...'
+        tabs={[
+          { value: 'all', label: 'Semua' },
+          { value: 'income', label: 'Pemasukan' },
+          { value: 'expense', label: 'Pengeluaran' },
+        ]}
+        activeTab={filter}
+        onTabChange={(val) => setFilter(val as 'all' | 'income' | 'expense')}
+        showDateRange
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
+        selects={[
+          {
+            value: memberFilter,
+            onChange: setMemberFilter,
+            options: members.map((m) => ({
+              value: m.id,
+              label: m.nickname || m.name,
+            })),
+            placeholder: 'Semua Member',
+          },
+        ]}
+        showReset
+        onReset={() => {
+          setSearchQuery('');
+          setFilter('all');
+          setDateFrom('');
+          setDateTo('');
+          setMemberFilter('all');
+        }}
+      />
 
       {/* Table */}
       <div className='bg-white rounded-xl border border-gray-100 overflow-hidden'>
@@ -606,14 +671,46 @@ export default function AdminCashPage() {
                   : expenseCategories
               }
             />
-            <Input
-              label='Deskripsi (opsional)'
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              placeholder='Contoh: Iuran bulan Desember'
-            />
+
+            {/* Conditional: Multi-month picker for Kas Bulanan */}
+            {formData.transactionCategory === 'Kas Bulanan' ? (
+              <div>
+                <label className='block text-xs text-gray-500 mb-2'>
+                  Pilih Bulan Pembayaran ({currentYear})
+                </label>
+                <div className='grid grid-cols-4 gap-2'>
+                  {MONTHS.map((month) => (
+                    <button
+                      key={month.value}
+                      type='button'
+                      onClick={() => toggleMonth(month.value)}
+                      className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                        formData.selectedMonths.includes(month.value)
+                          ? 'bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {month.label.slice(0, 3)}
+                    </button>
+                  ))}
+                </div>
+                {formData.selectedMonths.length > 0 && (
+                  <p className='mt-2 text-xs text-gray-500'>
+                    {formData.description}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <Input
+                label='Deskripsi (opsional)'
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                placeholder='Contoh: Iuran bulan Desember'
+              />
+            )}
+
             <Input
               label='Jumlah (Rp)'
               type='number'
@@ -624,8 +721,22 @@ export default function AdminCashPage() {
                   amount: parseInt(e.target.value) || 0,
                 })
               }
-              placeholder='15000'
+              placeholder={
+                formData.transactionCategory === 'Kas Bulanan'
+                  ? formatCurrency(monthlyFee) + ' / bulan'
+                  : '15000'
+              }
+              disabled={formData.transactionCategory === 'Kas Bulanan'}
+              readOnly={formData.transactionCategory === 'Kas Bulanan'}
             />
+            {formData.transactionCategory === 'Kas Bulanan' &&
+              formData.selectedMonths.length > 0 && (
+                <p className='text-xs text-gray-500 -mt-2'>
+                  {formData.selectedMonths.length} bulan ×{' '}
+                  {formatCurrency(monthlyFee)} ={' '}
+                  {formatCurrency(formData.amount)}
+                </p>
+              )}
             <Select
               label='Member'
               value={formData.memberId || ''}
@@ -667,6 +778,54 @@ export default function AdminCashPage() {
         cancelText='Batal'
         variant='danger'
       />
+
+      {/* Settings Modal */}
+      <Modal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        size='sm'
+      >
+        <ModalHeader
+          title='Pengaturan Kas'
+          subtitle='Atur tarif kas bulanan'
+          onClose={() => setShowSettingsModal(false)}
+        />
+        <ModalBody>
+          <div className='space-y-4'>
+            <Input
+              label='Tarif Kas Bulanan (per orang)'
+              type='number'
+              value={tempMonthlyFee || ''}
+              onChange={(e) => setTempMonthlyFee(parseInt(e.target.value) || 0)}
+              placeholder='15000'
+            />
+            <p className='text-xs text-gray-500'>
+              Tarif ini akan digunakan untuk auto-calculate jumlah saat memilih
+              Kas Bulanan.
+            </p>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            variant='secondary'
+            onClick={() => setShowSettingsModal(false)}
+            className='flex-1'
+          >
+            Batal
+          </Button>
+          <Button
+            onClick={handleSaveSettings}
+            disabled={isPending || !tempMonthlyFee}
+            className='flex-1'
+          >
+            {isPending ? (
+              <Loader2 className='w-4 h-4 animate-spin' />
+            ) : (
+              'Simpan'
+            )}
+          </Button>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 }

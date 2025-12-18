@@ -71,9 +71,8 @@ const positionOptions = [
 ];
 
 const departmentOptions = [
-  { value: 'Data Management', label: 'Data Management' },
-  { value: 'IT Support', label: 'IT Support' },
-  { value: 'Operations', label: 'Operations' },
+  { value: 'Data Management - TA', label: 'Data Management - TA' },
+  { value: 'Data Management - ISH', label: 'Data Management - ISH' },
 ];
 
 export default function AdminTeamPage() {
@@ -99,7 +98,7 @@ export default function AdminTeamPage() {
     nickname: '',
     email: '',
     position: 'Member',
-    department: 'Data Management',
+    department: 'Data Management - TA',
     usernameTelegram: '',
     phone: '',
     roleId: '',
@@ -242,7 +241,7 @@ export default function AdminTeamPage() {
       nickname: '',
       email: '',
       position: 'Member',
-      department: 'Data Management',
+      department: 'Data Management - TA',
       usernameTelegram: '',
       phone: '',
       roleId: memberRole?.id || '',
@@ -361,29 +360,6 @@ export default function AdminTeamPage() {
         </div>
       </div>
 
-      {/* Search & Filter */}
-      <div className='flex flex-col sm:flex-row gap-3'>
-        <div className='relative flex-1'>
-          <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400' />
-          <input
-            type='text'
-            placeholder='Cari nama, NIK, atau username...'
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className='w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-          />
-        </div>
-        <select
-          value={filterPosition}
-          onChange={(e) => setFilterPosition(e.target.value)}
-          className='px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E57373]/20 focus:border-[#E57373]'
-        >
-          <option value='all'>Semua Posisi</option>
-          <option value='Team Leader'>Team Leader</option>
-          <option value='Member'>Member</option>
-        </select>
-      </div>
-
       {/* Members Grid */}
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
         {filteredMembers.length === 0 ? (
@@ -395,13 +371,21 @@ export default function AdminTeamPage() {
             <Card key={member.id} className='relative'>
               <div className='flex items-start justify-between'>
                 <div className='flex items-center gap-3'>
-                  <div className='w-12 h-12 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center text-white font-medium'>
-                    {member.name
-                      .split(' ')
-                      .map((n) => n[0])
-                      .join('')
-                      .slice(0, 2)}
-                  </div>
+                  {member.image ? (
+                    <img
+                      src={member.image}
+                      alt={member.name}
+                      className='w-12 h-12 rounded-full object-cover'
+                    />
+                  ) : (
+                    <div className='w-12 h-12 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center text-white font-medium'>
+                      {member.name
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')
+                        .slice(0, 2)}
+                    </div>
+                  )}
                   <div>
                     <p className='font-medium text-gray-800'>{member.name}</p>
                     <p className='text-xs text-gray-500'>@{member.username}</p>

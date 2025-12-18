@@ -1,5 +1,6 @@
 import prisma from './prisma';
 import { ActivityType, Prisma } from '@prisma/client';
+import { NextRequest } from 'next/server';
 
 /**
  * Logs an activity to the database for audit purposes
@@ -18,10 +19,10 @@ export async function logActivity({
   metadata?: Prisma.InputJsonValue;
 }) {
   try {
-    const count = await prisma.activity.count();
+    const newId = `act-${Date.now()}`;
     await prisma.activity.create({
       data: {
-        id: `activity-${count + 1}`,
+        id: newId,
         action,
         target,
         userId,
@@ -35,5 +36,14 @@ export async function logActivity({
   }
 }
 
-// Default system user ID for operations without auth
+// Default system user ID for operations without auth (fallback)
 export const SYSTEM_USER_ID = 'user-1';
+
+/**
+ * Get user ID from request header (sent by frontend)
+ * Falls back to SYSTEM_USER_ID if not present
+ */
+export function getUserIdFromRequest(request: NextRequest): string {
+  const userId = request.headers.get('X-User-ID');
+  return userId || SYSTEM_USER_ID;
+}

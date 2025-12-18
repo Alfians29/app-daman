@@ -2,13 +2,16 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Card } from '@/components/ui/Card';
-import { Avatar } from '@/components/ui/Avatar';
-import { AttendanceChart } from '@/components/charts/AttendanceChart';
-import { CashBookChart } from '@/components/charts/CashBookChart';
-import { RecentActivities } from '@/components/RecentActivities';
-import { usersAPI, attendanceAPI, scheduleAPI, cashAPI } from '@/lib/api';
+import {
+  usersAPI,
+  attendanceAPI,
+  scheduleAPI,
+  cashAPI,
+  shiftsAPI,
+} from '@/lib/api';
+import { getShiftColorClasses } from '@/lib/utils';
 import Link from 'next/link';
-import { useCurrentUser, User } from '@/components/AuthGuard';
+import { useCurrentUser } from '@/components/AuthGuard';
 import {
   Users,
   UserCheck,
@@ -24,6 +27,8 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
 } from 'lucide-react';
+import { AttendanceChart } from '@/components/charts/AttendanceChart';
+import { CashBookChart } from '@/components/charts/CashBookChart';
 
 type TeamMember = {
   id: string;
@@ -61,6 +66,9 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const { user: authUser, isLoading: authLoading } = useCurrentUser();
   const [currentUser, setCurrentUser] = useState<TeamMember | null>(null);
+  const [shiftSettings, setShiftSettings] = useState<
+    { shiftType: string; name: string; color: string | null }[]
+  >([]);
 
   useEffect(() => {
     if (!authLoading && authUser) {
@@ -70,11 +78,12 @@ export default function Dashboard() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [usersRes, attRes, schedRes, cashRes] = await Promise.all([
+    const [usersRes, attRes, schedRes, cashRes, shiftsRes] = await Promise.all([
       usersAPI.getAll(),
       attendanceAPI.getAll(),
       scheduleAPI.getAll(),
       cashAPI.getAll(),
+      shiftsAPI.getAll(),
     ]);
     if (usersRes.success && usersRes.data) {
       const activeUsers = (usersRes.data as TeamMember[]).filter(
@@ -90,16 +99,46 @@ export default function Dashboard() {
     }
     if (attRes.success && attRes.data)
       setAttendanceRecords(attRes.data as AttendanceRecord[]);
-    if (schedRes.success && schedRes.data)
+    if (schedRes.success && schedRes.data) {
+      console.log('Schedule data received:', schedRes.data);
       setScheduleEntries(schedRes.data as Schedule[]);
+    }
     if (cashRes.success && cashRes.data)
       setCashEntries(cashRes.data as CashEntry[]);
+    if (shiftsRes.success && shiftsRes.data) {
+      const shifts = shiftsRes.data as {
+        shiftType: string;
+        name: string;
+        color: string | null;
+        isActive: boolean;
+      }[];
+      setShiftSettings(shifts.filter((s) => s.isActive));
+    }
     setIsLoading(false);
   };
 
   const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
+  // Use local date string for comparison (YYYY-MM-DD format)
+  const todayStr = `${today.getFullYear()}-${String(
+    today.getMonth() + 1
+  ).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const hour = today.getHours();
+
+  // Helper function to extract date string from various formats
+  // For dates stored as @db.Date in Prisma, they come as ISO strings like "2025-12-18T00:00:00.000Z"
+  // We extract just the date part (YYYY-MM-DD) directly from the string
+  const getDateStr = (dateValue: string | Date) => {
+    if (typeof dateValue === 'string') {
+      // Extract YYYY-MM-DD from ISO string
+      return dateValue.substring(0, 10);
+    }
+    // For Date objects, use UTC methods to avoid timezone conversion
+    const d = new Date(dateValue);
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(
+      2,
+      '0'
+    )}-${String(d.getUTCDate()).padStart(2, '0')}`;
+  };
 
   const getGreeting = () => {
     if (hour >= 5 && hour < 12) return { text: 'Selamat Pagi', icon: Sunrise };
@@ -128,7 +167,7 @@ export default function Dashboard() {
     (s) =>
       currentUser &&
       s.memberId === currentUser.id &&
-      s.tanggal.split('T')[0] === todayStr
+      getDateStr(s.tanggal) === todayStr
   );
 
   // Cash stats
@@ -203,6 +242,12 @@ export default function Dashboard() {
 
   const scheduleChartData = useMemo(() => {
     const currentYear = new Date().getFullYear();
+    // Get all active shift types from settings
+    const activeShiftTypes =
+      shiftSettings.length > 0
+        ? shiftSettings.map((s) => s.shiftType)
+        : ['PAGI', 'MALAM', 'PIKET_PAGI', 'PIKET_MALAM', 'LIBUR'];
+
     return monthNames.map((name, index) => {
       const targetMonth = `${currentYear}-${String(index + 1).padStart(
         2,
@@ -211,22 +256,30 @@ export default function Dashboard() {
       const monthSchedules = scheduleEntries.filter((s) =>
         s.tanggal.startsWith(targetMonth)
       );
-      return {
-        name,
-        pagi: monthSchedules.filter((s) => s.keterangan === 'PAGI').length,
-        malam: monthSchedules.filter((s) => s.keterangan === 'MALAM').length,
-        piketPagi: monthSchedules.filter((s) => s.keterangan === 'PIKET_PAGI')
-          .length,
-        piketMalam: monthSchedules.filter((s) => s.keterangan === 'PIKET_MALAM')
-          .length,
-        libur: monthSchedules.filter((s) => s.keterangan === 'LIBUR').length,
-      };
-    });
-  }, [scheduleEntries]);
 
-  // Today attendance
+      // Create dynamic object with all shift types as keys
+      const dataPoint: { name: string; [key: string]: string | number } = {
+        name,
+      };
+      activeShiftTypes.forEach((shiftType) => {
+        dataPoint[shiftType] = monthSchedules.filter(
+          (s) => s.keterangan === shiftType
+        ).length;
+      });
+
+      return dataPoint;
+    });
+  }, [scheduleEntries, shiftSettings]);
+
+  // Filter: Only TA members for attendance/schedule stats
+  const taTeamMembers = teamMembers.filter(
+    (m) => m.department === 'Data Management - TA'
+  );
+  const taMemberIds = new Set(taTeamMembers.map((m) => m.id));
+
+  // Today attendance - filtered by TA department
   const todayAttendance = attendanceRecords.filter(
-    (r) => r.tanggal.split('T')[0] === todayStr
+    (r) => getDateStr(r.tanggal) === todayStr && taMemberIds.has(r.memberId)
   );
   const sortedByTime = [...todayAttendance].sort((a, b) =>
     (a.jamAbsen || '99:99').localeCompare(b.jamAbsen || '99:99')
@@ -235,10 +288,10 @@ export default function Dashboard() {
   const latestAttendance =
     sortedByTime.length > 1 ? sortedByTime[sortedByTime.length - 1] : null;
   const earliestMember = earliestAttendance
-    ? teamMembers.find((m) => m.id === earliestAttendance.memberId)
+    ? taTeamMembers.find((m) => m.id === earliestAttendance.memberId)
     : null;
   const latestMember = latestAttendance
-    ? teamMembers.find((m) => m.id === latestAttendance.memberId)
+    ? taTeamMembers.find((m) => m.id === latestAttendance.memberId)
     : null;
 
   // Period calculation
@@ -257,14 +310,27 @@ export default function Dashboard() {
   };
 
   const { startDate, endDate } = getPeriodDates();
+
+  // Helper to format date to YYYY-MM-DD string for comparison
+  const toDateStr = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const periodStartStr = toDateStr(startDate);
+  const periodEndStr = toDateStr(endDate);
+
   const minWorkingDays = 22;
   const userPeriodAttendance = attendanceRecords.filter((r) => {
-    const recordDate = new Date(r.tanggal);
+    // Extract date portion from ISO string (first 10 chars: YYYY-MM-DD)
+    const recordDateStr = r.tanggal.substring(0, 10);
     return (
       currentUser &&
       r.memberId === currentUser.id &&
-      recordDate >= startDate &&
-      recordDate <= endDate
+      recordDateStr >= periodStartStr &&
+      recordDateStr <= periodEndStr
     );
   }).length;
   const attendanceProgressPercent = Math.min(
@@ -291,7 +357,28 @@ export default function Dashboard() {
     }).format(num);
 
   const getScheduleStyle = (keterangan: string) => {
-    const styles: Record<
+    // Try to get color from shift settings
+    const shiftSetting = shiftSettings.find((s) => s.shiftType === keterangan);
+    if (shiftSetting?.color) {
+      const colorClasses = getShiftColorClasses(shiftSetting.color);
+      // Determine icon based on shift type
+      const iconMap: Record<string, typeof Sun> = {
+        PAGI: Sun,
+        MALAM: Moon,
+        PIKET_PAGI: Sun,
+        PIKET_MALAM: Moon,
+        PAGI_MALAM: Clock,
+        LIBUR: Calendar,
+      };
+      return {
+        bg: colorClasses.bg,
+        text: colorClasses.text,
+        icon: iconMap[keterangan] || Calendar,
+      };
+    }
+
+    // Fallback to default styles
+    const defaultStyles: Record<
       string,
       { bg: string; text: string; icon: typeof Sun }
     > = {
@@ -299,10 +386,11 @@ export default function Dashboard() {
       MALAM: { bg: 'bg-gray-200', text: 'text-gray-700', icon: Moon },
       PIKET_PAGI: { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: Sun },
       PIKET_MALAM: { bg: 'bg-purple-100', text: 'text-purple-700', icon: Moon },
+      PAGI_MALAM: { bg: 'bg-amber-100', text: 'text-amber-700', icon: Clock },
       LIBUR: { bg: 'bg-red-100', text: 'text-red-700', icon: Calendar },
     };
     return (
-      styles[keterangan] || {
+      defaultStyles[keterangan] || {
         bg: 'bg-gray-100',
         text: 'text-gray-500',
         icon: Calendar,
@@ -310,14 +398,22 @@ export default function Dashboard() {
     );
   };
 
-  const getKeteranganLabel = (k: string) =>
-    ({
+  const getKeteranganLabel = (k: string) => {
+    // Try to get name from shift settings
+    const shiftSetting = shiftSettings.find((s) => s.shiftType === k);
+    if (shiftSetting?.name) return shiftSetting.name;
+
+    // Fallback to default names
+    const defaultLabels: Record<string, string> = {
       PAGI: 'Pagi',
       MALAM: 'Malam',
       PIKET_PAGI: 'Piket Pagi',
       PIKET_MALAM: 'Piket Malam',
+      PAGI_MALAM: 'Pagi & Malam',
       LIBUR: 'Libur',
-    }[k] || k);
+    };
+    return defaultLabels[k] || k;
+  };
 
   if (isLoading)
     return (
@@ -332,11 +428,24 @@ export default function Dashboard() {
       <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
         {currentUser && (
           <div className='flex items-center gap-4'>
-            <Avatar
-              src={currentUser.image ?? undefined}
-              name={currentUser.name}
-              size='lg'
-            />
+            {currentUser.image ? (
+              <img
+                src={currentUser.image}
+                alt={currentUser.name}
+                className='w-14 h-14 rounded-full object-cover'
+              />
+            ) : (
+              <div className='w-14 h-14 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                <span className='text-xl font-bold text-white'>
+                  {currentUser.name
+                    .split(' ')
+                    .map((n) => n[0])
+                    .join('')
+                    .slice(0, 2)
+                    .toUpperCase()}
+                </span>
+              </div>
+            )}
             <div>
               <div className='flex items-center gap-2'>
                 <GreetingIcon className='w-5 h-5 text-amber-500' />
@@ -382,13 +491,25 @@ export default function Dashboard() {
                 </p>
               )}
             </div>
-            {earliestMember && (
-              <Avatar
-                src={earliestMember.image ?? undefined}
-                name={earliestMember.name}
-                size='lg'
-              />
-            )}
+            {earliestMember &&
+              (earliestMember.image ? (
+                <img
+                  src={earliestMember.image}
+                  alt={earliestMember.name}
+                  className='w-14 h-14 rounded-full object-cover'
+                />
+              ) : (
+                <div className='w-14 h-14 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                  <span className='text-xl font-bold text-white'>
+                    {earliestMember.name
+                      .split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </span>
+                </div>
+              ))}
           </div>
         </Card>
         <Card className='border-l-4 border-l-amber-500'>
@@ -410,13 +531,25 @@ export default function Dashboard() {
                 </p>
               )}
             </div>
-            {latestMember && (
-              <Avatar
-                src={latestMember.image ?? undefined}
-                name={latestMember.name}
-                size='lg'
-              />
-            )}
+            {latestMember &&
+              (latestMember.image ? (
+                <img
+                  src={latestMember.image}
+                  alt={latestMember.name}
+                  className='w-14 h-14 rounded-full object-cover'
+                />
+              ) : (
+                <div className='w-14 h-14 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                  <span className='text-xl font-bold text-white'>
+                    {latestMember.name
+                      .split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </span>
+                </div>
+              ))}
           </div>
         </Card>
         <Card className='border-l-4 border-l-blue-500'>
@@ -589,7 +722,10 @@ export default function Dashboard() {
               Lihat Semua <ArrowRight className='w-3 h-3' />
             </Link>
           </div>
-          <AttendanceChart data={scheduleChartData} />
+          <AttendanceChart
+            data={scheduleChartData}
+            shiftSettings={shiftSettings}
+          />
         </Card>
         <Card>
           <div className='flex items-center justify-between mb-4'>
@@ -641,10 +777,14 @@ export default function Dashboard() {
               const members = scheduleEntries
                 .filter(
                   (s) =>
-                    s.tanggal.split('T')[0] === todayStr &&
-                    s.keterangan === keterangan
+                    getDateStr(s.tanggal) === todayStr &&
+                    // Include users with matching keterangan OR PAGI_MALAM users for PAGI/MALAM columns
+                    (s.keterangan === keterangan ||
+                      (s.keterangan === 'PAGI_MALAM' &&
+                        (keterangan === 'PAGI' || keterangan === 'MALAM'))) &&
+                    taMemberIds.has(s.memberId)
                 )
-                .map((s) => teamMembers.find((m) => m.id === s.memberId))
+                .map((s) => taTeamMembers.find((m) => m.id === s.memberId))
                 .filter(Boolean);
               return (
                 <div key={keterangan} className={`p-3 rounded-xl ${style.bg}`}>
@@ -663,11 +803,24 @@ export default function Dashboard() {
                           key={member!.id}
                           className='flex items-center gap-2 text-sm'
                         >
-                          <Avatar
-                            src={member!.image ?? undefined}
-                            name={member!.name}
-                            size='xs'
-                          />
+                          {member!.image ? (
+                            <img
+                              src={member!.image}
+                              alt={member!.name}
+                              className='w-6 h-6 rounded-full object-cover'
+                            />
+                          ) : (
+                            <div className='w-6 h-6 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                              <span className='text-[8px] font-bold text-white'>
+                                {member!.name
+                                  .split(' ')
+                                  .map((n) => n[0])
+                                  .join('')
+                                  .slice(0, 2)
+                                  .toUpperCase()}
+                              </span>
+                            </div>
+                          )}
                           <span className='text-gray-700 truncate'>
                             {member!.nickname || member!.name}
                           </span>

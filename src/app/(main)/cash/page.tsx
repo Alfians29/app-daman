@@ -14,14 +14,13 @@ import {
   ChevronRight,
   Loader2,
   CheckCircle,
-  Clock,
   TrendingUp,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
-import { Avatar } from '@/components/ui/Avatar';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { FilterBar } from '@/components/ui/FilterBar';
 import { Modal, ModalHeader, ModalBody } from '@/components/ui/Modal';
-import { cashAPI, usersAPI } from '@/lib/api';
+import { cashAPI, usersAPI, cashSettingsAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { useCurrentUser } from '@/components/AuthGuard';
 
@@ -75,6 +74,7 @@ export default function CashBookPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { user: authUser, isLoading: authLoading } = useCurrentUser();
   const [currentUser, setCurrentUser] = useState<TeamMember | null>(null);
+  const [monthlyFee, setMonthlyFee] = useState<number>(15000); // Dynamic from settings
 
   useEffect(() => {
     if (!authLoading && authUser) {
@@ -84,9 +84,10 @@ export default function CashBookPage() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [cashRes, usersRes] = await Promise.all([
+    const [cashRes, usersRes, settingsRes] = await Promise.all([
       cashAPI.getAll(),
       usersAPI.getAll(),
+      cashSettingsAPI.getAll(),
     ]);
     if (cashRes.success && cashRes.data)
       setCashEntries(cashRes.data as CashEntry[]);
@@ -103,6 +104,10 @@ export default function CashBookPage() {
         );
       }
     }
+    if (settingsRes.success && settingsRes.data) {
+      const fee = parseInt(settingsRes.data['monthly_fee'] || '15000', 10);
+      setMonthlyFee(fee);
+    }
     setIsLoading(false);
   };
 
@@ -111,41 +116,65 @@ export default function CashBookPage() {
     return entry.transactionCategory === 'Kas Bulanan';
   };
 
-  // Helper: get year-month string from date
-  const getYearMonth = (dateStr: string): string => {
-    const date = new Date(dateStr);
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
-      2,
-      '0'
-    )}`;
+  // Helper: extract paid months from description (e.g. "Iuran bulan Januari, Februari 2025" -> ['01', '02'])
+  const getMonthsFromDescription = (description: string): string[] => {
+    const monthLabels = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+    const paidMonths: string[] = [];
+    monthLabels.forEach((label, idx) => {
+      if (description.includes(label)) {
+        paidMonths.push(String(idx + 1).padStart(2, '0'));
+      }
+    });
+    return paidMonths;
   };
 
   // Generate yearly payment progress from cash entries
   const yearlyPaymentProgress = useMemo(() => {
     const currentYear = new Date().getFullYear();
+
     return monthNames.map((month, index) => {
-      const targetMonth = `${currentYear}-${String(index + 1).padStart(
-        2,
-        '0'
-      )}`;
+      const monthIndex = String(index + 1).padStart(2, '0');
+      const targetMonth = `${currentYear}-${monthIndex}`;
 
       const memberPayments = teamMembers.map((member) => {
-        // Only count kas payments for this member in this month
+        // Find all kas payments for this member
         const kasPayments = cashEntries.filter(
-          (e) =>
-            e.memberId === member.id &&
-            isKasPayment(e) &&
-            getYearMonth(e.date) === targetMonth
+          (e) => e.memberId === member.id && isKasPayment(e)
         );
-        const totalKasAmount = kasPayments.reduce(
-          (sum, e) => sum + Number(e.amount),
-          0
-        );
+
+        // Check if any payment covers this month (by parsing description)
+        let isPaidForThisMonth = false;
+        let amountForThisMonth = 0;
+
+        kasPayments.forEach((e) => {
+          const paidMonths = getMonthsFromDescription(e.description || '');
+          if (paidMonths.includes(monthIndex)) {
+            isPaidForThisMonth = true;
+            // Divide amount by number of months in this payment
+            amountForThisMonth +=
+              paidMonths.length > 0
+                ? Number(e.amount) / paidMonths.length
+                : Number(e.amount);
+          }
+        });
 
         return {
           member,
-          paid: totalKasAmount >= 15000,
-          amount: totalKasAmount,
+          paid: isPaidForThisMonth || amountForThisMonth >= monthlyFee,
+          amount: amountForThisMonth,
         };
       });
 
@@ -165,7 +194,7 @@ export default function CashBookPage() {
         memberPayments,
       };
     });
-  }, [cashEntries, teamMembers]);
+  }, [cashEntries, teamMembers, monthlyFee]);
 
   // Yearly stats
   const yearlyStats = useMemo(() => {
@@ -304,11 +333,24 @@ export default function CashBookPage() {
         <Card className='bg-gradient-to-r from-[#E57373] to-[#C62828] text-white'>
           <div className='flex flex-col lg:flex-row lg:items-center gap-4'>
             <div className='flex items-center gap-4 flex-1'>
-              <Avatar
-                src={currentUser.image ?? undefined}
-                name={currentUser.name}
-                size='lg'
-              />
+              {currentUser.image ? (
+                <img
+                  src={currentUser.image}
+                  alt={currentUser.name}
+                  className='w-14 h-14 rounded-full object-cover'
+                />
+              ) : (
+                <div className='w-14 h-14 rounded-full bg-white/20 flex items-center justify-center'>
+                  <span className='text-xl font-bold text-white'>
+                    {currentUser.name
+                      .split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </span>
+                </div>
+              )}
               <div>
                 <p className='font-semibold text-lg'>{currentUser.name}</p>
                 <p className='text-white/80 text-sm'>{currentUser.position}</p>
@@ -565,69 +607,41 @@ export default function CashBookPage() {
       )}
 
       {/* Filters */}
-      <Card>
-        <div className='flex items-center gap-2 mb-4'>
-          <Filter className='w-5 h-5 text-gray-400' />
-          <h3 className='font-semibold text-gray-800'>Filter</h3>
-          {hasActiveFilters && (
-            <button
-              onClick={resetFilters}
-              className='ml-auto text-xs text-[#E57373] hover:underline flex items-center gap-1'
-            >
-              <X className='w-3 h-3' />
-              Reset
-            </button>
-          )}
-        </div>
-        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3'>
-          <input
-            type='text'
-            placeholder='Cari deskripsi...'
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
+      <FilterBar
+        searchValue={searchQuery}
+        onSearchChange={(val) => {
+          setSearchQuery(val);
+          handleFilterChange();
+        }}
+        searchPlaceholder='Cari deskripsi...'
+        showDateRange
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={(val) => {
+          setDateFrom(val);
+          handleFilterChange();
+        }}
+        onDateToChange={(val) => {
+          setDateTo(val);
+          handleFilterChange();
+        }}
+        selects={[
+          {
+            value: filterCategory,
+            onChange: (val) => {
+              setFilterCategory(val);
               handleFilterChange();
-            }}
-            className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
-          />
-          <div className='flex items-center gap-2'>
-            <Calendar className='w-4 h-4 text-gray-400' />
-            <input
-              type='date'
-              value={dateFrom}
-              onChange={(e) => {
-                setDateFrom(e.target.value);
-                handleFilterChange();
-              }}
-              className='flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm'
-            />
-          </div>
-          <div className='flex items-center gap-2'>
-            <span className='text-gray-400'>-</span>
-            <input
-              type='date'
-              value={dateTo}
-              onChange={(e) => {
-                setDateTo(e.target.value);
-                handleFilterChange();
-              }}
-              className='flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm'
-            />
-          </div>
-          <select
-            value={filterCategory}
-            onChange={(e) => {
-              setFilterCategory(e.target.value);
-              handleFilterChange();
-            }}
-            className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
-          >
-            <option value='all'>Semua Kategori</option>
-            <option value='income'>Pemasukan</option>
-            <option value='expense'>Pengeluaran</option>
-          </select>
-        </div>
-      </Card>
+            },
+            options: [
+              { value: 'income', label: 'Pemasukan' },
+              { value: 'expense', label: 'Pengeluaran' },
+            ],
+            placeholder: 'Semua Kategori',
+          },
+        ]}
+        showReset
+        onReset={resetFilters}
+      />
 
       {/* Transactions Table */}
       <Card>
@@ -689,11 +703,24 @@ export default function CashBookPage() {
                     {!showMyContribution && (
                       <td className='px-4 py-3'>
                         <div className='flex items-center gap-2'>
-                          <Avatar
-                            src={tx.member?.image}
-                            name={tx.member?.name || ''}
-                            size='sm'
-                          />
+                          {tx.member?.image ? (
+                            <img
+                              src={tx.member.image}
+                              alt={tx.member.name || ''}
+                              className='w-8 h-8 rounded-full object-cover'
+                            />
+                          ) : (
+                            <div className='w-8 h-8 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                              <span className='text-xs font-bold text-white'>
+                                {(tx.member?.name || 'U')
+                                  .split(' ')
+                                  .map((n) => n[0])
+                                  .join('')
+                                  .slice(0, 2)
+                                  .toUpperCase()}
+                              </span>
+                            </div>
+                          )}
                           <span className='text-sm text-gray-700'>
                             {tx.member?.name || '-'}
                           </span>
@@ -797,77 +824,80 @@ export default function CashBookPage() {
         {selectedMonthData && (
           <>
             <ModalHeader
-              title={`Detail Pembayaran Kas - ${
+              title={`Kas ${
                 selectedMonthData.month
               } ${new Date().getFullYear()}`}
-              subtitle={`${selectedMonthData.paidCount} dari ${selectedMonthData.totalMembers} anggota sudah bayar kas`}
+              subtitle={`${selectedMonthData.paidCount}/${selectedMonthData.totalMembers} anggota lunas`}
               onClose={() => setSelectedMonth(null)}
             />
             <ModalBody>
-              <div className='grid grid-cols-2 gap-4 mb-6'>
-                <div className='p-4 bg-emerald-50 rounded-xl text-center'>
-                  <p className='text-2xl font-bold text-emerald-600'>
+              {/* Progress Bar */}
+              <div className='mb-4'>
+                <div className='flex items-center justify-between mb-2'>
+                  <span className='text-sm font-medium text-gray-700'>
+                    Progress
+                  </span>
+                  <span className='text-sm font-bold text-gray-800'>
                     {selectedMonthData.percent}%
-                  </p>
-                  <p className='text-xs text-emerald-700'>Progress</p>
+                  </span>
                 </div>
-                <div className='p-4 bg-blue-50 rounded-xl text-center'>
-                  <p className='text-lg font-bold text-blue-600'>
-                    {formatCurrency(selectedMonthData.totalAmount)}
-                  </p>
-                  <p className='text-xs text-blue-700'>Total Kas Terkumpul</p>
+                <div className='h-3 bg-gray-200 rounded-full overflow-hidden'>
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      selectedMonthData.percent >= 100
+                        ? 'bg-emerald-500'
+                        : selectedMonthData.percent >= 50
+                        ? 'bg-amber-500'
+                        : 'bg-red-400'
+                    }`}
+                    style={{ width: `${selectedMonthData.percent}%` }}
+                  />
                 </div>
               </div>
 
-              <p className='text-sm text-gray-500 mb-3'>
-                Status pembayaran kas :
-              </p>
-              <div className='space-y-2'>
-                {selectedMonthData.memberPayments.map(
-                  ({ member, paid, amount }) => (
-                    <div
-                      key={member.id}
-                      className={`flex items-center justify-between p-3 rounded-xl ${
-                        paid ? 'bg-emerald-50' : 'bg-gray-50'
-                      }`}
-                    >
-                      <div className='flex items-center gap-3'>
-                        <Avatar
-                          src={member.image ?? undefined}
-                          name={member.name}
-                          size='sm'
-                        />
-                        <div>
-                          <p className='text-sm font-medium text-gray-800'>
-                            {member.nickname || member.name}
-                          </p>
-                          <p className='text-xs text-gray-500'>
-                            {member.position}
-                          </p>
-                        </div>
+              {/* 2 columns grid */}
+              <div className='grid grid-cols-2 gap-2'>
+                {selectedMonthData.memberPayments.map(({ member, paid }) => (
+                  <div
+                    key={member.id}
+                    className={`flex items-center gap-2 p-2.5 rounded-xl ${
+                      paid ? 'bg-emerald-50' : 'bg-red-50'
+                    }`}
+                  >
+                    {member.image ? (
+                      <img
+                        src={member.image}
+                        alt={member.name}
+                        className='w-8 h-8 rounded-full object-cover flex-shrink-0'
+                      />
+                    ) : (
+                      <div className='w-8 h-8 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center flex-shrink-0'>
+                        <span className='text-xs font-bold text-white'>
+                          {member.name
+                            .split(' ')
+                            .map((n) => n[0])
+                            .join('')
+                            .slice(0, 2)
+                            .toUpperCase()}
+                        </span>
                       </div>
-                      <div className='flex items-center gap-2'>
-                        {paid ? (
-                          <>
-                            <span className='text-sm font-medium text-emerald-600'>
-                              {formatCurrency(amount)}
-                            </span>
-                            <CheckCircle className='w-5 h-5 text-emerald-500' />
-                          </>
-                        ) : (
-                          <>
-                            <span className='text-sm text-gray-400'>
-                              {amount > 0
-                                ? formatCurrency(amount)
-                                : 'Belum bayar'}
-                            </span>
-                            <Clock className='w-5 h-5 text-gray-400' />
-                          </>
-                        )}
-                      </div>
+                    )}
+                    <div className='flex-1 min-w-0 flex items-center justify-between'>
+                      <p className='text-sm font-medium text-gray-800 truncate'>
+                        {member.nickname || member.name.split(' ')[0]}
+                      </p>
+                      {paid ? (
+                        <span className='text-emerald-600 font-bold text-sm'>
+                          ✓
+                        </span>
+                      ) : (
+                        <span className='text-red-500 font-bold text-sm'>
+                          ✗
+                        </span>
+                      )}
                     </div>
-                  )
-                )}
+                  </div>
+                ))}
               </div>
             </ModalBody>
           </>

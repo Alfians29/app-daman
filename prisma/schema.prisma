@@ -20,6 +20,7 @@ enum ShiftType {
   MALAM
   PIKET_PAGI
   PIKET_MALAM
+  PAGI_MALAM
   LIBUR
 }
 
@@ -262,3 +263,16 @@ model ShiftSetting {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
+
+/// CashSetting - Tabel untuk menyimpan konfigurasi kas (tarif bulanan, dll)
+model CashSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique  // "monthly_fee", "year", dll
+  value       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([key])
+}
+

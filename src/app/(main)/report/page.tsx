@@ -15,7 +15,6 @@ import {
   Loader2,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
-import { Avatar } from '@/components/ui/Avatar';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
 import {
@@ -31,13 +30,21 @@ import {
   FormGroup,
   FormSection,
 } from '@/components/ui/Form';
-import { reportsAPI, jobTypesAPI, usersAPI, scheduleAPI } from '@/lib/api';
+import {
+  reportsAPI,
+  jobTypesAPI,
+  usersAPI,
+  scheduleAPI,
+  shiftsAPI,
+} from '@/lib/api';
 import toast from 'react-hot-toast';
 import { useCurrentUser } from '@/components/AuthGuard';
+import { getLocalDateString, getShiftColorClasses } from '@/lib/utils';
 
 type ReportTask = {
   id: string;
-  jobType: string;
+  jobType: string; // stores jobTypeId for form, or jobType.name for display
+  jobTypeId?: string;
   keterangan: string;
   value: number;
 };
@@ -57,6 +64,7 @@ type TeamMember = {
   name: string;
   nickname: string | null;
   position: string;
+  department: string;
   image: string | null;
   isActive: boolean;
 };
@@ -68,20 +76,23 @@ type Schedule = {
 };
 
 export default function ReportPage() {
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split('T')[0]
-  );
+  const [selectedDate, setSelectedDate] = useState(getLocalDateString());
   const [reports, setReports] = useState<DailyReport[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [scheduleEntries, setScheduleEntries] = useState<Schedule[]>([]);
   const [jobTypes, setJobTypes] = useState<JobType[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [viewingReport, setViewingReport] = useState<DailyReport | null>(null);
   const [editingReport, setEditingReport] = useState<DailyReport | null>(null);
   const [tasks, setTasks] = useState<ReportTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const { user: authUser, isLoading: authLoading } = useCurrentUser();
   const [currentUser, setCurrentUser] = useState<TeamMember | null>(null);
+  const [shiftSettings, setShiftSettings] = useState<
+    { shiftType: string; name: string; color: string | null }[]
+  >([]);
 
   useEffect(() => {
     if (!authLoading && authUser) {
@@ -91,17 +102,20 @@ export default function ReportPage() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [reportsRes, usersRes, schedRes, jobsRes] = await Promise.all([
-      reportsAPI.getAll(),
-      usersAPI.getAll(),
-      scheduleAPI.getAll(),
-      jobTypesAPI.getAll(),
-    ]);
+    const [reportsRes, usersRes, schedRes, jobsRes, shiftsRes] =
+      await Promise.all([
+        reportsAPI.getAll(),
+        usersAPI.getAll(),
+        scheduleAPI.getAll(),
+        jobTypesAPI.getAll(),
+        shiftsAPI.getAll(),
+      ]);
     if (reportsRes.success && reportsRes.data)
       setReports(reportsRes.data as DailyReport[]);
     if (usersRes.success && usersRes.data) {
+      // Filter: Only show Data Management - TA for Report
       const activeUsers = (usersRes.data as TeamMember[]).filter(
-        (u: TeamMember) => u.isActive
+        (u: TeamMember) => u.isActive && u.department === 'Data Management - TA'
       );
       setTeamMembers(activeUsers);
       // Find user matching authenticated session
@@ -118,6 +132,15 @@ export default function ReportPage() {
       setJobTypes(
         (jobsRes.data as JobType[]).filter((j: JobType) => j.isActive)
       );
+    if (shiftsRes.success && shiftsRes.data) {
+      const shifts = shiftsRes.data as {
+        shiftType: string;
+        name: string;
+        color: string | null;
+        isActive: boolean;
+      }[];
+      setShiftSettings(shifts.filter((s) => s.isActive));
+    }
     setIsLoading(false);
   };
 
@@ -160,7 +183,7 @@ export default function ReportPage() {
   const navigateDate = (days: number) => {
     const date = new Date(selectedDate);
     date.setDate(date.getDate() + days);
-    setSelectedDate(date.toISOString().split('T')[0]);
+    setSelectedDate(getLocalDateString(date));
   };
 
   const openNewReportModal = () => {
@@ -172,7 +195,14 @@ export default function ReportPage() {
   };
   const openEditModal = (report: DailyReport) => {
     setEditingReport(report);
-    setTasks([...report.tasks]);
+    // Map tasks to use jobTypeId in the jobType field for Select component
+    const mappedTasks = report.tasks.map((t: any) => ({
+      id: t.id,
+      jobType: t.jobTypeId || t.jobType?.id || t.jobType, // Get the jobTypeId
+      keterangan: t.keterangan,
+      value: t.value,
+    }));
+    setTasks(mappedTasks);
     setShowModal(true);
   };
   const addTask = () =>
@@ -203,8 +233,17 @@ export default function ReportPage() {
     }
     setIsSaving(true);
     try {
+      // Transform tasks: map jobType (which stores jobTypeId) to jobTypeId for API
+      const apiTasks = tasks.map((t) => ({
+        jobTypeId: t.jobType, // jobType field stores the ID
+        keterangan: t.keterangan,
+        value: t.value,
+      }));
+
       if (editingReport) {
-        const result = await reportsAPI.update(editingReport.id, { tasks });
+        const result = await reportsAPI.update(editingReport.id, {
+          tasks: apiTasks,
+        });
         if (result.success) {
           toast.success('Report diupdate!');
           loadData();
@@ -218,7 +257,7 @@ export default function ReportPage() {
         const result = await reportsAPI.create({
           memberId: currentUser.id,
           tanggal: selectedDate,
-          tasks,
+          tasks: apiTasks,
         });
         if (result.success) {
           toast.success('Report ditambahkan!');
@@ -244,26 +283,45 @@ export default function ReportPage() {
     });
 
   const getScheduleBadge = (keterangan: string | undefined) => {
-    const styles: Record<string, { bg: string; text: string }> = {
+    if (!keterangan) return { bg: 'bg-gray-100', text: 'text-gray-700' };
+
+    // Try to get color from shift settings
+    const shiftSetting = shiftSettings.find((s) => s.shiftType === keterangan);
+    if (shiftSetting?.color) {
+      const colorClasses = getShiftColorClasses(shiftSetting.color);
+      return { bg: colorClasses.bg, text: colorClasses.text };
+    }
+
+    // Fallback to default colors
+    const defaultStyles: Record<string, { bg: string; text: string }> = {
       PAGI: { bg: 'bg-blue-100', text: 'text-blue-700' },
       MALAM: { bg: 'bg-purple-100', text: 'text-purple-700' },
       PIKET_PAGI: { bg: 'bg-emerald-100', text: 'text-emerald-700' },
       PIKET_MALAM: { bg: 'bg-indigo-100', text: 'text-indigo-700' },
+      PAGI_MALAM: { bg: 'bg-amber-100', text: 'text-amber-700' },
       LIBUR: { bg: 'bg-red-100', text: 'text-red-700' },
     };
     return (
-      styles[keterangan || ''] || { bg: 'bg-gray-100', text: 'text-gray-700' }
+      defaultStyles[keterangan] || { bg: 'bg-gray-100', text: 'text-gray-700' }
     );
   };
 
-  const getKeteranganLabel = (k: string) =>
-    ({
+  const getKeteranganLabel = (k: string) => {
+    // Try to get name from shift settings
+    const shiftSetting = shiftSettings.find((s) => s.shiftType === k);
+    if (shiftSetting?.name) return shiftSetting.name;
+
+    // Fallback to default names
+    const defaultLabels: Record<string, string> = {
       PAGI: 'Pagi',
       MALAM: 'Malam',
       PIKET_PAGI: 'Piket Pagi',
       PIKET_MALAM: 'Piket Malam',
+      PAGI_MALAM: 'Pagi & Malam',
       LIBUR: 'Libur',
-    }[k] || k);
+    };
+    return defaultLabels[k] || k;
+  };
 
   const currentUserSchedule = currentUser
     ? getMemberSchedule(currentUser.id, selectedDate)
@@ -315,9 +373,7 @@ export default function ReportPage() {
           </div>
           <div className='flex items-center gap-2'>
             <button
-              onClick={() =>
-                setSelectedDate(new Date().toISOString().split('T')[0])
-              }
+              onClick={() => setSelectedDate(getLocalDateString())}
               className='px-3 py-2 text-sm font-medium text-[#E57373] bg-red-50 hover:bg-red-100 rounded-lg'
             >
               Hari Ini
@@ -410,11 +466,24 @@ export default function ReportPage() {
               }`}
             >
               <div className='flex items-start gap-3'>
-                <Avatar
-                  src={member.image || undefined}
-                  name={member.name}
-                  size='md'
-                />
+                {member.image ? (
+                  <img
+                    src={member.image}
+                    alt={member.name}
+                    className='w-10 h-10 rounded-full object-cover'
+                  />
+                ) : (
+                  <div className='w-10 h-10 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                    <span className='text-sm font-bold text-white'>
+                      {member.name
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')
+                        .slice(0, 2)
+                        .toUpperCase()}
+                    </span>
+                  </div>
+                )}
                 <div className='flex-1 min-w-0'>
                   <div className='flex items-center gap-2 mb-1'>
                     <p className='font-medium text-gray-800'>{member.name}</p>
@@ -438,27 +507,21 @@ export default function ReportPage() {
                     </div>
                   ) : report ? (
                     <div className='space-y-2'>
-                      {report.tasks.map((task, idx) => (
-                        <div key={task.id} className='flex items-start gap-2'>
-                          <span className='text-xs text-gray-400 mt-1'>
-                            {idx + 1}.
-                          </span>
-                          <div className='flex-1'>
-                            <div className='flex items-center gap-2'>
-                              <span className='inline-block px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full'>
-                                {task.jobType}
-                              </span>
-                              <span className='text-xs font-semibold text-emerald-600'>
-                                {task.value} item
-                              </span>
-                            </div>
-                            <p className='text-sm text-gray-700 mt-1'>
-                              {task.keterangan}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                      <p className='text-xs text-gray-400 mt-2'>
+                      <div className='flex items-center gap-2 flex-wrap'>
+                        <span className='text-sm text-gray-600'>
+                          {report.tasks.length} pekerjaan
+                        </span>
+                        <button
+                          onClick={() => {
+                            setViewingReport(report);
+                            setShowDetailModal(true);
+                          }}
+                          className='text-xs text-[#E57373] hover:underline'
+                        >
+                          Lihat Detail
+                        </button>
+                      </div>
+                      <p className='text-xs text-gray-400'>
                         Dibuat:{' '}
                         {new Date(report.createdAt).toLocaleString('id-ID')}
                       </p>
@@ -484,6 +547,86 @@ export default function ReportPage() {
         </div>
       </Card>
 
+      {/* Detail Report Modal */}
+      <Modal
+        isOpen={showDetailModal && !!viewingReport}
+        onClose={() => setShowDetailModal(false)}
+        size='md'
+      >
+        <ModalHeader
+          title='Detail Report'
+          subtitle={
+            viewingReport
+              ? `${viewingReport.member?.name || 'Member'} - ${formatDate(
+                  viewingReport.tanggal
+                )}`
+              : ''
+          }
+          onClose={() => setShowDetailModal(false)}
+        />
+        <ModalBody>
+          {viewingReport && (
+            <div className='space-y-4'>
+              {viewingReport.tasks.map((task, idx) => (
+                <div
+                  key={task.id}
+                  className='p-4 bg-gray-50 rounded-xl overflow-hidden'
+                >
+                  {/* Header row */}
+                  <div className='flex items-center gap-2 mb-3 flex-wrap'>
+                    <span className='w-6 h-6 shrink-0 rounded-full bg-[#E57373] text-white text-xs flex items-center justify-center font-medium'>
+                      {idx + 1}
+                    </span>
+                    <span className='px-3 py-1 text-sm font-medium bg-blue-100 text-blue-700 rounded-full'>
+                      {typeof task.jobType === 'object'
+                        ? (task.jobType as any).name
+                        : task.jobType}
+                    </span>
+                    <span className='px-3 py-1 text-sm font-semibold bg-emerald-100 text-emerald-700 rounded-full'>
+                      {task.value} item
+                    </span>
+                  </div>
+                  {/* Keterangan with proper word break */}
+                  <div className='bg-white rounded-lg p-3 border border-gray-100'>
+                    <p className='text-xs text-gray-500 mb-1'>Keterangan:</p>
+                    <p className='text-sm text-gray-700 whitespace-pre-wrap break-all'>
+                      {task.keterangan}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              <div className='pt-3 border-t border-gray-100'>
+                <p className='text-xs text-gray-400'>
+                  Dibuat:{' '}
+                  {new Date(viewingReport.createdAt).toLocaleString('id-ID')}
+                </p>
+              </div>
+            </div>
+          )}
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            variant='secondary'
+            onClick={() => setShowDetailModal(false)}
+            className='flex-1'
+          >
+            Tutup
+          </Button>
+          {viewingReport && canEditReport(viewingReport) && (
+            <Button
+              onClick={() => {
+                setShowDetailModal(false);
+                openEditModal(viewingReport);
+              }}
+              className='flex-1'
+            >
+              <Edit3 className='w-4 h-4 mr-2' />
+              Edit
+            </Button>
+          )}
+        </ModalFooter>
+      </Modal>
+
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} size='md'>
         <ModalHeader
           title={editingReport ? 'Edit Report' : 'Tambah Report'}
@@ -493,11 +636,24 @@ export default function ReportPage() {
         <ModalBody>
           {currentUser && (
             <div className='flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-xl'>
-              <Avatar
-                src={currentUser.image || undefined}
-                name={currentUser.name}
-                size='sm'
-              />
+              {currentUser.image ? (
+                <img
+                  src={currentUser.image}
+                  alt={currentUser.name}
+                  className='w-8 h-8 rounded-full object-cover'
+                />
+              ) : (
+                <div className='w-8 h-8 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                  <span className='text-xs font-bold text-white'>
+                    {currentUser.name
+                      .split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </span>
+                </div>
+              )}
               <div>
                 <p className='font-medium text-gray-800'>{currentUser.name}</p>
                 <p className='text-xs text-gray-500'>{currentUser.position}</p>
@@ -526,10 +682,18 @@ export default function ReportPage() {
                       onChange={(e) =>
                         updateTask(task.id, 'jobType', e.target.value)
                       }
-                      options={jobTypes.map((jt) => ({
-                        value: jt.name,
-                        label: jt.name,
-                      }))}
+                      options={jobTypes
+                        .filter((jt) => {
+                          // Allow current task's selected jobType + unselected ones
+                          const selectedJobTypes = tasks
+                            .filter((t) => t.id !== task.id)
+                            .map((t) => t.jobType);
+                          return !selectedJobTypes.includes(jt.id);
+                        })
+                        .map((jt) => ({
+                          value: jt.id,
+                          label: jt.name,
+                        }))}
                       placeholder='Pilih jenis pekerjaan...'
                     />
                     <Input

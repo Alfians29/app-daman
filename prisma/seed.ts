@@ -1,372 +1,385 @@
-import { PrismaClient, ShiftType, ActivityType } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting seed...');
+  console.log('🌱 Seeding database...');
 
-  // ============================================
-  // 1. SEED ROLES
-  // ============================================
-  console.log('📦 Seeding Roles...');
+  // Create Superadmin Role
+  const superadminRole = await prisma.role.upsert({
+    where: { name: 'Superadmin' },
+    update: {
+      description: 'Superadmin dengan akses penuh tanpa batasan',
+      color: '#7c3aed',
+    },
+    create: {
+      id: 'role-superadmin',
+      name: 'Superadmin',
+      description: 'Superadmin dengan akses penuh tanpa batasan',
+      color: '#7c3aed',
+      isDefault: false,
+    },
+  });
+  console.log('✅ Created role:', superadminRole.name);
 
-  const roles = await Promise.all([
-    prisma.role.upsert({
-      where: { name: 'Superadmin' },
-      update: {},
-      create: {
-        id: 'role-1',
-        name: 'Superadmin',
-        description: 'Full access to all features',
-        color: 'bg-purple-100 text-purple-700',
-        isDefault: false,
-      },
-    }),
-    prisma.role.upsert({
-      where: { name: 'Admin' },
-      update: {},
-      create: {
-        id: 'role-2',
-        name: 'Admin',
-        description: 'Access to admin features',
-        color: 'bg-blue-100 text-blue-700',
-        isDefault: false,
-      },
-    }),
-    prisma.role.upsert({
-      where: { name: 'Member' },
-      update: {},
-      create: {
-        id: 'role-3',
-        name: 'Member',
-        description: 'Basic member access',
-        color: 'bg-gray-100 text-gray-700',
-        isDefault: true,
-      },
-    }),
-  ]);
+  // Create Admin Role
+  const adminRole = await prisma.role.upsert({
+    where: { name: 'Admin' },
+    update: {
+      description: 'Administrator dengan akses penuh',
+      color: '#ef4444',
+    },
+    create: {
+      id: 'role-admin',
+      name: 'Admin',
+      description: 'Administrator dengan akses penuh',
+      color: '#ef4444',
+      isDefault: false,
+    },
+  });
+  console.log('✅ Created role:', adminRole.name);
 
-  console.log(`   ✅ Created ${roles.length} roles`);
+  // Create Member Role
+  const memberRole = await prisma.role.upsert({
+    where: { name: 'Member' },
+    update: {
+      description: 'Anggota tim biasa',
+      color: '#3b82f6',
+    },
+    create: {
+      id: 'role-member',
+      name: 'Member',
+      description: 'Anggota tim biasa',
+      color: '#3b82f6',
+      isDefault: true,
+    },
+  });
+  console.log('✅ Created role:', memberRole.name);
 
-  // ============================================
-  // 2. SEED PERMISSIONS
-  // ============================================
-  console.log('📦 Seeding Permissions...');
-
-  const permissionsData = [
+  // Create Permissions - names match sidebar menu labels exactly
+  const permissions = [
+    // Main Menu
     {
-      id: 'perm-1',
-      code: 'view_dashboard',
-      name: 'Lihat Dashboard',
-      module: 'dashboard',
+      id: 'perm-menu-dashboard',
+      code: 'menu.dashboard',
+      name: 'Dashboard',
+      module: 'menu',
     },
     {
-      id: 'perm-2',
-      code: 'manage_attendance',
-      name: 'Kelola Kehadiran',
-      module: 'attendance',
+      id: 'perm-menu-attendance',
+      code: 'menu.attendance',
+      name: 'Absensi',
+      module: 'menu',
     },
     {
-      id: 'perm-3',
-      code: 'manage_schedule',
+      id: 'perm-menu-schedule',
+      code: 'menu.schedule',
+      name: 'Jadwal',
+      module: 'menu',
+    },
+    {
+      id: 'perm-menu-report',
+      code: 'menu.report',
+      name: 'Report Harian',
+      module: 'menu',
+    },
+    { id: 'perm-menu-cash', code: 'menu.cash', name: 'Kas', module: 'menu' },
+    {
+      id: 'perm-menu-about',
+      code: 'menu.about',
+      name: 'Tentang Tim',
+      module: 'menu',
+    },
+    // Admin Menu
+    {
+      id: 'perm-admin-team',
+      code: 'admin.team',
+      name: 'Kelola Tim',
+      module: 'admin',
+    },
+    {
+      id: 'perm-admin-schedule',
+      code: 'admin.schedule',
       name: 'Kelola Jadwal',
-      module: 'schedule',
+      module: 'admin',
     },
-    { id: 'perm-4', code: 'manage_cash', name: 'Kelola Kas', module: 'cash' },
-    { id: 'perm-5', code: 'manage_team', name: 'Kelola Tim', module: 'team' },
     {
-      id: 'perm-6',
-      code: 'manage_report',
+      id: 'perm-admin-report',
+      code: 'admin.report',
       name: 'Kelola Report',
-      module: 'report',
+      module: 'admin',
     },
     {
-      id: 'perm-7',
-      code: 'manage_roles',
-      name: 'Kelola Role',
-      module: 'superadmin',
+      id: 'perm-admin-cash',
+      code: 'admin.cash',
+      name: 'Kelola Kas',
+      module: 'admin',
     },
     {
-      id: 'perm-8',
-      code: 'view_audit_log',
-      name: 'Lihat Audit Log',
-      module: 'superadmin',
+      id: 'perm-admin-attendance',
+      code: 'admin.attendance',
+      name: 'Kelola Kehadiran',
+      module: 'admin',
     },
     {
-      id: 'perm-9',
-      code: 'manage_shift',
+      id: 'perm-admin-shift',
+      code: 'admin.shift',
       name: 'Kelola Shift',
       module: 'admin',
     },
+    // Superadmin Menu
+    {
+      id: 'perm-superadmin-roles',
+      code: 'superadmin.roles',
+      name: 'Manajemen Role',
+      module: 'superadmin',
+    },
+    {
+      id: 'perm-superadmin-audit',
+      code: 'superadmin.audit',
+      name: 'Audit Log',
+      module: 'superadmin',
+    },
   ];
 
-  const permissions = await Promise.all(
-    permissionsData.map((p) =>
-      prisma.permission.upsert({
-        where: { code: p.code },
-        update: {},
-        create: p,
-      })
-    )
-  );
-  console.log(`   ✅ Created ${permissions.length} permissions`);
+  // Delete old permissions first to avoid conflicts
+  await prisma.rolePermission.deleteMany({});
+  await prisma.permission.deleteMany({});
 
-  // ============================================
-  // 3. ASSIGN PERMISSIONS TO ROLES
-  // ============================================
-  console.log('📦 Assigning Permissions to Roles...');
+  for (const perm of permissions) {
+    await prisma.permission.upsert({
+      where: { id: perm.id },
+      update: { code: perm.code, name: perm.name, module: perm.module },
+      create: perm,
+    });
+  }
+  console.log('✅ Created', permissions.length, 'menu permissions');
 
-  // Superadmin gets all permissions
-  let rpCounter = 1;
+  // Assign ALL permissions to Superadmin role (full access)
   for (const perm of permissions) {
     await prisma.rolePermission.upsert({
       where: {
         roleId_permissionId: {
-          roleId: 'role-1',
+          roleId: superadminRole.id,
           permissionId: perm.id,
         },
       },
       update: {},
       create: {
-        id: `rp-${rpCounter++}`,
-        roleId: 'role-1',
+        id: `rp-superadmin-${perm.id}`,
+        roleId: superadminRole.id,
         permissionId: perm.id,
       },
     });
   }
+  console.log('✅ Assigned all permissions to Superadmin role');
 
-  // Admin gets most permissions except superadmin ones
-  const adminPermCodes = [
-    'view_dashboard',
-    'manage_attendance',
-    'manage_schedule',
-    'manage_cash',
-    'manage_team',
-    'manage_report',
-    'manage_shift',
+  // Assign Main + Admin menu permissions to Admin role (no superadmin menu)
+  const adminPermissionCodes = [
+    // Main menu
+    'menu.dashboard',
+    'menu.attendance',
+    'menu.schedule',
+    'menu.report',
+    'menu.cash',
+    'menu.about',
+    // Admin menu
+    'admin.team',
+    'admin.schedule',
+    'admin.report',
+    'admin.cash',
+    'admin.attendance',
+    'admin.shift',
   ];
-  for (const perm of permissions.filter((p) =>
-    adminPermCodes.includes(p.code)
-  )) {
+  const adminPermissions = permissions.filter((p) =>
+    adminPermissionCodes.includes(p.code)
+  );
+  for (const perm of adminPermissions) {
     await prisma.rolePermission.upsert({
       where: {
         roleId_permissionId: {
-          roleId: 'role-2',
+          roleId: adminRole.id,
           permissionId: perm.id,
         },
       },
       update: {},
       create: {
-        id: `rp-${rpCounter++}`,
-        roleId: 'role-2',
+        id: `rp-admin-${perm.id}`,
+        roleId: adminRole.id,
         permissionId: perm.id,
       },
     });
   }
+  console.log('✅ Assigned main + admin permissions to Admin role');
 
-  // Member gets only view_dashboard
-  const memberPerm = permissions.find((p) => p.code === 'view_dashboard');
-  if (memberPerm) {
+  // Assign only Main menu permissions to Member role (basic access)
+  const memberPermissionCodes = [
+    'menu.dashboard',
+    'menu.attendance',
+    'menu.schedule',
+    'menu.report',
+    'menu.cash',
+    'menu.about',
+  ];
+  const memberPermissions = permissions.filter((p) =>
+    memberPermissionCodes.includes(p.code)
+  );
+  for (const perm of memberPermissions) {
     await prisma.rolePermission.upsert({
       where: {
         roleId_permissionId: {
-          roleId: 'role-3',
-          permissionId: memberPerm.id,
+          roleId: memberRole.id,
+          permissionId: perm.id,
         },
       },
       update: {},
       create: {
-        id: `rp-${rpCounter++}`,
-        roleId: 'role-3',
-        permissionId: memberPerm.id,
+        id: `rp-member-${perm.id}`,
+        roleId: memberRole.id,
+        permissionId: perm.id,
       },
     });
   }
-  console.log('   ✅ Assigned permissions to roles');
+  console.log('✅ Assigned main menu permissions to Member role');
 
-  // ============================================
-  // 4. SEED SHIFT SETTINGS
-  // ============================================
-  console.log('📦 Seeding Shift Settings...');
-
-  const shiftSettings = [
-    {
-      id: 'shift-1',
-      shiftType: ShiftType.PAGI,
-      name: 'Shift Pagi',
-      startTime: '07:00',
-      endTime: '15:00',
-      lateAfter: '08:00',
-      color: 'emerald',
-    },
-    {
-      id: 'shift-2',
-      shiftType: ShiftType.MALAM,
-      name: 'Shift Malam',
-      startTime: '19:00',
-      endTime: '07:00',
-      lateAfter: '20:00',
-      color: 'purple',
-    },
-    {
-      id: 'shift-3',
-      shiftType: ShiftType.PIKET_PAGI,
-      name: 'Piket Pagi',
-      startTime: '06:00',
-      endTime: '14:00',
-      lateAfter: '07:00',
-      color: 'amber',
-    },
-    {
-      id: 'shift-4',
-      shiftType: ShiftType.PIKET_MALAM,
-      name: 'Piket Malam',
-      startTime: '18:00',
-      endTime: '06:00',
-      lateAfter: '19:00',
-      color: 'indigo',
-    },
-    {
-      id: 'shift-5',
-      shiftType: ShiftType.LIBUR,
-      name: 'Libur',
-      startTime: null,
-      endTime: null,
-      lateAfter: null,
-      color: 'red',
-    },
-  ];
-
-  for (const shift of shiftSettings) {
-    await prisma.shiftSetting.upsert({
-      where: { shiftType: shift.shiftType },
-      update: {},
-      create: shift,
-    });
-  }
-  console.log(`   ✅ Created ${shiftSettings.length} shift settings`);
-
-  // ============================================
-  // 5. SEED JOB TYPES
-  // ============================================
-  console.log('📦 Seeding Job Types...');
-
-  const jobTypesData = [
-    { id: 'job-1', name: 'Monitoring' },
-    { id: 'job-2', name: 'Gangguan' },
-    { id: 'job-3', name: 'Preventive Maintenance (PM)' },
-    { id: 'job-4', name: 'Piket' },
-    { id: 'job-5', name: 'Tugas Lainnya' },
-  ];
-
-  for (const jt of jobTypesData) {
-    await prisma.jobType.upsert({
-      where: { name: jt.name },
-      update: {},
-      create: { id: jt.id, name: jt.name, isActive: true },
-    });
-  }
-  console.log(`   ✅ Created ${jobTypesData.length} job types`);
-
-  // ============================================
-  // 6. SEED SAMPLE USERS
-  // ============================================
-  console.log('📦 Seeding Sample Users...');
-
-  const users = [
-    {
-      id: 'user-1',
-      nik: 'ADM001',
+  // Create Superadmin User
+  const superadminUser = await prisma.user.upsert({
+    where: { username: 'superadmin' },
+    update: { roleId: superadminRole.id },
+    create: {
+      id: 'user-superadmin',
+      nik: '00000001',
       username: 'superadmin',
       password: 'superadmin123',
       name: 'Super Administrator',
-      nickname: 'Admin',
+      nickname: 'Superadmin',
       email: 'superadmin@daman.com',
       position: 'Team Leader',
-      department: 'Data Management',
-      usernameTelegram: '@superadmin_daman',
-      phone: '081234567890',
-      roleId: 'role-1',
+      department: 'IT',
+      roleId: superadminRole.id,
       isActive: true,
     },
-    {
-      id: 'user-2',
-      nik: 'ADM002',
+  });
+  console.log('✅ Created superadmin user:', superadminUser.username);
+
+  // Create Admin User
+  const adminUser = await prisma.user.upsert({
+    where: { username: 'admin' },
+    update: { roleId: adminRole.id },
+    create: {
+      id: 'user-admin',
+      nik: '12345678',
       username: 'admin',
       password: 'admin123',
       name: 'Administrator',
       nickname: 'Admin',
       email: 'admin@daman.com',
       position: 'Team Leader',
-      department: 'Data Management',
-      usernameTelegram: '@admin_daman',
-      phone: '081234567891',
-      roleId: 'role-2',
+      department: 'IT',
+      roleId: adminRole.id,
       isActive: true,
     },
-    {
-      id: 'user-3',
-      nik: 'MBR001',
-      username: 'member1',
+  });
+  console.log('✅ Created admin user:', adminUser.username);
+
+  // Create Member User
+  const memberUser = await prisma.user.upsert({
+    where: { username: 'member' },
+    update: { roleId: memberRole.id },
+    create: {
+      id: 'user-member-1',
+      nik: '87654321',
+      username: 'member',
       password: 'member123',
-      name: 'Muhammad Alfian',
-      nickname: 'Alfian',
-      email: 'alfian@daman.com',
+      name: 'John Doe',
+      nickname: 'John',
+      email: 'john@daman.com',
       position: 'Member',
-      department: 'Data Management',
-      usernameTelegram: '@alfian_daman',
-      phone: '081234567892',
-      roleId: 'role-3',
+      department: 'IT',
+      roleId: memberRole.id,
       isActive: true,
+    },
+  });
+  console.log('✅ Created member user:', memberUser.username);
+
+  // Create Shift Settings
+  const shiftSettings = [
+    {
+      id: 'shift-pagi',
+      shiftType: 'PAGI' as const,
+      name: 'Shift Pagi',
+      startTime: '08:00',
+      endTime: '16:00',
+      lateAfter: '08:15',
+      color: '#22c55e',
+    },
+    {
+      id: 'shift-malam',
+      shiftType: 'MALAM' as const,
+      name: 'Shift Malam',
+      startTime: '20:00',
+      endTime: '04:00',
+      lateAfter: '20:15',
+      color: '#3b82f6',
+    },
+    {
+      id: 'shift-piket-pagi',
+      shiftType: 'PIKET_PAGI' as const,
+      name: 'Piket Pagi',
+      startTime: '08:00',
+      endTime: '16:00',
+      lateAfter: '08:15',
+      color: '#f59e0b',
+    },
+    {
+      id: 'shift-piket-malam',
+      shiftType: 'PIKET_MALAM' as const,
+      name: 'Piket Malam',
+      startTime: '20:00',
+      endTime: '04:00',
+      lateAfter: '20:15',
+      color: '#8b5cf6',
+    },
+    {
+      id: 'shift-libur',
+      shiftType: 'LIBUR' as const,
+      name: 'Libur',
+      startTime: null,
+      endTime: null,
+      lateAfter: null,
+      color: '#6b7280',
     },
   ];
 
-  for (const user of users) {
-    await prisma.user.upsert({
-      where: { username: user.username },
-      update: {},
-      create: user,
+  for (const shift of shiftSettings) {
+    await prisma.shiftSetting.upsert({
+      where: { shiftType: shift.shiftType },
+      update: { name: shift.name, color: shift.color },
+      create: shift,
     });
   }
-  console.log(`   ✅ Created ${users.length} sample users`);
+  console.log('✅ Created', shiftSettings.length, 'shift settings');
 
-  // ============================================
-  // 7. SEED SAMPLE ACTIVITY (Audit Log)
-  // ============================================
-  console.log('📦 Seeding Sample Activity Log...');
-
-  await prisma.activity.upsert({
-    where: { id: 'act-1' },
-    update: {},
-    create: {
-      id: 'act-1',
-      action: 'melakukan',
-      target: 'seed database',
-      userId: 'user-1',
-      type: ActivityType.CREATE,
-      metadata: { seedVersion: '1.0.0' },
-    },
-  });
-  console.log('   ✅ Created sample activity log');
-
-  console.log('\n✨ Seed completed successfully!');
-  console.log('\n📋 Summary:');
-  console.log(`   - Roles: ${roles.length} (role-1, role-2, role-3)`);
-  console.log(`   - Permissions: ${permissions.length} (perm-1 to perm-9)`);
-  console.log(
-    `   - Shift Settings: ${shiftSettings.length} (shift-1 to shift-5)`
-  );
-  console.log(`   - Job Types: ${jobTypesData.length} (job-1 to job-5)`);
-  console.log(`   - Users: ${users.length} (user-1, user-2, user-3)`);
-  console.log('\n🔐 Login credentials:');
-  console.log('   - Superadmin: superadmin / superadmin123');
-  console.log('   - Admin: admin / admin123');
-  console.log('   - Member: member1 / member123');
+  console.log('\n🎉 Seeding completed!');
+  console.log('\n📋 Login Credentials:');
+  console.log('─────────────────────────────────');
+  console.log('Superadmin:');
+  console.log('  Username: superadmin');
+  console.log('  Password: superadmin123');
+  console.log('');
+  console.log('Admin:');
+  console.log('  Username: admin');
+  console.log('  Password: admin123');
+  console.log('');
+  console.log('Member:');
+  console.log('  Username: member');
+  console.log('  Password: member123');
+  console.log('─────────────────────────────────');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Seed failed:', e);
+    console.error('❌ Error seeding:', e);
     process.exit(1);
   })
   .finally(async () => {

@@ -17,10 +17,11 @@ import {
   Loader2,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
-import { Avatar } from '@/components/ui/Avatar';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { attendanceAPI, usersAPI, scheduleAPI } from '@/lib/api';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { attendanceAPI, usersAPI, scheduleAPI, shiftsAPI } from '@/lib/api';
 import { useCurrentUser } from '@/components/AuthGuard';
+import { getShiftColorClasses, getLocalDateString } from '@/lib/utils';
 
 type AttendanceRecord = {
   id: string;
@@ -37,6 +38,7 @@ type TeamMember = {
   name: string;
   nickname: string | null;
   position: string;
+  department: string;
   image: string | null;
   isActive: boolean;
 };
@@ -80,6 +82,9 @@ export default function AttendancePage() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [scheduleEntries, setScheduleEntries] = useState<Schedule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [shiftSettings, setShiftSettings] = useState<
+    { shiftType: string; name: string; color: string | null }[]
+  >([]);
   const { user: authUser, isLoading: authLoading } = useCurrentUser();
   const [currentUser, setCurrentUser] = useState<TeamMember | null>(null);
 
@@ -91,18 +96,21 @@ export default function AttendancePage() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [attResult, usersResult, schedResult] = await Promise.all([
-      attendanceAPI.getAll(),
-      usersAPI.getAll(),
-      scheduleAPI.getAll(),
-    ]);
+    const [attResult, usersResult, schedResult, shiftsResult] =
+      await Promise.all([
+        attendanceAPI.getAll(),
+        usersAPI.getAll(),
+        scheduleAPI.getAll(),
+        shiftsAPI.getAll(),
+      ]);
 
     if (attResult.success && attResult.data) {
       setAttendanceRecords(attResult.data as AttendanceRecord[]);
     }
     if (usersResult.success && usersResult.data) {
+      // Filter: Only show Data Management - TA for Attendance
       const activeUsers = (usersResult.data as TeamMember[]).filter(
-        (u: TeamMember) => u.isActive
+        (u: TeamMember) => u.isActive && u.department === 'Data Management - TA'
       );
       setTeamMembers(activeUsers);
       // Find user matching authenticated session
@@ -116,10 +124,31 @@ export default function AttendancePage() {
     if (schedResult.success && schedResult.data) {
       setScheduleEntries(schedResult.data as Schedule[]);
     }
+    if (shiftsResult.success && shiftsResult.data) {
+      const shifts = shiftsResult.data as {
+        shiftType: string;
+        name: string;
+        color: string | null;
+        isActive: boolean;
+      }[];
+      setShiftSettings(shifts.filter((s) => s.isActive));
+    }
     setIsLoading(false);
   };
 
   const { startDate, endDate } = getCurrentPeriod();
+
+  // Helper to format date to YYYY-MM-DD string for comparison
+  const toDateStr = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const periodStartStr = toDateStr(startDate);
+  const periodEndStr = toDateStr(endDate);
+
   const periodLabel = `${startDate.toLocaleDateString('id-ID', {
     day: 'numeric',
     month: 'short',
@@ -129,44 +158,57 @@ export default function AttendancePage() {
     year: 'numeric',
   })}`;
 
-  const keteranganOptions = [
-    {
-      value: 'PAGI',
-      label: 'Pagi',
-      icon: Sun,
-      color: 'bg-blue-100 text-blue-700',
-    },
-    {
-      value: 'MALAM',
-      label: 'Malam',
-      icon: Moon,
-      color: 'bg-gray-100 text-gray-700',
-    },
-    {
-      value: 'PIKET_PAGI',
-      label: 'Piket Pagi',
-      icon: Sun,
-      color: 'bg-emerald-100 text-emerald-700',
-    },
-    {
-      value: 'PIKET_MALAM',
-      label: 'Piket Malam',
-      icon: Moon,
-      color: 'bg-purple-100 text-purple-700',
-    },
-    {
-      value: 'LIBUR',
-      label: 'Libur',
-      icon: XCircle,
-      color: 'bg-red-100 text-red-700',
-    },
-  ];
+  // Build keteranganOptions from shift settings or use defaults
+  const keteranganOptions =
+    shiftSettings.length > 0
+      ? shiftSettings.map((s) => ({
+          value: s.shiftType,
+          label: s.name,
+          icon: s.shiftType.includes('MALAM')
+            ? Moon
+            : s.shiftType === 'LIBUR'
+            ? XCircle
+            : Sun,
+          color: s.color,
+        }))
+      : [
+          { value: 'PAGI', label: 'Pagi', icon: Sun, color: 'blue' },
+          { value: 'MALAM', label: 'Malam', icon: Moon, color: 'gray' },
+          {
+            value: 'PIKET_PAGI',
+            label: 'Piket Pagi',
+            icon: Sun,
+            color: 'emerald',
+          },
+          {
+            value: 'PIKET_MALAM',
+            label: 'Piket Malam',
+            icon: Moon,
+            color: 'purple',
+          },
+          {
+            value: 'PAGI_MALAM',
+            label: 'Pagi Malam',
+            icon: Sun,
+            color: 'amber',
+          },
+          { value: 'LIBUR', label: 'Libur', icon: XCircle, color: 'red' },
+        ];
 
-  const getKeteranganLabel = (value: string) =>
-    keteranganOptions.find((k) => k.value === value)?.label || value;
-  const getKeteranganStyle = (keterangan: string) =>
-    keteranganOptions.find((k) => k.value === keterangan)?.color ||
-    'bg-gray-100 text-gray-700';
+  const getKeteranganLabel = (value: string) => {
+    const option = keteranganOptions.find((k) => k.value === value);
+    return option?.label || value;
+  };
+
+  const getKeteranganStyle = (keterangan: string) => {
+    const option = keteranganOptions.find((k) => k.value === keterangan);
+    if (option?.color) {
+      const colorClasses = getShiftColorClasses(option.color);
+      return `${colorClasses.bg} ${colorClasses.text}`;
+    }
+    // Fallback
+    return 'bg-gray-100 text-gray-700';
+  };
 
   const filteredRecords = useMemo(() => {
     return attendanceRecords.filter((record) => {
@@ -204,7 +246,7 @@ export default function AttendancePage() {
 
   const handleFilterChange = () => setCurrentPage(1);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
   const todayRecords = attendanceRecords.filter(
     (r) => r.tanggal.split('T')[0] === today
   );
@@ -212,8 +254,9 @@ export default function AttendancePage() {
   // My period stats
   const myPeriodRecords = attendanceRecords.filter((r) => {
     if (!currentUser || r.memberId !== currentUser.id) return false;
-    const recordDate = new Date(r.tanggal);
-    return recordDate >= startDate && recordDate <= endDate;
+    // Extract date portion from ISO string (first 10 chars: YYYY-MM-DD)
+    const recordDateStr = r.tanggal.substring(0, 10);
+    return recordDateStr >= periodStartStr && recordDateStr <= periodEndStr;
   });
 
   const myAllRecords = attendanceRecords.filter(
@@ -228,8 +271,9 @@ export default function AttendancePage() {
 
   const myPeriodSchedules = scheduleEntries.filter((s) => {
     if (!currentUser || s.memberId !== currentUser.id) return false;
-    const scheduleDate = new Date(s.tanggal);
-    return scheduleDate >= startDate && scheduleDate <= endDate;
+    // Extract date portion from ISO string (first 10 chars: YYYY-MM-DD)
+    const scheduleDateStr = s.tanggal.substring(0, 10);
+    return scheduleDateStr >= periodStartStr && scheduleDateStr <= periodEndStr;
   });
 
   const myScheduleKeteranganCounts = {
@@ -238,6 +282,8 @@ export default function AttendancePage() {
     PIKET_PAGI: myPeriodSchedules.filter((s) => s.keterangan === 'PIKET_PAGI')
       .length,
     PIKET_MALAM: myPeriodSchedules.filter((s) => s.keterangan === 'PIKET_MALAM')
+      .length,
+    PAGI_MALAM: myPeriodSchedules.filter((s) => s.keterangan === 'PAGI_MALAM')
       .length,
     LIBUR: myPeriodSchedules.filter((s) => s.keterangan === 'LIBUR').length,
   };
@@ -305,11 +351,24 @@ export default function AttendancePage() {
           <Card className='bg-gradient-to-r from-[#E57373] to-[#C62828] text-white'>
             <div className='flex flex-col lg:flex-row lg:items-center gap-4'>
               <div className='flex items-center gap-4 flex-1'>
-                <Avatar
-                  src={currentUser.image || undefined}
-                  name={currentUser.name}
-                  size='lg'
-                />
+                {currentUser.image ? (
+                  <img
+                    src={currentUser.image}
+                    alt={currentUser.name}
+                    className='w-14 h-14 rounded-full object-cover'
+                  />
+                ) : (
+                  <div className='w-14 h-14 rounded-full bg-white/20 flex items-center justify-center'>
+                    <span className='text-xl font-bold text-white'>
+                      {currentUser.name
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')
+                        .slice(0, 2)
+                        .toUpperCase()}
+                    </span>
+                  </div>
+                )}
                 <div>
                   <p className='font-semibold text-lg'>{currentUser.name}</p>
                   <p className='text-white/80 text-sm'>
@@ -381,19 +440,20 @@ export default function AttendancePage() {
             </Card>
           </div>
 
-          <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3'>
+          <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3'>
             {keteranganOptions.map((opt) => {
               const Icon = opt.icon;
               const count =
                 myScheduleKeteranganCounts[
                   opt.value as keyof typeof myScheduleKeteranganCounts
                 ] || 0;
+              const colorClasses = getShiftColorClasses(opt.color);
               return (
                 <Card key={opt.value} className='text-center py-3'>
                   <div
-                    className={`w-8 h-8 rounded-lg ${opt.color} flex items-center justify-center mx-auto mb-1`}
+                    className={`w-8 h-8 rounded-lg ${colorClasses.bg} flex items-center justify-center mx-auto mb-1`}
                   >
-                    <Icon className='w-4 h-4' />
+                    <Icon className={`w-4 h-4 ${colorClasses.text}`} />
                   </div>
                   <p className='text-lg font-bold text-gray-800'>{count}</p>
                   <p className='text-xs text-gray-500'>{opt.label}</p>
@@ -463,84 +523,50 @@ export default function AttendancePage() {
       )}
 
       {/* Filters */}
-      <Card>
-        <div className='flex items-center gap-2 mb-4'>
-          <Filter className='w-5 h-5 text-gray-400' />
-          <h3 className='font-semibold text-gray-800'>Filter</h3>
-          {hasActiveFilters && (
-            <button
-              onClick={resetFilters}
-              className='ml-auto text-xs text-[#E57373] hover:underline flex items-center gap-1'
-            >
-              <X className='w-3 h-3' />
-              Reset
-            </button>
-          )}
-        </div>
-        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3'>
-          <input
-            type='text'
-            placeholder='Cari nama...'
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
+      <FilterBar
+        searchValue={searchQuery}
+        onSearchChange={(val) => {
+          setSearchQuery(val);
+          handleFilterChange();
+        }}
+        searchPlaceholder='Cari nama anggota...'
+        showDateRange
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={(val) => {
+          setDateFrom(val);
+          handleFilterChange();
+        }}
+        onDateToChange={(val) => {
+          setDateTo(val);
+          handleFilterChange();
+        }}
+        selects={[
+          {
+            value: filterKeterangan,
+            onChange: (val) => {
+              setFilterKeterangan(val);
               handleFilterChange();
-            }}
-            className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
-          />
-          <div className='flex items-center gap-2'>
-            <Calendar className='w-4 h-4 text-gray-400' />
-            <input
-              type='date'
-              value={dateFrom}
-              onChange={(e) => {
-                setDateFrom(e.target.value);
-                handleFilterChange();
-              }}
-              className='flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm'
-            />
-          </div>
-          <div className='flex items-center gap-2'>
-            <span className='text-gray-400'>-</span>
-            <input
-              type='date'
-              value={dateTo}
-              onChange={(e) => {
-                setDateTo(e.target.value);
-                handleFilterChange();
-              }}
-              className='flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm'
-            />
-          </div>
-          <select
-            value={filterKeterangan}
-            onChange={(e) => {
-              setFilterKeterangan(e.target.value);
+            },
+            options: keteranganOptions,
+            placeholder: 'Semua Keterangan',
+          },
+          {
+            value: filterStatus,
+            onChange: (val) => {
+              setFilterStatus(val);
               handleFilterChange();
-            }}
-            className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
-          >
-            <option value='all'>Semua Keterangan</option>
-            {keteranganOptions.map((k) => (
-              <option key={k.value} value={k.value}>
-                {k.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={filterStatus}
-            onChange={(e) => {
-              setFilterStatus(e.target.value);
-              handleFilterChange();
-            }}
-            className='px-3 py-2 rounded-lg border border-gray-200 text-sm'
-          >
-            <option value='all'>Semua Status</option>
-            <option value='ONTIME'>Ontime</option>
-            <option value='TELAT'>Telat</option>
-          </select>
-        </div>
-      </Card>
+            },
+            options: [
+              { value: 'ONTIME', label: 'Ontime' },
+              { value: 'TELAT', label: 'Telat' },
+            ],
+            placeholder: 'Semua Status',
+          },
+        ]}
+        showReset
+        onReset={resetFilters}
+      />
 
       {/* Attendance Table */}
       <Card>
@@ -592,11 +618,24 @@ export default function AttendancePage() {
                     {!showMyHistory && (
                       <td className='px-4 py-3'>
                         <div className='flex items-center gap-3'>
-                          <Avatar
-                            src={record.member?.image || undefined}
-                            name={record.member?.name || ''}
-                            size='sm'
-                          />
+                          {record.member?.image ? (
+                            <img
+                              src={record.member.image}
+                              alt={record.member.name || ''}
+                              className='w-8 h-8 rounded-full object-cover'
+                            />
+                          ) : (
+                            <div className='w-8 h-8 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                              <span className='text-xs font-bold text-white'>
+                                {(record.member?.name || 'U')
+                                  .split(' ')
+                                  .map((n) => n[0])
+                                  .join('')
+                                  .slice(0, 2)
+                                  .toUpperCase()}
+                              </span>
+                            </div>
+                          )}
                           <p className='font-medium text-gray-800 text-sm'>
                             {record.member?.name}
                           </p>

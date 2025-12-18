@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { logActivity, SYSTEM_USER_ID } from '@/lib/activity-logger';
+import { logActivity, getUserIdFromRequest } from '@/lib/activity-logger';
 
 // GET single report
 export async function GET(
@@ -78,7 +78,7 @@ export async function PUT(
     await logActivity({
       action: `Updated daily report for "${before?.member?.name}"`,
       target: 'DailyReport',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'UPDATE',
       metadata: {
         before: { tasks: beforeTasks },
@@ -112,7 +112,7 @@ export async function DELETE(
     await logActivity({
       action: `Deleted daily report for "${report?.member?.name}"`,
       target: 'DailyReport',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'DELETE',
       metadata: {
         deletedData: {

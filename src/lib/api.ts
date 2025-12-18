@@ -1,5 +1,20 @@
 const API_BASE_URL = '/api';
 
+// Helper to get current user ID from localStorage
+function getCurrentUserId(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      return user.id || null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 // ============================================
 // GENERIC FETCH WRAPPER
 // ============================================
@@ -8,12 +23,20 @@ async function fetchAPI<T>(
   options: RequestInit = {}
 ): Promise<{ success: boolean; data?: T; error?: string }> {
   try {
+    const userId = getCurrentUserId();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string>),
+    };
+
+    // Add user ID header for audit logging
+    if (userId) {
+      headers['X-User-ID'] = userId;
+    }
+
     const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
       ...options,
+      headers,
     });
 
     const json = await res.json();
@@ -189,5 +212,17 @@ export const authAPI = {
     fetchAPI('/auth/logout', {
       method: 'POST',
       body: JSON.stringify({ userId }),
+    }),
+};
+
+// ============================================
+// CASH SETTINGS API
+// ============================================
+export const cashSettingsAPI = {
+  getAll: () => fetchAPI<Record<string, string>>('/cash-settings'),
+  save: (key: string, value: string, description?: string) =>
+    fetchAPI('/cash-settings', {
+      method: 'POST',
+      body: JSON.stringify({ key, value, description }),
     }),
 };

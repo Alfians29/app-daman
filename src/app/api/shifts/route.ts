@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { logActivity, SYSTEM_USER_ID } from '@/lib/activity-logger';
+import { logActivity, getUserIdFromRequest } from '@/lib/activity-logger';
 
 // GET all shifts
 export async function GET() {
   try {
     const shifts = await prisma.shiftSetting.findMany({
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
     });
     return NextResponse.json({ success: true, data: shifts });
   } catch (error) {
@@ -24,8 +24,7 @@ export async function POST(request: NextRequest) {
     const { shiftType, name, startTime, endTime, lateAfter, color } =
       await request.json();
 
-    const count = await prisma.shiftSetting.count();
-    const newId = `shift-${count + 1}`;
+    const newId = `shift-${Date.now()}`;
 
     const shift = await prisma.shiftSetting.create({
       data: {
@@ -43,7 +42,7 @@ export async function POST(request: NextRequest) {
     await logActivity({
       action: `Created shift "${name}"`,
       target: 'ShiftSetting',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'CREATE',
       metadata: { shiftId: newId, shiftType },
     });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useTransition } from 'react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -11,8 +11,15 @@ import {
   ModalFooter,
 } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Form';
-import { usersAPI, attendanceAPI, scheduleAPI, activitiesAPI } from '@/lib/api';
+import {
+  usersAPI,
+  attendanceAPI,
+  scheduleAPI,
+  activitiesAPI,
+  shiftsAPI,
+} from '@/lib/api';
 import { useCurrentUser } from '@/components/AuthGuard';
+import { getLocalDateString, getShiftColorClasses } from '@/lib/utils';
 import {
   Mail,
   Phone,
@@ -37,7 +44,6 @@ import {
   Upload,
   Loader2,
 } from 'lucide-react';
-import { Avatar } from '@/components/ui/Avatar';
 
 type UserData = {
   id: string;
@@ -71,7 +77,7 @@ type ActivityLog = {
   action: string;
   target: string;
   type: string;
-  timestamp: string;
+  createdAt: string;
   userId: string;
 };
 
@@ -83,6 +89,9 @@ export default function ProfilePage() {
   >([]);
   const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([]);
   const [recentActivities, setRecentActivities] = useState<ActivityLog[]>([]);
+  const [shiftSettings, setShiftSettings] = useState<
+    { shiftType: string; name: string; color: string | null }[]
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [showEditModal, setShowEditModal] = useState(false);
@@ -109,6 +118,11 @@ export default function ProfilePage() {
     confirm: false,
   });
 
+  const [isPending, startTransition] = useTransition();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
   useEffect(() => {
     if (!authLoading && authUser?.id) {
       loadData();
@@ -117,12 +131,14 @@ export default function ProfilePage() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [usersRes, attRes, schedRes, activitiesRes] = await Promise.all([
-      usersAPI.getAll(),
-      attendanceAPI.getAll(),
-      scheduleAPI.getAll(),
-      activitiesAPI.getAll(),
-    ]);
+    const [usersRes, attRes, schedRes, activitiesRes, shiftRes] =
+      await Promise.all([
+        usersAPI.getAll(),
+        attendanceAPI.getAll(),
+        scheduleAPI.getAll(),
+        activitiesAPI.getAll(),
+        shiftsAPI.getAll(),
+      ]);
 
     if (usersRes.success && usersRes.data && authUser?.id) {
       const userData = (usersRes.data as UserData[]).find(
@@ -148,6 +164,15 @@ export default function ProfilePage() {
     if (activitiesRes.success && activitiesRes.data) {
       setRecentActivities(activitiesRes.data as ActivityLog[]);
     }
+    if (shiftRes.success && shiftRes.data) {
+      setShiftSettings(
+        shiftRes.data as {
+          shiftType: string;
+          name: string;
+          color: string | null;
+        }[]
+      );
+    }
     setIsLoading(false);
   };
 
@@ -168,7 +193,7 @@ export default function ProfilePage() {
     totalAttendance > 0 ? Math.round((ontimeCount / totalAttendance) * 100) : 0;
 
   // Today's schedule
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
   const todaySchedule = useMemo(
     () =>
       currentUser
@@ -180,23 +205,47 @@ export default function ProfilePage() {
     [scheduleEntries, currentUser, today]
   );
 
-  // User activities
+  // User activities - sorted by newest first, max 4
   const userActivities = useMemo(
     () =>
       currentUser
         ? recentActivities
             .filter((a) => a.userId === currentUser.id)
-            .slice(0, 5)
+            .sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime()
+            )
+            .slice(0, 4)
         : [],
     [recentActivities, currentUser]
   );
 
-  const handleEditProfile = () => {
-    toast.success('Profil berhasil diperbarui!');
-    setShowEditModal(false);
+  const handleEditProfile = async () => {
+    if (!currentUser) return;
+
+    startTransition(async () => {
+      const result = await usersAPI.update(currentUser.id, {
+        name: editForm.name,
+        nickname: editForm.nickname,
+        email: editForm.email,
+        phone: editForm.phone,
+        usernameTelegram: editForm.usernameTelegram,
+      });
+
+      if (result.success) {
+        toast.success('Profil berhasil diperbarui!');
+        setShowEditModal(false);
+        loadData();
+      } else {
+        toast.error(result.error || 'Gagal memperbarui profil');
+      }
+    });
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
+    if (!currentUser) return;
+
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       toast.error('Password baru tidak cocok!');
       return;
@@ -205,35 +254,131 @@ export default function ProfilePage() {
       toast.error('Password minimal 6 karakter!');
       return;
     }
-    toast.success('Password berhasil diubah!');
-    setPasswordForm({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
+
+    startTransition(async () => {
+      const result = await usersAPI.update(currentUser.id, {
+        password: passwordForm.newPassword,
+      });
+
+      if (result.success) {
+        toast.success('Password berhasil diubah!');
+        setPasswordForm({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+        });
+        setShowPasswordModal(false);
+      } else {
+        toast.error(result.error || 'Gagal mengubah password');
+      }
     });
-    setShowPasswordModal(false);
   };
 
-  const handleUploadAvatar = () => {
-    toast.success('Foto profil berhasil diperbarui!');
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('File harus berupa gambar!');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Ukuran file maksimal 2MB!');
+      return;
+    }
+
+    setSelectedFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadAvatar = async () => {
+    if (!currentUser || !selectedFile) {
+      toast.error('Pilih file terlebih dahulu!');
+      return;
+    }
+
+    startTransition(async () => {
+      // Convert to base64 for simple storage
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+
+        const result = await usersAPI.update(currentUser.id, {
+          image: base64,
+        });
+
+        if (result.success) {
+          toast.success('Foto profil berhasil diperbarui!');
+          setShowAvatarModal(false);
+          setAvatarPreview(null);
+          setSelectedFile(null);
+          loadData();
+        } else {
+          toast.error(result.error || 'Gagal mengupload foto');
+        }
+      };
+      reader.readAsDataURL(selectedFile);
+    });
+  };
+
+  const closeAvatarModal = () => {
     setShowAvatarModal(false);
+    setAvatarPreview(null);
+    setSelectedFile(null);
+    if (avatarInputRef.current) {
+      avatarInputRef.current.value = '';
+    }
   };
 
   const getScheduleColor = (keterangan: string) => {
-    switch (keterangan) {
-      case 'Pagi':
-        return { bg: 'bg-blue-100', text: 'text-blue-700', icon: Sun };
-      case 'Malam':
-        return { bg: 'bg-indigo-100', text: 'text-indigo-700', icon: Moon };
-      case 'Piket Pagi':
-        return { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: Sun };
-      case 'Piket Malam':
-        return { bg: 'bg-purple-100', text: 'text-purple-700', icon: Moon };
-      case 'Libur':
-        return { bg: 'bg-red-100', text: 'text-red-700', icon: Calendar };
-      default:
-        return { bg: 'bg-gray-100', text: 'text-gray-500', icon: Calendar };
+    // Try to get color from shift settings
+    const shiftSetting = shiftSettings.find((s) => s.shiftType === keterangan);
+    if (shiftSetting?.color) {
+      const colorClasses = getShiftColorClasses(shiftSetting.color);
+      // Determine icon based on shift type
+      const iconMap: Record<string, typeof Sun> = {
+        PAGI: Sun,
+        MALAM: Moon,
+        PIKET_PAGI: Sun,
+        PIKET_MALAM: Moon,
+        PAGI_MALAM: Clock,
+        LIBUR: Calendar,
+      };
+      return {
+        bg: colorClasses.bg,
+        text: colorClasses.text,
+        icon: iconMap[keterangan] || Calendar,
+      };
     }
+
+    // Fallback to default colors
+    const defaultStyles: Record<
+      string,
+      { bg: string; text: string; icon: typeof Sun }
+    > = {
+      PAGI: { bg: 'bg-blue-100', text: 'text-blue-700', icon: Sun },
+      MALAM: { bg: 'bg-gray-200', text: 'text-gray-700', icon: Moon },
+      PIKET_PAGI: { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: Sun },
+      PIKET_MALAM: { bg: 'bg-purple-100', text: 'text-purple-700', icon: Moon },
+      PAGI_MALAM: { bg: 'bg-amber-100', text: 'text-amber-700', icon: Clock },
+      LIBUR: { bg: 'bg-red-100', text: 'text-red-700', icon: Calendar },
+    };
+    return (
+      defaultStyles[keterangan] || {
+        bg: 'bg-gray-100',
+        text: 'text-gray-500',
+        icon: Calendar,
+      }
+    );
   };
 
   if (isLoading || !currentUser) {
@@ -270,15 +415,27 @@ export default function ProfilePage() {
             <div className='absolute -inset-0.5 bg-linear-to-r from-[#E57373] to-[#EF5350] rounded-2xl opacity-75 blur' />
             <Card className='relative'>
               <div className='text-center'>
-                {/* Avatar with Badge */}
+                {/* Profile Photo with Badge */}
                 <div className='relative inline-block mb-4'>
                   <div className='relative'>
-                    <Avatar
-                      src={currentUser.image || undefined}
-                      name={currentUser.name}
-                      size='xl'
-                      className='w-28 h-28 ring-4 ring-white shadow-xl'
-                    />
+                    {currentUser.image ? (
+                      <img
+                        src={currentUser.image}
+                        alt={currentUser.name}
+                        className='w-28 h-28 rounded-full object-cover ring-4 ring-white shadow-xl'
+                      />
+                    ) : (
+                      <div className='w-28 h-28 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center ring-4 ring-white shadow-xl'>
+                        <span className='text-3xl font-bold text-white'>
+                          {currentUser.name
+                            .split(' ')
+                            .map((n) => n[0])
+                            .join('')
+                            .slice(0, 2)
+                            .toUpperCase()}
+                        </span>
+                      </div>
+                    )}
                     <button
                       onClick={() => setShowAvatarModal(true)}
                       className='absolute bottom-1 right-1 w-8 h-8 bg-[#E57373] text-white rounded-full flex items-center justify-center shadow-lg hover:bg-[#EF5350] transition-all hover:scale-110'
@@ -306,14 +463,6 @@ export default function ProfilePage() {
                 <p className='text-sm text-gray-500 dark:text-gray-400 mt-2'>
                   {currentUser.department}
                 </p>
-
-                <button
-                  onClick={() => setShowEditModal(true)}
-                  className='mt-4 w-full px-4 py-2.5 bg-linear-to-r from-[#E57373] to-[#EF5350] text-white rounded-xl font-medium hover:shadow-lg hover:shadow-red-200/50 transition-all flex items-center justify-center gap-2'
-                >
-                  <Edit className='w-4 h-4' />
-                  Edit Profil
-                </button>
               </div>
             </Card>
           </div>
@@ -506,7 +655,7 @@ export default function ProfilePage() {
                     Ubah Password
                   </p>
                   <p className='text-sm text-gray-500 dark:text-gray-400'>
-                    Terakhir diubah 30 hari yang lalu
+                    Pastikan ubah password secara berkala!
                   </p>
                 </div>
               </div>
@@ -560,7 +709,22 @@ export default function ProfilePage() {
                       </p>
                       <p className='text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5'>
                         <Clock className='w-3 h-3' />
-                        {activity.timestamp}
+                        {new Date(activity.createdAt).toLocaleDateString(
+                          'id-ID',
+                          {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          }
+                        )}{' '}
+                        •{' '}
+                        {new Date(activity.createdAt).toLocaleTimeString(
+                          'id-ID',
+                          {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          }
+                        )}
                       </p>
                     </div>
                   </div>
@@ -643,8 +807,16 @@ export default function ProfilePage() {
           >
             Batal
           </Button>
-          <Button onClick={handleEditProfile} className='flex-1'>
-            Simpan
+          <Button
+            onClick={handleEditProfile}
+            disabled={isPending}
+            className='flex-1'
+          >
+            {isPending ? (
+              <Loader2 className='w-4 h-4 animate-spin' />
+            ) : (
+              'Simpan'
+            )}
           </Button>
         </ModalFooter>
       </Modal>
@@ -787,42 +959,71 @@ export default function ProfilePage() {
           <Button
             onClick={handleChangePassword}
             disabled={
-              !passwordForm.currentPassword || !passwordForm.newPassword
+              !passwordForm.currentPassword ||
+              !passwordForm.newPassword ||
+              isPending
             }
             className='flex-1'
           >
-            Ubah Password
+            {isPending ? (
+              <Loader2 className='w-4 h-4 animate-spin' />
+            ) : (
+              'Ubah Password'
+            )}
           </Button>
         </ModalFooter>
       </Modal>
 
       {/* Upload Avatar Modal */}
-      <Modal
-        isOpen={showAvatarModal}
-        onClose={() => setShowAvatarModal(false)}
-        size='sm'
-      >
-        <ModalHeader
-          title='Ubah Foto Profil'
-          onClose={() => setShowAvatarModal(false)}
-        />
+      <Modal isOpen={showAvatarModal} onClose={closeAvatarModal} size='sm'>
+        <ModalHeader title='Ubah Foto Profil' onClose={closeAvatarModal} />
         <ModalBody>
           <div className='text-center'>
-            <div className='w-32 h-32 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600'>
-              <Camera className='w-8 h-8 text-gray-400' />
+            {/* Preview Area */}
+            <div
+              className='w-32 h-32 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden cursor-pointer hover:border-[#E57373] transition-colors'
+              onClick={() => avatarInputRef.current?.click()}
+            >
+              {avatarPreview ? (
+                <img
+                  src={avatarPreview}
+                  alt='Preview'
+                  className='w-full h-full object-cover'
+                />
+              ) : currentUser?.image ? (
+                <img
+                  src={currentUser.image}
+                  alt='Current'
+                  className='w-full h-full object-cover'
+                />
+              ) : (
+                <Camera className='w-8 h-8 text-gray-400' />
+              )}
             </div>
+
             <p className='text-sm text-gray-500 dark:text-gray-400 mb-4'>
-              Pilih foto dari galeri atau ambil foto baru
+              {selectedFile
+                ? selectedFile.name
+                : 'Klik area di atas atau tombol di bawah untuk memilih foto'}
             </p>
 
+            {/* Hidden file input */}
+            <input
+              ref={avatarInputRef}
+              type='file'
+              accept='image/*'
+              onChange={handleFileSelect}
+              className='hidden'
+            />
+
             <div className='space-y-3'>
-              <Button onClick={handleUploadAvatar} className='w-full'>
+              <Button
+                onClick={() => avatarInputRef.current?.click()}
+                variant='secondary'
+                className='w-full'
+              >
                 <Upload className='w-4 h-4 mr-2' />
-                Pilih dari Galeri
-              </Button>
-              <Button variant='secondary' className='w-full'>
-                <Camera className='w-4 h-4 mr-2' />
-                Ambil Foto
+                Pilih Foto
               </Button>
             </div>
           </div>
@@ -830,10 +1031,21 @@ export default function ProfilePage() {
         <ModalFooter>
           <Button
             variant='secondary'
-            onClick={() => setShowAvatarModal(false)}
+            onClick={closeAvatarModal}
             className='flex-1'
           >
             Batal
+          </Button>
+          <Button
+            onClick={handleUploadAvatar}
+            disabled={!selectedFile || isPending}
+            className='flex-1'
+          >
+            {isPending ? (
+              <Loader2 className='w-4 h-4 animate-spin' />
+            ) : (
+              'Simpan'
+            )}
           </Button>
         </ModalFooter>
       </Modal>

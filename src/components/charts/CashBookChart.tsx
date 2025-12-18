@@ -3,14 +3,13 @@
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts';
 
 type CashFlowDataItem = {
@@ -49,6 +48,46 @@ const formatCurrency = (value: number) => {
   return value.toString();
 };
 
+// Custom tooltip component
+const CustomTooltip = ({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ color: string; name: string; value: number }>;
+  label?: string;
+}) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className='bg-white dark:bg-gray-800 px-4 py-3 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700'>
+        <p className='font-semibold text-gray-800 dark:text-white mb-2'>
+          {label}
+        </p>
+        {payload.map((entry, index) => (
+          <div key={index} className='flex items-center gap-2 text-sm'>
+            <div
+              className='w-3 h-3 rounded-full'
+              style={{ backgroundColor: entry.color }}
+            />
+            <span className='text-gray-600 dark:text-gray-300'>
+              {entry.name}:
+            </span>
+            <span className='font-medium text-gray-800 dark:text-white'>
+              {new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+              }).format(entry.value)}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
 function CashBookChartContent({ data = defaultData }: CashBookChartProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -58,72 +97,97 @@ function CashBookChartContent({ data = defaultData }: CashBookChartProps) {
 
   if (!mounted) {
     return (
-      <div className='w-full h-[300px] bg-gray-50 dark:bg-gray-700 animate-pulse rounded-xl' />
+      <div className='w-full h-[300px] bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 animate-pulse rounded-xl' />
     );
   }
 
   return (
     <div className='w-full h-[300px]'>
       <ResponsiveContainer width='100%' height='100%'>
-        <LineChart
+        <AreaChart
           data={data}
-          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+          margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
         >
-          <CartesianGrid strokeDasharray='3 3' stroke='#f0f0f0' />
+          <defs>
+            <linearGradient id='gradientMasuk' x1='0' y1='0' x2='0' y2='1'>
+              <stop offset='5%' stopColor='#059669' stopOpacity={0.3} />
+              <stop offset='95%' stopColor='#059669' stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id='gradientKeluar' x1='0' y1='0' x2='0' y2='1'>
+              <stop offset='5%' stopColor='#DC2626' stopOpacity={0.3} />
+              <stop offset='95%' stopColor='#DC2626' stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id='gradientSaldo' x1='0' y1='0' x2='0' y2='1'>
+              <stop offset='5%' stopColor='#2563EB' stopOpacity={0.3} />
+              <stop offset='95%' stopColor='#2563EB' stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid
+            strokeDasharray='3 3'
+            stroke='#E5E7EB'
+            vertical={false}
+          />
           <XAxis
             dataKey='name'
             axisLine={false}
             tickLine={false}
-            tick={{ fill: '#9CA3AF', fontSize: 12 }}
+            tick={{ fill: '#9CA3AF', fontSize: 12, fontWeight: 500 }}
+            dy={10}
           />
           <YAxis
             axisLine={false}
             tickLine={false}
             tick={{ fill: '#9CA3AF', fontSize: 12 }}
             tickFormatter={formatCurrency}
+            dx={-5}
           />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: 'white',
-              border: '1px solid #E5E7EB',
-              borderRadius: '12px',
-              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-            }}
-            formatter={(value: number) => [
-              new Intl.NumberFormat('id-ID', {
-                style: 'currency',
-                currency: 'IDR',
-                minimumFractionDigits: 0,
-              }).format(value),
-              '',
-            ]}
-          />
-          <Legend />
-          <Line
+          <Tooltip content={<CustomTooltip />} />
+          <Area
             type='monotone'
             dataKey='masuk'
             name='Kas Masuk'
-            stroke='#4CAF50'
-            strokeWidth={2}
+            stroke='#059669'
+            strokeWidth={2.5}
+            fill='url(#gradientMasuk)'
             dot={false}
+            activeDot={{
+              r: 6,
+              strokeWidth: 2,
+              fill: 'white',
+              stroke: '#059669',
+            }}
           />
-          <Line
+          <Area
             type='monotone'
             dataKey='keluar'
             name='Kas Keluar'
-            stroke='#E57373'
-            strokeWidth={2}
+            stroke='#DC2626'
+            strokeWidth={2.5}
+            fill='url(#gradientKeluar)'
             dot={false}
+            activeDot={{
+              r: 6,
+              strokeWidth: 2,
+              fill: 'white',
+              stroke: '#DC2626',
+            }}
           />
-          <Line
+          <Area
             type='monotone'
             dataKey='saldo'
             name='Saldo'
-            stroke='#2196F3'
-            strokeWidth={2}
+            stroke='#2563EB'
+            strokeWidth={2.5}
+            fill='url(#gradientSaldo)'
             dot={false}
+            activeDot={{
+              r: 6,
+              strokeWidth: 2,
+              fill: 'white',
+              stroke: '#2563EB',
+            }}
           />
-        </LineChart>
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );
@@ -134,7 +198,7 @@ export const CashBookChart = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className='w-full h-[300px] bg-gray-50 dark:bg-gray-700 animate-pulse rounded-xl' />
+      <div className='w-full h-[300px] bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 animate-pulse rounded-xl' />
     ),
   }
 );

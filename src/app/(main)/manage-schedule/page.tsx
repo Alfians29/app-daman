@@ -16,7 +16,6 @@ import {
   Loader2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Avatar } from '@/components/ui/Avatar';
 import {
   Modal,
   ModalHeader,
@@ -24,16 +23,25 @@ import {
   ModalFooter,
 } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Form';
-import { scheduleAPI, usersAPI } from '@/lib/api';
+import { scheduleAPI, usersAPI, shiftsAPI } from '@/lib/api';
+import { getShiftColorClasses } from '@/lib/utils';
 
-type Keterangan = 'PAGI' | 'MALAM' | 'PIKET_PAGI' | 'PIKET_MALAM' | 'LIBUR';
+type Keterangan =
+  | 'PAGI'
+  | 'MALAM'
+  | 'PIKET_PAGI'
+  | 'PIKET_MALAM'
+  | 'PAGI_MALAM'
+  | 'LIBUR';
 
 type Member = {
   id: string;
   nik: string;
   name: string;
   nickname: string | null;
+  department: string;
   image: string | null;
+  isActive: boolean;
 };
 
 type ScheduleEntry = {
@@ -43,19 +51,22 @@ type ScheduleEntry = {
   keterangan: Keterangan;
 };
 
-const keteranganOptions: { value: Keterangan; label: string }[] = [
+// Default options (fallback if API fails)
+const defaultKeteranganOptions: { value: Keterangan; label: string }[] = [
   { value: 'PAGI', label: 'Pagi' },
   { value: 'MALAM', label: 'Malam' },
   { value: 'PIKET_PAGI', label: 'Piket Pagi' },
   { value: 'PIKET_MALAM', label: 'Piket Malam' },
+  { value: 'PAGI_MALAM', label: 'Pagi Malam' },
   { value: 'LIBUR', label: 'Libur' },
 ];
 
-const keteranganLabels: Record<string, string> = {
+const defaultKeteranganLabels: Record<string, string> = {
   PAGI: 'Pagi',
   MALAM: 'Malam',
   PIKET_PAGI: 'Piket Pagi',
   PIKET_MALAM: 'Piket Malam',
+  PAGI_MALAM: 'Pagi Malam',
   LIBUR: 'Libur',
 };
 
@@ -69,6 +80,12 @@ export default function AdminSchedulePage() {
 
   const [members, setMembers] = useState<Member[]>([]);
   const [schedules, setSchedules] = useState<ScheduleEntry[]>([]);
+  const [shiftColors, setShiftColors] = useState<Record<string, string | null>>(
+    {}
+  );
+  const [shiftSettings, setShiftSettings] = useState<
+    { shiftType: string; name: string; color: string | null }[]
+  >([]);
   const [scheduleChanges, setScheduleChanges] = useState<
     Record<string, Keterangan>
   >({});
@@ -121,11 +138,56 @@ export default function AdminSchedulePage() {
       scheduleAPI.getAll({ month, year }),
     ]);
 
-    if (usersResult.success) setMembers(usersResult.data as Member[]);
-    if (scheduleResult.success)
+    if (usersResult.success) {
+      // Filter: Only show Data Management - TA for Schedule management
+      const allUsers = usersResult.data as Member[];
+      setMembers(
+        allUsers.filter(
+          (m) => m.isActive && m.department === 'Data Management - TA'
+        )
+      );
+    }
+    if (scheduleResult.success) {
       setSchedules(scheduleResult.data as ScheduleEntry[]);
+      // Get shift colors from API response
+      const resultWithColors = scheduleResult as unknown as {
+        shiftColors?: Record<string, string | null>;
+      };
+      if (resultWithColors.shiftColors) {
+        setShiftColors(resultWithColors.shiftColors);
+      }
+    }
+    // Fetch shift settings for dynamic options
+    const shiftsResult = await shiftsAPI.getAll();
+    if (shiftsResult.success && shiftsResult.data) {
+      const shifts = shiftsResult.data as {
+        shiftType: string;
+        name: string;
+        color: string | null;
+        isActive: boolean;
+      }[];
+      setShiftSettings(shifts.filter((s) => s.isActive));
+    }
     setIsLoading(false);
   };
+
+  // Dynamic keteranganOptions from shift settings
+  const keteranganOptions =
+    shiftSettings.length > 0
+      ? shiftSettings.map((s) => ({
+          value: s.shiftType as Keterangan,
+          label: s.name,
+        }))
+      : defaultKeteranganOptions;
+
+  // Dynamic keteranganLabels from shift settings
+  const keteranganLabels =
+    shiftSettings.length > 0
+      ? shiftSettings.reduce(
+          (acc, s) => ({ ...acc, [s.shiftType]: s.name }),
+          {} as Record<string, string>
+        )
+      : defaultKeteranganLabels;
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -171,7 +233,10 @@ export default function AdminSchedulePage() {
   };
 
   const getScheduleForMember = (memberId: string, date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    // Use local date format YYYY-MM-DD for comparison
+    const dateStr = `${date.getFullYear()}-${String(
+      date.getMonth() + 1
+    ).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     const key = `${memberId}-${dateStr}`;
 
     if (scheduleChanges[key]) {
@@ -179,7 +244,8 @@ export default function AdminSchedulePage() {
     }
 
     const entry = schedules.find((s) => {
-      const entryDate = new Date(s.tanggal).toISOString().split('T')[0];
+      // Extract date part directly from ISO string (first 10 characters)
+      const entryDate = s.tanggal.substring(0, 10);
       return s.memberId === memberId && entryDate === dateStr;
     });
 
@@ -194,7 +260,10 @@ export default function AdminSchedulePage() {
   const handleScheduleChange = (keterangan: Keterangan) => {
     if (!editingMember || !editingDate) return;
 
-    const dateStr = editingDate.toISOString().split('T')[0];
+    // Use local date format YYYY-MM-DD
+    const dateStr = `${editingDate.getFullYear()}-${String(
+      editingDate.getMonth() + 1
+    ).padStart(2, '0')}-${String(editingDate.getDate()).padStart(2, '0')}`;
     const key = `${editingMember.id}-${dateStr}`;
 
     setScheduleChanges((prev) => ({ ...prev, [key]: keterangan }));
@@ -260,6 +329,8 @@ export default function AdminSchedulePage() {
         return 'PP';
       case 'PIKET_MALAM':
         return 'PM';
+      case 'PAGI_MALAM':
+        return 'P&M';
       case 'LIBUR':
         return 'L';
       default:
@@ -311,6 +382,8 @@ export default function AdminSchedulePage() {
         return 'PIKET_PAGI';
       case 'PM':
         return 'PIKET_MALAM';
+      case 'P&M':
+        return 'PAGI_MALAM';
       case 'L':
         return 'LIBUR';
       default:
@@ -376,7 +449,10 @@ export default function AdminSchedulePage() {
             const code = row[colIndex];
             const dayNum = dayColumns[colIndex - 2];
             const date = new Date(baseYear, baseMonth, dayNum);
-            const dateStr = date.toISOString().split('T')[0];
+            // Use local date format YYYY-MM-DD
+            const dateStr = `${date.getFullYear()}-${String(
+              date.getMonth() + 1
+            ).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
             const keterangan = shortCodeToKeterangan(code);
 
             if (keterangan) {
@@ -406,6 +482,14 @@ export default function AdminSchedulePage() {
   };
 
   const getKeteranganStyle = (keterangan: string) => {
+    // Use dynamic color from shift settings if available
+    const shiftColor = shiftColors[keterangan];
+    if (shiftColor) {
+      const colorClasses = getShiftColorClasses(shiftColor);
+      return `${colorClasses.bg} ${colorClasses.text} ${colorClasses.border}`;
+    }
+
+    // Fallback to default colors
     switch (keterangan) {
       case 'PAGI':
         return 'bg-blue-100 text-blue-700 border-blue-200';
@@ -581,11 +665,24 @@ export default function AdminSchedulePage() {
                 >
                   <td className='py-3 px-2 sticky left-0 bg-white'>
                     <div className='flex items-center gap-2'>
-                      <Avatar
-                        src={member.image || undefined}
-                        name={member.name}
-                        size='sm'
-                      />
+                      {member.image ? (
+                        <img
+                          src={member.image}
+                          alt={member.name}
+                          className='w-8 h-8 rounded-full object-cover'
+                        />
+                      ) : (
+                        <div className='w-8 h-8 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                          <span className='text-xs font-bold text-white'>
+                            {member.name
+                              .split(' ')
+                              .map((n) => n[0])
+                              .join('')
+                              .slice(0, 2)
+                              .toUpperCase()}
+                          </span>
+                        </div>
+                      )}
                       <div className='min-w-0'>
                         <p className='text-sm font-medium text-gray-800 truncate'>
                           {member.nickname || member.name}
@@ -595,7 +692,13 @@ export default function AdminSchedulePage() {
                   </td>
                   {periodDates.map((date, index) => {
                     const schedule = getScheduleForMember(member.id, date);
-                    const dateStr = date.toISOString().split('T')[0];
+                    // Use local date format YYYY-MM-DD
+                    const dateStr = `${date.getFullYear()}-${String(
+                      date.getMonth() + 1
+                    ).padStart(2, '0')}-${String(date.getDate()).padStart(
+                      2,
+                      '0'
+                    )}`;
                     const cellKey = `${member.id}-${dateStr}`;
                     const isChanged = scheduleChanges[cellKey] !== undefined;
 

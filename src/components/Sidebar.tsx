@@ -29,29 +29,95 @@ import { useState, useEffect, useRef } from 'react';
 import { Avatar } from './ui/Avatar';
 import Image from 'next/image';
 import { useCurrentUser } from './AuthGuard';
+import { usersAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
 
-const navItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/attendance', label: 'Absensi', icon: UserCheck },
-  { href: '/schedule', label: 'Jadwal', icon: CalendarDays },
-  { href: '/report', label: 'Report Harian', icon: FileText },
-  { href: '/dashboard/cashbook', label: 'Kas', icon: Wallet },
-  { href: '/dashboard/about', label: 'Tentang Tim', icon: Users },
-];
-
-const adminNavItems = [
-  { href: '/admin/team', label: 'Kelola Tim', icon: Users },
-  { href: '/admin/schedule', label: 'Kelola Jadwal', icon: CalendarCog },
-  { href: '/admin/report', label: 'Kelola Report', icon: FileCog },
-  { href: '/admin/cash', label: 'Kelola Kas', icon: Banknote },
-  { href: '/admin/attendance', label: 'Kelola Kehadiran', icon: ClipboardList },
-  { href: '/admin/shift', label: 'Kelola Shift', icon: Clock },
-];
-
-const superAdminNavItems = [
-  { href: '/superadmin/manage-roles', label: 'Manajemen Role', icon: Shield },
-  { href: '/superadmin/audit-log', label: 'Audit Log', icon: ScrollText },
+// All menu items - access is controlled purely by permissions assigned to each role
+const allNavItems = [
+  {
+    href: '/',
+    label: 'Dashboard',
+    icon: LayoutDashboard,
+    permission: 'menu.dashboard',
+  },
+  {
+    href: '/attendance',
+    label: 'Absensi',
+    icon: UserCheck,
+    permission: 'menu.attendance',
+  },
+  {
+    href: '/manage-attendance',
+    label: 'Kelola Absensi',
+    icon: ClipboardList,
+    permission: 'admin.attendance',
+  },
+  {
+    href: '/schedule',
+    label: 'Jadwal',
+    icon: CalendarDays,
+    permission: 'menu.schedule',
+  },
+  {
+    href: '/manage-schedule',
+    label: 'Kelola Jadwal',
+    icon: CalendarCog,
+    permission: 'admin.schedule',
+  },
+  {
+    href: '/report',
+    label: 'Report Harian',
+    icon: FileText,
+    permission: 'menu.report',
+  },
+  {
+    href: '/manage-report',
+    label: 'Kelola Report',
+    icon: FileCog,
+    permission: 'admin.report',
+  },
+  {
+    href: '/cash',
+    label: 'Kas',
+    icon: Wallet,
+    permission: 'menu.cash',
+  },
+  {
+    href: '/manage-cash',
+    label: 'Kelola Kas',
+    icon: Banknote,
+    permission: 'admin.cash',
+  },
+  {
+    href: '/team',
+    label: 'Tentang Tim',
+    icon: Users,
+    permission: 'menu.about',
+  },
+  {
+    href: '/manage-team',
+    label: 'Kelola Tim',
+    icon: Users,
+    permission: 'admin.team',
+  },
+  {
+    href: '/manage-shift',
+    label: 'Kelola Shift',
+    icon: Clock,
+    permission: 'admin.shift',
+  },
+  {
+    href: '/manage-roles',
+    label: 'Manajemen Role',
+    icon: Shield,
+    permission: 'superadmin.roles',
+  },
+  {
+    href: '/audit-log',
+    label: 'Audit Log',
+    icon: ScrollText,
+    permission: 'superadmin.audit',
+  },
 ];
 
 export default function Sidebar() {
@@ -62,11 +128,44 @@ export default function Sidebar() {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const { user: currentUser, logout } = useCurrentUser();
 
-  // Determine role-based access
-  const isAdmin =
-    currentUser?.role?.name === 'Admin' ||
-    currentUser?.role?.name === 'Superadmin';
-  const isSuperAdmin = currentUser?.role?.name === 'Superadmin';
+  // State for user data fetched from API (includes updated profile image)
+  const [userData, setUserData] = useState<{
+    name?: string;
+    nickname?: string;
+    image?: string | null;
+  } | null>(null);
+
+  // Fetch user data from API to get latest profile image
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (currentUser?.id) {
+        const result = await usersAPI.getOne(currentUser.id);
+        if (result.success && result.data) {
+          setUserData(
+            result.data as {
+              name?: string;
+              nickname?: string;
+              image?: string | null;
+            }
+          );
+        }
+      }
+    };
+    fetchUserData();
+  }, [currentUser?.id, pathname]); // Re-fetch on route change to get latest data
+
+  // Get user permissions from role
+  const userPermissions = currentUser?.role?.permissions || [];
+
+  // Check if user has a specific permission
+  const hasPermission = (code: string) => {
+    return userPermissions.includes(code);
+  };
+
+  // Filter menu items based on permissions
+  const filteredNavItems = allNavItems.filter((item) =>
+    hasPermission(item.permission)
+  );
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -225,38 +324,13 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {/* Navigation */}
+        {/* Navigation - all menus in single list, filtered by permissions */}
         <nav className='flex-1 p-3 space-y-1 overflow-y-auto'>
-          {/* Main Menu */}
           <div className='space-y-1'>
-            {navItems.map((item) => (
+            {filteredNavItems.map((item) => (
               <NavLink key={item.href} item={item} />
             ))}
           </div>
-
-          {/* Admin Section */}
-          {isAdmin && (
-            <>
-              <SectionDivider label='Admin' />
-              <div className='space-y-1'>
-                {adminNavItems.map((item) => (
-                  <NavLink key={item.href} item={item} />
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Superadmin Section */}
-          {isSuperAdmin && (
-            <>
-              <SectionDivider label='Superadmin' />
-              <div className='space-y-1'>
-                {superAdminNavItems.map((item) => (
-                  <NavLink key={item.href} item={item} />
-                ))}
-              </div>
-            </>
-          )}
         </nav>
 
         {/* User Info with Dropdown */}
@@ -296,7 +370,7 @@ export default function Sidebar() {
 
               {/* Settings / Profile */}
               <Link
-                href='/dashboard/profile'
+                href='/profile'
                 className='w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors border-t border-gray-100 dark:border-gray-600'
               >
                 <User size={18} className='text-gray-500' />
@@ -322,14 +396,31 @@ export default function Sidebar() {
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
             className='w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-200'
           >
-            <Avatar
-              src={currentUser?.image as string | undefined}
-              name={(currentUser?.name as string) || 'User'}
-              size='md'
-            />
+            {userData?.image ? (
+              <img
+                src={userData.image}
+                alt={userData.name || (currentUser?.name as string) || 'User'}
+                className='w-10 h-10 rounded-full object-cover'
+              />
+            ) : (
+              <div className='w-10 h-10 rounded-full bg-gradient-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                <span className='text-sm font-bold text-white'>
+                  {(userData?.name || (currentUser?.name as string) || 'U')
+                    .split(' ')
+                    .map((n) => n[0])
+                    .join('')
+                    .slice(0, 2)
+                    .toUpperCase()}
+                </span>
+              </div>
+            )}
             <div className='flex-1 min-w-0 text-left'>
               <p className='text-sm font-semibold text-gray-800 dark:text-white truncate'>
-                {currentUser?.nickname || currentUser?.name || 'User'}
+                {userData?.nickname ||
+                  userData?.name ||
+                  currentUser?.nickname ||
+                  currentUser?.name ||
+                  'User'}
               </p>
               <p className='text-xs text-gray-500 dark:text-gray-400 truncate'>
                 {currentUser?.role?.name || 'Member'}

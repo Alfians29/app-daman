@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { logActivity, SYSTEM_USER_ID } from '@/lib/activity-logger';
+import { logActivity, getUserIdFromRequest } from '@/lib/activity-logger';
 
 // GET single shift
 export async function GET(
@@ -55,7 +55,7 @@ export async function PUT(
     await logActivity({
       action: `Updated shift "${shift.name}"`,
       target: 'ShiftSetting',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'UPDATE',
       metadata: {
         before: {
@@ -96,7 +96,7 @@ export async function DELETE(
     await logActivity({
       action: `Deleted shift "${shift?.name || id}"`,
       target: 'ShiftSetting',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'DELETE',
       metadata: {
         deletedData: { id, name: shift?.name, shiftType: shift?.shiftType },
@@ -139,7 +139,7 @@ export async function PATCH(
         shift.name
       }"`,
       target: 'ShiftSetting',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'UPDATE',
       metadata: {
         before: { isActive: shift.isActive },

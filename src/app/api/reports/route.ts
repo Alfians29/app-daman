@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { logActivity, SYSTEM_USER_ID } from '@/lib/activity-logger';
+import { logActivity, getUserIdFromRequest } from '@/lib/activity-logger';
+
+/**
+ * Parse date string as local timezone date
+ */
+function parseLocalDate(dateStr: string): Date {
+  if (dateStr.includes('T')) return new Date(dateStr);
+  return new Date(dateStr + 'T12:00:00');
+}
 
 // GET all reports
 export async function GET(request: NextRequest) {
@@ -11,7 +19,7 @@ export async function GET(request: NextRequest) {
 
     const where: Record<string, unknown> = {};
     if (memberId) where.memberId = memberId;
-    if (date) where.tanggal = new Date(date);
+    if (date) where.tanggal = parseLocalDate(date);
 
     const reports = await prisma.dailyReport.findMany({
       where,
@@ -19,7 +27,7 @@ export async function GET(request: NextRequest) {
         member: { select: { id: true, name: true, nickname: true } },
         tasks: { include: { jobType: true } },
       },
-      orderBy: { tanggal: 'desc' },
+      orderBy: [{ tanggal: 'desc' }, { createdAt: 'desc' }],
     });
 
     return NextResponse.json({ success: true, data: reports });
@@ -37,14 +45,13 @@ export async function POST(request: NextRequest) {
   try {
     const { memberId, tanggal, tasks } = await request.json();
 
-    const count = await prisma.dailyReport.count();
-    const newId = `report-${count + 1}`;
+    const newId = `report-${Date.now()}`;
 
     const report = await prisma.dailyReport.create({
       data: {
         id: newId,
         memberId,
-        tanggal: new Date(tanggal),
+        tanggal: parseLocalDate(tanggal),
         tasks:
           tasks && tasks.length > 0
             ? {
@@ -72,7 +79,7 @@ export async function POST(request: NextRequest) {
     await logActivity({
       action: `Created daily report`,
       target: 'DailyReport',
-      userId: SYSTEM_USER_ID,
+      userId: getUserIdFromRequest(request),
       type: 'CREATE',
       metadata: { reportId: newId, memberId },
     });
