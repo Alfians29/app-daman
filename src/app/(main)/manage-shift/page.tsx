@@ -13,6 +13,7 @@ import {
   Trash2,
   Check,
   Loader2,
+  MessageSquare,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -35,6 +36,7 @@ interface ShiftSetting {
   startTime: string | null;
   endTime: string | null;
   lateAfter: string | null;
+  telegramCommand: string | null;
   isActive: boolean;
   color: string | null;
 }
@@ -79,6 +81,18 @@ const formatShiftType = (shiftType: string) => {
     LIBUR: 'Libur',
   };
   return mapping[shiftType] || shiftType;
+};
+
+// Get telegram command based on shift type (read-only)
+const getTelegramCommand = (shiftType: string): string | null => {
+  const mapping: Record<string, string> = {
+    PAGI: '/pagi',
+    MALAM: '/malam',
+    PAGI_MALAM: '/pagimalam',
+    PIKET_PAGI: '/piketpagi',
+    PIKET_MALAM: '/piketmalam',
+  };
+  return mapping[shiftType] || null;
 };
 
 export default function ManageShiftPage() {
@@ -176,6 +190,7 @@ export default function ManageShiftPage() {
           startTime: formData.startTime,
           endTime: formData.endTime,
           lateAfter: formData.lateAfter,
+          telegramCommand: getTelegramCommand(formData.shiftType),
           color: formData.color,
         });
 
@@ -193,6 +208,7 @@ export default function ManageShiftPage() {
           startTime: formData.startTime,
           endTime: formData.endTime,
           lateAfter: formData.lateAfter,
+          telegramCommand: getTelegramCommand(formData.shiftType),
           color: formData.color,
         });
 
@@ -402,6 +418,17 @@ export default function ManageShiftPage() {
                       {shift.lateAfter || '-'}
                     </span>
                   </div>
+                  {shift.telegramCommand && (
+                    <div className='flex justify-between items-center pt-2 border-t border-gray-100'>
+                      <span className='text-gray-500 flex items-center gap-1'>
+                        <MessageSquare className='w-3 h-3' />
+                        Telegram
+                      </span>
+                      <span className='font-mono text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded'>
+                        {shift.telegramCommand}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className='text-sm text-gray-500 italic'>
@@ -562,6 +589,23 @@ export default function ManageShiftPage() {
                 Absen setelah waktu ini akan dianggap telat
               </p>
             </div>
+
+            {formData.shiftType && formData.shiftType !== 'LIBUR' && (
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-1'>
+                  <span className='flex items-center gap-1'>
+                    <MessageSquare className='w-4 h-4' />
+                    Telegram Command
+                  </span>
+                </label>
+                <div className='w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono bg-gray-50 text-gray-600'>
+                  {getTelegramCommand(formData.shiftType) || '-'}
+                </div>
+                <p className='text-xs text-gray-500 mt-1'>
+                  Command otomatis berdasarkan tipe shift (read-only)
+                </p>
+              </div>
+            )}
 
             <div>
               <label className='block text-sm font-medium text-gray-700 mb-1'>
