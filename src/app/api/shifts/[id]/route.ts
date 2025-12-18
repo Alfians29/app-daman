@@ -61,6 +61,39 @@ export async function PUT(
       },
     });
 
+    // Update TelegramCommand entry for Daman unit if telegramCommand changed
+    // SDI unit is managed manually in the database
+    if (before?.telegramCommand !== telegramCommand) {
+      // Delete old Daman command entry if it existed
+      if (before?.telegramCommand) {
+        await prisma.telegramCommand.deleteMany({
+          where: {
+            shiftSettingId: id,
+            unit: 'Daman',
+          },
+        });
+      }
+
+      // Create new Daman command entry if new telegramCommand is provided
+      if (telegramCommand) {
+        await prisma.telegramCommand.upsert({
+          where: {
+            unit_command: { unit: 'Daman', command: telegramCommand },
+          },
+          update: {
+            shiftSettingId: id,
+            isActive: true,
+          },
+          create: {
+            unit: 'Daman',
+            command: telegramCommand,
+            shiftSettingId: id,
+            isActive: true,
+          },
+        });
+      }
+    }
+
     await logActivity({
       action: `Updated shift "${shift.name}"`,
       target: 'ShiftSetting',
@@ -71,12 +104,14 @@ export async function PUT(
           name: before?.name,
           startTime: before?.startTime,
           endTime: before?.endTime,
+          telegramCommand: before?.telegramCommand,
           isActive: before?.isActive,
         },
         after: {
           name: shift.name,
           startTime: shift.startTime,
           endTime: shift.endTime,
+          telegramCommand: shift.telegramCommand,
           isActive: shift.isActive,
         },
       },
@@ -100,6 +135,17 @@ export async function DELETE(
   try {
     const { id } = await params;
     const shift = await prisma.shiftSetting.findUnique({ where: { id } });
+
+    // First delete related Daman TelegramCommand records to avoid foreign key constraint
+    // SDI entries are managed manually
+    await prisma.telegramCommand.deleteMany({
+      where: {
+        shiftSettingId: id,
+        unit: 'Daman',
+      },
+    });
+
+    // Now delete the shift
     await prisma.shiftSetting.delete({ where: { id } });
 
     await logActivity({
