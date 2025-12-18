@@ -1,36 +1,185 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# App Daman - Sistem Manajemen Tim
 
-## Getting Started
+Aplikasi web untuk manajemen tim Data Management (Daman) yang mencakup fitur absensi, jadwal, kas, dan laporan harian.
 
-First, run the development server:
+## 🚀 Tech Stack
+
+- **Framework**: Next.js 15 (App Router)
+- **Database**: PostgreSQL dengan Prisma ORM
+- **Styling**: Tailwind CSS
+- **Authentication**: Custom JWT-based auth
+- **Charts**: Recharts
+- **Icons**: Lucide React
+
+## 📋 Fitur Utama
+
+### Dashboard
+
+- Greeting personalisasi berdasarkan waktu
+- Statistik absen tercepat & terakhir hari ini
+- Progress absensi periode (16 bulan ini - 15 bulan depan)
+- Grafik kehadiran dan kas
+
+### Absensi
+
+- Catat kehadiran manual via web
+- Integrasi dengan Telegram Bot
+- Status: ONTIME / TELAT (otomatis berdasarkan shift)
+
+### Jadwal
+
+- Manajemen jadwal shift (Pagi, Malam, Piket Pagi, Piket Malam, Libur)
+- Kalender bulanan dengan tampilan per anggota
+
+### Laporan Harian
+
+- Input laporan tugas harian
+- Tracking jenis pekerjaan dan kuantitas
+
+### Kas
+
+- Manajemen pemasukan & pengeluaran
+- Grafik saldo bulanan
+
+### Manajemen Shift
+
+- CRUD shift settings (waktu mulai, selesai, batas telat)
+- Telegram command per shift
+- Warna badge customizable
+- **Auto-sync ke tabel TelegramCommand** (khusus unit Daman)
+
+### Role & Permission
+
+- 3 Role default: Superadmin, Admin, Member
+- Permission berbasis menu (granular access control)
+
+## 🛠️ Setup Development
+
+### Prerequisites
+
+- Node.js 18+
+- PostgreSQL database
+- npm/yarn/pnpm
+
+### Installation
 
 ```bash
+# Clone repository
+git clone <repository-url>
+
+# Install dependencies
+npm install
+
+# Setup environment
+cp .env.example .env
+# Edit .env dengan DATABASE_URL yang sesuai
+
+# Generate Prisma Client
+npx prisma generate
+
+# Run database migrations
+npx prisma migrate dev
+
+# Seed database (opsional)
+npx prisma db seed
+
+# Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Buka [http://localhost:3000](http://localhost:3000) di browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🔐 Default Login
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Role       | Username   | Password      |
+| ---------- | ---------- | ------------- |
+| Superadmin | superadmin | superadmin123 |
+| Admin      | admin      | admin123      |
+| Member     | member     | member123     |
 
-## Learn More
+## 📁 Struktur Project
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/
+│   ├── (main)/           # Protected routes
+│   │   ├── page.tsx      # Dashboard
+│   │   ├── attendance/   # Absensi user
+│   │   ├── schedule/     # Jadwal
+│   │   ├── report/       # Laporan harian
+│   │   ├── cash/         # Kas
+│   │   ├── team/         # Tentang tim
+│   │   ├── manage-*/     # Admin pages
+│   │   └── profile/      # Profile user
+│   ├── api/              # API Routes
+│   └── sign-in/          # Auth pages
+├── components/
+│   ├── ui/               # Reusable UI components
+│   └── charts/           # Chart components
+├── lib/
+│   ├── api.ts            # API client
+│   ├── prisma.ts         # Prisma client
+│   └── utils.ts          # Utility functions
+└── hooks/                # Custom React hooks
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🔗 Integrasi Telegram Bot
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Aplikasi ini terintegrasi dengan Telegram Bot untuk absensi. Setiap shift dapat dikonfigurasi dengan command Telegram (contoh: `/pagi`, `/malam`).
 
-## Deploy on Vercel
+### Alur Integrasi
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. User mengirim command di group Telegram
+2. Bot memproses dan memanggil API `/api/attendance/bot`
+3. Absensi tercatat dengan source `TELEGRAM_BOT`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### TelegramCommand Table
+
+- Dikelola otomatis untuk unit **Daman** saat CRUD shift
+- Unit **SDI** dikelola manual di database
+
+## 📝 API Endpoints
+
+### Authentication
+
+- `POST /api/auth/login` - Login
+- `POST /api/auth/logout` - Logout
+
+### Users
+
+- `GET /api/users` - List users
+- `POST /api/users` - Create user
+- `PUT /api/users/[id]` - Update user
+- `DELETE /api/users/[id]` - Delete user
+
+### Attendance
+
+- `GET /api/attendance` - List attendance
+- `POST /api/attendance` - Create attendance (web)
+- `POST /api/attendance/bot` - Create attendance (Telegram)
+
+### Shifts
+
+- `GET /api/shifts` - List shifts
+- `POST /api/shifts` - Create shift (+ auto TelegramCommand)
+- `PUT /api/shifts/[id]` - Update shift (+ sync TelegramCommand)
+- `DELETE /api/shifts/[id]` - Delete shift (+ cleanup TelegramCommand)
+
+### Lainnya
+
+- `/api/schedule` - Manajemen jadwal
+- `/api/cash` - Manajemen kas
+- `/api/reports` - Laporan harian
+- `/api/roles` - Manajemen role
+- `/api/activities` - Audit log
+
+## 🎨 Customization
+
+### Shift Colors
+
+Warna shift dapat dikustomisasi via halaman Kelola Shift. Pilihan warna:
+`emerald`, `purple`, `blue`, `gray`, `red`, `amber`, `orange`, `yellow`, `lime`, `green`, `teal`, `cyan`, `sky`, `indigo`, `violet`, `fuchsia`, `pink`, `rose`
+
+## 📄 License
+
+Private - Internal use only.
