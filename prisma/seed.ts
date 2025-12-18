@@ -311,7 +311,8 @@ async function main() {
       startTime: '08:00',
       endTime: '16:00',
       lateAfter: '08:15',
-      color: '#22c55e',
+      telegramCommand: '/pagi',
+      color: 'emerald',
     },
     {
       id: 'shift-malam',
@@ -320,7 +321,18 @@ async function main() {
       startTime: '20:00',
       endTime: '04:00',
       lateAfter: '20:15',
-      color: '#3b82f6',
+      telegramCommand: '/malam',
+      color: 'indigo',
+    },
+    {
+      id: 'shift-pagi-malam',
+      shiftType: 'PAGI_MALAM' as const,
+      name: 'Shift Pagi Malam',
+      startTime: '08:00',
+      endTime: '04:00',
+      lateAfter: '08:15',
+      telegramCommand: '/pagimalam',
+      color: 'cyan',
     },
     {
       id: 'shift-piket-pagi',
@@ -329,7 +341,8 @@ async function main() {
       startTime: '08:00',
       endTime: '16:00',
       lateAfter: '08:15',
-      color: '#f59e0b',
+      telegramCommand: '/piketpagi',
+      color: 'amber',
     },
     {
       id: 'shift-piket-malam',
@@ -338,7 +351,8 @@ async function main() {
       startTime: '20:00',
       endTime: '04:00',
       lateAfter: '20:15',
-      color: '#8b5cf6',
+      telegramCommand: '/piketmalam',
+      color: 'purple',
     },
     {
       id: 'shift-libur',
@@ -347,14 +361,19 @@ async function main() {
       startTime: null,
       endTime: null,
       lateAfter: null,
-      color: '#6b7280',
+      telegramCommand: null,
+      color: 'gray',
     },
   ];
 
   for (const shift of shiftSettings) {
     await prisma.shiftSetting.upsert({
       where: { shiftType: shift.shiftType },
-      update: { name: shift.name, color: shift.color },
+      update: {
+        name: shift.name,
+        color: shift.color,
+        telegramCommand: shift.telegramCommand,
+      },
       create: shift,
     });
   }

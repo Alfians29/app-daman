@@ -33,8 +33,16 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const { shiftType, name, startTime, endTime, lateAfter, color, isActive } =
-      await request.json();
+    const {
+      shiftType,
+      name,
+      startTime,
+      endTime,
+      lateAfter,
+      telegramCommand,
+      color,
+      isActive,
+    } = await request.json();
 
     // Get before state
     const before = await prisma.shiftSetting.findUnique({ where: { id } });
@@ -47,6 +55,7 @@ export async function PUT(
         startTime: startTime || null,
         endTime: endTime || null,
         lateAfter: lateAfter || null,
+        telegramCommand: telegramCommand || null,
         color,
         isActive,
       },

@@ -1,5 +1,5 @@
-// Prisma Schema for Daman Team Management Application
-// Generated based on data/dummy.ts interfaces
+// Prisma Schema for Telegram Bot Absensi
+// MUST match app-daman schema + TelegramUser table
 // Compatible with Prisma 5.x / 6.x
 
 generator client {
@@ -48,7 +48,7 @@ enum ActivityType {
 }
 
 // ============================================================================
-// MODELS
+// MODELS (from app-daman)
 // ============================================================================
 
 /// User - Tabel untuk menyimpan data anggota tim dan authentication
@@ -133,7 +133,6 @@ model RolePermission {
 }
 
 /// Attendance - Tabel untuk menyimpan data absensi/kehadiran
-/// Data bisa masuk dari Web App atau Telegram Bot
 model Attendance {
   id                String           @id
   memberId          String
@@ -147,6 +146,7 @@ model Attendance {
   source            AttendanceSource @default(WEB)
   telegramMessageId String?
   telegramChatId    String?
+  photoUrl          String?          // NEW: Photo URL from Telegram
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
@@ -188,8 +188,6 @@ model CashEntry {
   @@index([date])
   @@index([category])
 }
-
-
 
 /// Activity - Tabel untuk audit log aktivitas user
 model Activity {
@@ -252,16 +250,20 @@ model JobType {
 
 /// ShiftSetting - Tabel untuk menyimpan konfigurasi waktu setiap shift
 model ShiftSetting {
-  id        String    @id
-  shiftType ShiftType @unique
-  name      String
-  startTime String?   // Format: "HH:mm"
-  endTime   String?   // Format: "HH:mm"
-  lateAfter String?   // Batas waktu telat, Format: "HH:mm"
-  isActive  Boolean   @default(true)
-  color     String?   // Warna badge di UI
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id              String    @id
+  shiftType       ShiftType @unique
+  name            String
+  startTime       String?   // Format: "HH:mm"
+  endTime         String?   // Format: "HH:mm"
+  lateAfter       String?   // Batas waktu telat, Format: "HH:mm"
+  telegramCommand String?   // Command untuk bot Telegram, e.g. "/pagi", "/malam"
+  isActive        Boolean   @default(true)
+  color           String?   // Warna badge di UI
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relation to TelegramCommand
+  telegramCommands TelegramCommand[]
 }
 
 /// CashSetting - Tabel untuk menyimpan konfigurasi kas (tarif bulanan, dll)
@@ -274,5 +276,48 @@ model CashSetting {
   updatedAt   DateTime @updatedAt
 
   @@index([key])
+}
+
+// ============================================================================
+// NEW TABLES: TELEGRAM USER & TELEGRAM COMMAND
+// ============================================================================
+
+/// TelegramUser - Data user yang bisa menggunakan bot (Daman + SDI)
+model TelegramUser {
+  id               String   @id @default(cuid())
+  usernameTelegram String   @unique  // @alfiyyann, @andrewnugrohoo, etc
+  nik              String
+  nama             String
+  unit             String             // "Daman" or "SDI"
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // For Daman users, link to main User table (optional)
+  userId           String?  @unique
+  
+  @@index([usernameTelegram])
+  @@index([unit])
+  @@index([nik])
+}
+
+/// TelegramCommand - Command per unit yang terhubung ke ShiftSetting
+model TelegramCommand {
+  id             String       @id @default(cuid())
+  unit           String                 // "Daman" or "SDI"
+  command        String                 // "/pagi", "/malam", "/piketpagi", "/piketmalam"
+  
+  // Relation to ShiftSetting - untuk ambil jadwal dan keterangan
+  shiftSettingId String
+  shiftSetting   ShiftSetting @relation(fields: [shiftSettingId], references: [id])
+  
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([unit, command])
+  @@index([unit])
+  @@index([command])
+  @@index([shiftSettingId])
 }
 

@@ -21,8 +21,15 @@ export async function GET() {
 // POST create shift
 export async function POST(request: NextRequest) {
   try {
-    const { shiftType, name, startTime, endTime, lateAfter, color } =
-      await request.json();
+    const {
+      shiftType,
+      name,
+      startTime,
+      endTime,
+      lateAfter,
+      telegramCommand,
+      color,
+    } = await request.json();
 
     const newId = `shift-${Date.now()}`;
 
@@ -34,6 +41,7 @@ export async function POST(request: NextRequest) {
         startTime: startTime || null,
         endTime: endTime || null,
         lateAfter: lateAfter || null,
+        telegramCommand: telegramCommand || null,
         color: color || 'emerald',
         isActive: true,
       },
