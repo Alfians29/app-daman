@@ -47,12 +47,32 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Also create TelegramCommand entry for Daman unit if telegramCommand is provided
+    // SDI unit is managed manually in the database
+    if (telegramCommand) {
+      await prisma.telegramCommand.upsert({
+        where: {
+          unit_command: { unit: 'Daman', command: telegramCommand },
+        },
+        update: {
+          shiftSettingId: newId,
+          isActive: true,
+        },
+        create: {
+          unit: 'Daman',
+          command: telegramCommand,
+          shiftSettingId: newId,
+          isActive: true,
+        },
+      });
+    }
+
     await logActivity({
       action: `Created shift "${name}"`,
       target: 'ShiftSetting',
       userId: getUserIdFromRequest(request),
       type: 'CREATE',
-      metadata: { shiftId: newId, shiftType },
+      metadata: { shiftId: newId, shiftType, telegramCommand },
     });
 
     return NextResponse.json({ success: true, data: shift }, { status: 201 });
