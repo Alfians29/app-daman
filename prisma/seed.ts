@@ -157,6 +157,115 @@ async function main() {
   });
   console.log('✅ Created superadmin user:', superadminUser.username);
 
+  // ============================================
+  // SDI TELEGRAM COMMANDS (Static - tanpa relasi ke ShiftSetting)
+  // ============================================
+  console.log('\n🌱 Seeding SDI Telegram Commands (static)...');
+
+  const sdiTelegramCommands = [
+    {
+      id: 'cmd-sdi-pagi',
+      unit: 'SDI',
+      command: '/pagi',
+      isActive: true,
+    },
+    {
+      id: 'cmd-sdi-piket',
+      unit: 'SDI',
+      command: '/piket',
+      isActive: true,
+    },
+  ];
+
+  for (const cmd of sdiTelegramCommands) {
+    await prisma.telegramCommand.upsert({
+      where: {
+        unit_command: {
+          unit: cmd.unit,
+          command: cmd.command,
+        },
+      },
+      update: {
+        isActive: cmd.isActive,
+      },
+      create: cmd,
+    });
+    console.log(`✅ Created SDI command: ${cmd.command}`);
+  }
+
+  // ============================================
+  // SDI TELEGRAM USERS
+  // ============================================
+  console.log('\n🌱 Seeding SDI Telegram Users...');
+
+  const sdiTelegramUsers = [
+    {
+      usernameTelegram: '@nanangagustian',
+      nik: '20900289',
+      nama: 'Nanang Agustian',
+    },
+    {
+      usernameTelegram: '@ABCDEFGHIJ4NMCOK2345678910PQRSTU',
+      nik: '20910514',
+      nama: 'Achmad Vilda Pradianto',
+    },
+    {
+      usernameTelegram: '@bunda_bella',
+      nik: '20750004',
+      nama: 'Barokah Indah',
+    },
+    {
+      usernameTelegram: '@cimolzzz',
+      nik: '20950745',
+      nama: 'Tito Guntur Pradana',
+    },
+    {
+      usernameTelegram: '@Adhitsatria',
+      nik: '19870031',
+      nama: 'Adhit Satria Harendro',
+    },
+    {
+      usernameTelegram: '@Andinaay',
+      nik: '925752',
+      nama: 'Andina Ayu Hapsari',
+    },
+    {
+      usernameTelegram: '@sihajzaarandi',
+      nik: '22000009',
+      nama: 'Mohammad Sihaj Zarrandi',
+    },
+    {
+      usernameTelegram: '@rizkausman',
+      nik: '20900376',
+      nama: 'Rizka Agustia Usman',
+    },
+    {
+      usernameTelegram: '@DWSYXGQ',
+      nik: '19950350',
+      nama: 'Dimmas Wahyu Saputra',
+    },
+  ];
+
+  for (const user of sdiTelegramUsers) {
+    await prisma.telegramUser.upsert({
+      where: { usernameTelegram: user.usernameTelegram },
+      update: {
+        nik: user.nik,
+        nama: user.nama,
+        unit: 'SDI',
+        isActive: true,
+      },
+      create: {
+        usernameTelegram: user.usernameTelegram,
+        nik: user.nik,
+        nama: user.nama,
+        unit: 'SDI',
+        isActive: true,
+      },
+    });
+    console.log(`✅ Created SDI user: ${user.nama}`);
+  }
+
   console.log('\n🎉 Seeding completed!');
   console.log('\n📋 Login Credentials:');
   console.log('─────────────────────────────────');
@@ -169,6 +278,10 @@ async function main() {
   console.log('  - Kelola Tim, Kelola Jadwal, Kelola Report, Kelola Kas');
   console.log('  - Kelola Kehadiran, Kelola Shift');
   console.log('  - Manajemen Role, Audit Log');
+  console.log('\n📋 SDI Telegram Commands (static):');
+  console.log('  - /pagi, /piket');
+  console.log('\n📋 SDI Telegram Users:');
+  console.log(`  - ${sdiTelegramUsers.length} users`);
 }
 
 main()
