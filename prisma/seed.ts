@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log('🌱 Seeding database (Superadmin only)...');
 
   // Create Superadmin Role
   const superadminRole = await prisma.role.upsert({
@@ -22,41 +22,7 @@ async function main() {
   });
   console.log('✅ Created role:', superadminRole.name);
 
-  // Create Admin Role
-  const adminRole = await prisma.role.upsert({
-    where: { name: 'Admin' },
-    update: {
-      description: 'Administrator dengan akses penuh',
-      color: '#ef4444',
-    },
-    create: {
-      id: 'role-admin',
-      name: 'Admin',
-      description: 'Administrator dengan akses penuh',
-      color: '#ef4444',
-      isDefault: false,
-    },
-  });
-  console.log('✅ Created role:', adminRole.name);
-
-  // Create Member Role
-  const memberRole = await prisma.role.upsert({
-    where: { name: 'Member' },
-    update: {
-      description: 'Anggota tim biasa',
-      color: '#3b82f6',
-    },
-    create: {
-      id: 'role-member',
-      name: 'Member',
-      description: 'Anggota tim biasa',
-      color: '#3b82f6',
-      isDefault: true,
-    },
-  });
-  console.log('✅ Created role:', memberRole.name);
-
-  // Create Permissions - names match sidebar menu labels exactly
+  // Create ALL Permissions - names match sidebar menu labels exactly
   const permissions = [
     // Main Menu
     {
@@ -142,10 +108,7 @@ async function main() {
     },
   ];
 
-  // Delete old permissions first to avoid conflicts
-  await prisma.rolePermission.deleteMany({});
-  await prisma.permission.deleteMany({});
-
+  // Upsert all permissions
   for (const perm of permissions) {
     await prisma.permission.upsert({
       where: { id: perm.id },
@@ -155,7 +118,7 @@ async function main() {
   }
   console.log('✅ Created', permissions.length, 'menu permissions');
 
-  // Assign ALL permissions to Superadmin role (full access)
+  // Assign ALL permissions to Superadmin role (full access to all sidebar menus)
   for (const perm of permissions) {
     await prisma.rolePermission.upsert({
       where: {
@@ -173,74 +136,6 @@ async function main() {
     });
   }
   console.log('✅ Assigned all permissions to Superadmin role');
-
-  // Assign Main + Admin menu permissions to Admin role (no superadmin menu)
-  const adminPermissionCodes = [
-    // Main menu
-    'menu.dashboard',
-    'menu.attendance',
-    'menu.schedule',
-    'menu.report',
-    'menu.cash',
-    'menu.about',
-    // Admin menu
-    'admin.team',
-    'admin.schedule',
-    'admin.report',
-    'admin.cash',
-    'admin.attendance',
-    'admin.shift',
-  ];
-  const adminPermissions = permissions.filter((p) =>
-    adminPermissionCodes.includes(p.code)
-  );
-  for (const perm of adminPermissions) {
-    await prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
-          roleId: adminRole.id,
-          permissionId: perm.id,
-        },
-      },
-      update: {},
-      create: {
-        id: `rp-admin-${perm.id}`,
-        roleId: adminRole.id,
-        permissionId: perm.id,
-      },
-    });
-  }
-  console.log('✅ Assigned main + admin permissions to Admin role');
-
-  // Assign only Main menu permissions to Member role (basic access)
-  const memberPermissionCodes = [
-    'menu.dashboard',
-    'menu.attendance',
-    'menu.schedule',
-    'menu.report',
-    'menu.cash',
-    'menu.about',
-  ];
-  const memberPermissions = permissions.filter((p) =>
-    memberPermissionCodes.includes(p.code)
-  );
-  for (const perm of memberPermissions) {
-    await prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
-          roleId: memberRole.id,
-          permissionId: perm.id,
-        },
-      },
-      update: {},
-      create: {
-        id: `rp-member-${perm.id}`,
-        roleId: memberRole.id,
-        permissionId: perm.id,
-      },
-    });
-  }
-  console.log('✅ Assigned main menu permissions to Member role');
 
   // Create Superadmin User
   const superadminUser = await prisma.user.upsert({
@@ -262,138 +157,18 @@ async function main() {
   });
   console.log('✅ Created superadmin user:', superadminUser.username);
 
-  // Create Admin User
-  const adminUser = await prisma.user.upsert({
-    where: { username: 'admin' },
-    update: { roleId: adminRole.id },
-    create: {
-      id: 'user-admin',
-      nik: '12345678',
-      username: 'admin',
-      password: 'admin123',
-      name: 'Administrator',
-      nickname: 'Admin',
-      email: 'admin@daman.com',
-      position: 'Team Leader',
-      department: 'IT',
-      roleId: adminRole.id,
-      isActive: true,
-    },
-  });
-  console.log('✅ Created admin user:', adminUser.username);
-
-  // Create Member User
-  const memberUser = await prisma.user.upsert({
-    where: { username: 'member' },
-    update: { roleId: memberRole.id },
-    create: {
-      id: 'user-member-1',
-      nik: '87654321',
-      username: 'member',
-      password: 'member123',
-      name: 'John Doe',
-      nickname: 'John',
-      email: 'john@daman.com',
-      position: 'Member',
-      department: 'IT',
-      roleId: memberRole.id,
-      isActive: true,
-    },
-  });
-  console.log('✅ Created member user:', memberUser.username);
-
-  // Create Shift Settings
-  const shiftSettings = [
-    {
-      id: 'shift-pagi',
-      shiftType: 'PAGI' as const,
-      name: 'Shift Pagi',
-      startTime: '08:00',
-      endTime: '16:00',
-      lateAfter: '08:15',
-      telegramCommand: '/pagi',
-      color: 'emerald',
-    },
-    {
-      id: 'shift-malam',
-      shiftType: 'MALAM' as const,
-      name: 'Shift Malam',
-      startTime: '20:00',
-      endTime: '04:00',
-      lateAfter: '20:15',
-      telegramCommand: '/malam',
-      color: 'indigo',
-    },
-    {
-      id: 'shift-pagi-malam',
-      shiftType: 'PAGI_MALAM' as const,
-      name: 'Shift Pagi Malam',
-      startTime: '08:00',
-      endTime: '04:00',
-      lateAfter: '08:15',
-      telegramCommand: '/pagimalam',
-      color: 'cyan',
-    },
-    {
-      id: 'shift-piket-pagi',
-      shiftType: 'PIKET_PAGI' as const,
-      name: 'Piket Pagi',
-      startTime: '08:00',
-      endTime: '16:00',
-      lateAfter: '08:15',
-      telegramCommand: '/piketpagi',
-      color: 'amber',
-    },
-    {
-      id: 'shift-piket-malam',
-      shiftType: 'PIKET_MALAM' as const,
-      name: 'Piket Malam',
-      startTime: '20:00',
-      endTime: '04:00',
-      lateAfter: '20:15',
-      telegramCommand: '/piketmalam',
-      color: 'purple',
-    },
-    {
-      id: 'shift-libur',
-      shiftType: 'LIBUR' as const,
-      name: 'Libur',
-      startTime: null,
-      endTime: null,
-      lateAfter: null,
-      telegramCommand: null,
-      color: 'gray',
-    },
-  ];
-
-  for (const shift of shiftSettings) {
-    await prisma.shiftSetting.upsert({
-      where: { shiftType: shift.shiftType },
-      update: {
-        name: shift.name,
-        color: shift.color,
-        telegramCommand: shift.telegramCommand,
-      },
-      create: shift,
-    });
-  }
-  console.log('✅ Created', shiftSettings.length, 'shift settings');
-
   console.log('\n🎉 Seeding completed!');
   console.log('\n📋 Login Credentials:');
   console.log('─────────────────────────────────');
   console.log('Superadmin:');
   console.log('  Username: superadmin');
   console.log('  Password: superadmin123');
-  console.log('');
-  console.log('Admin:');
-  console.log('  Username: admin');
-  console.log('  Password: admin123');
-  console.log('');
-  console.log('Member:');
-  console.log('  Username: member');
-  console.log('  Password: member123');
   console.log('─────────────────────────────────');
+  console.log('\n📌 Superadmin memiliki akses ke SEMUA menu:');
+  console.log('  - Dashboard, Absensi, Jadwal, Report, Kas, Tentang Tim');
+  console.log('  - Kelola Tim, Kelola Jadwal, Kelola Report, Kelola Kas');
+  console.log('  - Kelola Kehadiran, Kelola Shift');
+  console.log('  - Manajemen Role, Audit Log');
 }
 
 main()
