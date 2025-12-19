@@ -309,13 +309,13 @@ export default function Sidebar() {
         {/* Logo */}
         <div className='h-16 flex items-center px-5 border-b border-gray-100 dark:border-gray-700'>
           <div className='flex items-center gap-3'>
-            <div className='w-18 h-10 rounded-lg bg-[#E57373] flex items-center justify-center shadow-lg shadow-red-200/50'>
+            <div className='w-10 h-10 rounded-lg bg-[#E57373] flex items-center justify-center shadow-lg shadow-red-200/50 overflow-hidden p-1.5'>
               <Image
                 src='/logoputih.png'
                 alt='Logo'
-                width={150}
-                height={150}
-                style={{ width: 'auto', height: 'auto' }}
+                width={32}
+                height={32}
+                className='object-contain'
                 loading='eager'
               />
             </div>
