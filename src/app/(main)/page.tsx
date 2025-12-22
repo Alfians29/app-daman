@@ -72,6 +72,7 @@ export default function Dashboard() {
   const [chartPeriod, setChartPeriod] = useState<
     '1bulan' | '6bulan' | '1tahun'
   >('1tahun');
+  const [periodType, setPeriodType] = useState<'monthly' | '16-15'>('16-15');
 
   useEffect(() => {
     if (!authLoading && authUser) {
@@ -362,21 +363,29 @@ export default function Dashboard() {
     : null;
 
   // Period calculation
-  const getPeriodDates = () => {
+  const getPeriodDates = (type: 'monthly' | '16-15' = '16-15') => {
     const now = new Date();
     const currentDay = now.getDate();
     let startDate: Date, endDate: Date;
-    if (currentDay >= 16) {
-      startDate = new Date(now.getFullYear(), now.getMonth(), 16);
-      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 15);
+
+    if (type === 'monthly') {
+      // Bulanan: 1st to last day of current month
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Last day of current month
     } else {
-      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 16);
-      endDate = new Date(now.getFullYear(), now.getMonth(), 15);
+      // 16-15: 16th of current/previous month to 15th of next month
+      if (currentDay >= 16) {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 16);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 15);
+      } else {
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 16);
+        endDate = new Date(now.getFullYear(), now.getMonth(), 15);
+      }
     }
     return { startDate, endDate };
   };
 
-  const { startDate, endDate } = getPeriodDates();
+  const { startDate, endDate } = getPeriodDates(periodType);
 
   // Helper to format date to YYYY-MM-DD string for comparison
   const toDateStr = (date: Date): string => {
@@ -389,7 +398,7 @@ export default function Dashboard() {
   const periodStartStr = toDateStr(startDate);
   const periodEndStr = toDateStr(endDate);
 
-  const minWorkingDays = 22;
+  const minWorkingDays = 21;
   const userPeriodAttendance = attendanceRecords.filter((r) => {
     // Extract date portion from ISO string (first 10 chars: YYYY-MM-DD)
     const recordDateStr = r.tanggal.substring(0, 10);
@@ -406,14 +415,25 @@ export default function Dashboard() {
   );
 
   const formatPeriodLabel = () => {
-    const startMonth = startDate.toLocaleDateString('id-ID', {
-      month: 'short',
-    });
-    const endMonth = endDate.toLocaleDateString('id-ID', {
-      month: 'short',
-      year: 'numeric',
-    });
-    return `16 ${startMonth} - 15 ${endMonth}`;
+    if (periodType === 'monthly') {
+      // Bulanan: show "1-31 Des 2025" format
+      const monthYear = startDate.toLocaleDateString('id-ID', {
+        month: 'short',
+        year: 'numeric',
+      });
+      const lastDay = endDate.getDate();
+      return `01 - ${lastDay} ${monthYear}`;
+    } else {
+      // 16-15: show "16 Des - 15 Jan 2026" format
+      const startMonth = startDate.toLocaleDateString('id-ID', {
+        month: 'short',
+      });
+      const endMonth = endDate.toLocaleDateString('id-ID', {
+        month: 'short',
+        year: 'numeric',
+      });
+      return `16 ${startMonth} - 15 ${endMonth}`;
+    }
   };
 
   const formatCurrency = (num: number) =>
@@ -615,21 +635,50 @@ export default function Dashboard() {
           </div>
         </Card>
         <Card className='border-l-4 border-l-blue-500'>
-          <div className='flex items-center justify-between'>
-            <div>
+          <div className='space-y-3'>
+            <div className='flex items-center justify-between'>
               <p className='text-xs text-gray-500 uppercase'>Progres Absensi</p>
-              <p className='text-lg font-bold text-gray-800 mt-1'>
-                {formatPeriodLabel()}
-              </p>
-              <p className='text-2xl font-bold text-blue-600'>
-                {userPeriodAttendance}/{minWorkingDays}{' '}
-                <span className='text-sm font-normal'>hari</span>
-              </p>
+              {/* Period Type Switch Buttons */}
+              <div className='flex rounded-lg border border-gray-200 overflow-hidden'>
+                <button
+                  onClick={() => setPeriodType('monthly')}
+                  className={`px-2 py-1 text-xs font-medium transition-colors ${
+                    periodType === 'monthly'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                  title='Periode 1-30/31 bulan ini'
+                >
+                  Bulanan
+                </button>
+                <button
+                  onClick={() => setPeriodType('16-15')}
+                  className={`px-2 py-1 text-xs font-medium transition-colors ${
+                    periodType === '16-15'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                  title='Periode tanggal 16 - 15 bulan berikutnya'
+                >
+                  16-15
+                </button>
+              </div>
             </div>
-            <div className='w-16 h-16 rounded-full border-4 border-blue-100 flex items-center justify-center relative'>
-              <span className='text-lg font-bold text-blue-600'>
-                {attendanceProgressPercent}%
-              </span>
+            <div className='flex items-center justify-between'>
+              <div>
+                <p className='text-lg font-bold text-gray-800'>
+                  {formatPeriodLabel()}
+                </p>
+                <p className='text-2xl font-bold text-blue-600'>
+                  {userPeriodAttendance}/{minWorkingDays}{' '}
+                  <span className='text-sm font-normal'>hari</span>
+                </p>
+              </div>
+              <div className='w-16 h-16 rounded-full border-4 border-blue-100 flex items-center justify-center relative'>
+                <span className='text-lg font-bold text-blue-600'>
+                  {attendanceProgressPercent}%
+                </span>
+              </div>
             </div>
           </div>
         </Card>

@@ -23,6 +23,7 @@ type TeamMember = {
   department: string;
   image: string | null;
   isActive: boolean;
+  nik: string;
 };
 
 type Schedule = {
@@ -71,6 +72,8 @@ export default function SchedulePage() {
       const activeUsers = (usersResult.data as TeamMember[]).filter(
         (u: TeamMember) => u.isActive && u.department === 'Data Management - TA'
       );
+      // Sort by NIK
+      activeUsers.sort((a, b) => a.nik.localeCompare(b.nik));
       setTeamMembers(activeUsers);
       // Find user matching authenticated session
       if (authUser?.id) {

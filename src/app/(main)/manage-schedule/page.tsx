@@ -142,11 +142,12 @@ export default function AdminSchedulePage() {
     if (usersResult.success) {
       // Filter: Only show Data Management - TA for Schedule management
       const allUsers = usersResult.data as Member[];
-      setMembers(
-        allUsers.filter(
-          (m) => m.isActive && m.department === 'Data Management - TA'
-        )
+      const filteredUsers = allUsers.filter(
+        (m) => m.isActive && m.department === 'Data Management - TA'
       );
+      // Sort by NIK
+      filteredUsers.sort((a, b) => a.nik.localeCompare(b.nik));
+      setMembers(filteredUsers);
     }
     if (scheduleResult.success) {
       setSchedules(scheduleResult.data as ScheduleEntry[]);
@@ -372,9 +373,15 @@ export default function AdminSchedulePage() {
     toast.success('File Excel jadwal berhasil didownload!');
   };
 
-  const shortCodeToKeterangan = (code: string): Keterangan | null => {
+  const shortCodeToKeterangan = (
+    code: string,
+    date?: Date
+  ): Keterangan | null => {
     const upperCode = code?.toUpperCase()?.trim();
+    const isWeekendDay = date ? isWeekend(date) : false;
+
     switch (upperCode) {
+      // Original short codes
       case 'P':
         return 'PAGI';
       case 'M':
@@ -387,6 +394,13 @@ export default function AdminSchedulePage() {
         return 'PAGI_MALAM';
       case 'L':
         return 'LIBUR';
+      // New S1, S2, S3 codes
+      case 'S1':
+        return isWeekendDay ? 'PIKET_PAGI' : 'PAGI';
+      case 'S2':
+        return isWeekendDay ? 'PIKET_MALAM' : 'MALAM';
+      case 'S3':
+        return 'PAGI_MALAM';
       default:
         return null;
     }
@@ -454,7 +468,7 @@ export default function AdminSchedulePage() {
             const dateStr = `${date.getFullYear()}-${String(
               date.getMonth() + 1
             ).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-            const keterangan = shortCodeToKeterangan(code);
+            const keterangan = shortCodeToKeterangan(code, date);
 
             if (keterangan) {
               newChanges[`${member.id}-${dateStr}`] = keterangan;

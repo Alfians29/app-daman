@@ -21,6 +21,7 @@ import {
 } from '@/lib/api';
 import { useCurrentUser } from '@/components/AuthGuard';
 import { getLocalDateString, getShiftColorClasses } from '@/lib/utils';
+import { compressImage } from '@/lib/imageUtils';
 import {
   Mail,
   Phone,
@@ -285,11 +286,7 @@ export default function ProfilePage() {
       return;
     }
 
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Ukuran file maksimal 2MB!');
-      return;
-    }
+    // No file size limit - will be compressed automatically
 
     setSelectedFile(file);
 
@@ -308,13 +305,17 @@ export default function ProfilePage() {
     }
 
     startTransition(async () => {
-      // Convert to base64 for simple storage
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = reader.result as string;
+      try {
+        // Compress image before upload (max 400x400, JPEG 75%)
+        const compressedBase64 = await compressImage(selectedFile, {
+          maxWidth: 400,
+          maxHeight: 400,
+          quality: 0.75,
+          format: 'jpeg',
+        });
 
         const result = await usersAPI.update(currentUser.id, {
-          image: base64,
+          image: compressedBase64,
         });
 
         if (result.success) {
@@ -326,8 +327,10 @@ export default function ProfilePage() {
         } else {
           toast.error(result.error || 'Gagal mengupload foto');
         }
-      };
-      reader.readAsDataURL(selectedFile);
+      } catch (error) {
+        console.error('Compression error:', error);
+        toast.error('Gagal memproses gambar');
+      }
     });
   };
 

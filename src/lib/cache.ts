@@ -20,11 +20,12 @@ export const CACHE_TTL = {
   cash: 2,
   activities: 2,
   reports: 3,
+  schedule: 5, // Added: cache schedule for 5 minutes
   default: 3,
 } as const;
 
-// Endpoints excluded from caching (too large or realtime needed)
-const CACHE_EXCLUDED = ['/schedule', '/activities'];
+// Endpoints excluded from caching (realtime needed)
+const CACHE_EXCLUDED = ['/activities'];
 
 const CACHE_PREFIX = 'app_cache_';
 
@@ -195,5 +196,6 @@ export function getTTLForEndpoint(endpoint: string): number {
   if (endpoint.includes('/cash')) return CACHE_TTL.cash;
   if (endpoint.includes('/activities')) return CACHE_TTL.activities;
   if (endpoint.includes('/reports')) return CACHE_TTL.reports;
+  if (endpoint.includes('/schedule')) return CACHE_TTL.schedule;
   return CACHE_TTL.default;
 }

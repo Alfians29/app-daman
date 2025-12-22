@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -11,6 +11,18 @@ interface ModalProps {
 }
 
 export function Modal({ isOpen, onClose, children, size = 'md' }: ModalProps) {
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const sizeClasses = {
@@ -22,20 +34,13 @@ export function Modal({ isOpen, onClose, children, size = 'md' }: ModalProps) {
 
   return (
     <>
-      {/* Overlay */}
-      <div
-        className='fixed top-0 left-0 right-0 bottom-0 w-full h-full bg-black/50 z-999'
-        onClick={onClose}
-      />
+      {/* Overlay - no click to close */}
+      <div className='fixed top-0 left-0 right-0 bottom-0 w-full h-full bg-black/50 z-999' />
 
       {/* Modal Container */}
-      <div
-        className='fixed top-0 left-0 right-0 bottom-0 w-full h-full z-1000 flex items-center justify-center p-4'
-        onClick={onClose}
-      >
+      <div className='fixed top-0 left-0 right-0 bottom-0 w-full h-full z-1000 flex items-center justify-center p-4'>
         <div
           className={`bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col`}
-          onClick={(e) => e.stopPropagation()}
         >
           {children}
         </div>
