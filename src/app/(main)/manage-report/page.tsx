@@ -5,8 +5,9 @@ import {
   FileText,
   Edit3,
   Download,
-  Filter,
-  User,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
   Plus,
   Trash2,
   Settings,
@@ -15,7 +16,7 @@ import {
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { FilterBar } from '@/components/ui/FilterBar';
+
 import { SkeletonPage } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/Button';
 import {
@@ -28,6 +29,7 @@ import { Input, Select, Textarea } from '@/components/ui/Form';
 import { FileCog } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { reportsAPI, jobTypesAPI, usersAPI } from '@/lib/api';
+import { getLocalDateString } from '@/lib/utils';
 
 type JobType = {
   id: string;
@@ -80,9 +82,7 @@ export default function AdminReportPage() {
   const [editingJobType, setEditingJobType] = useState<JobType | null>(null);
   const [jobTypeName, setJobTypeName] = useState('');
 
-  const [filterDate, setFilterDate] = useState('');
-  const [filterMember, setFilterMember] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDate, setSelectedDate] = useState(getLocalDateString());
 
   useEffect(() => {
     loadData();
@@ -105,37 +105,13 @@ export default function AdminReportPage() {
   const activeJobTypes = jobTypes.filter((jt) => jt.isActive);
 
   const filteredReports = useMemo(() => {
-    let result = [...reports];
-
-    if (filterDate) {
-      result = result.filter((r) => r.tanggal.substring(0, 10) === filterDate);
-    }
-
-    if (filterMember !== 'all') {
-      result = result.filter((r) => r.memberId === filterMember);
-    }
-
-    if (searchQuery) {
-      result = result.filter(
-        (r) =>
-          r.tasks.some(
-            (t) =>
-              t.keterangan.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              (t.jobType?.name || '')
-                .toLowerCase()
-                .includes(searchQuery.toLowerCase())
-          ) ||
-          (r.member?.name || '')
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase())
+    return reports
+      .filter((r) => r.tanggal.substring(0, 10) === selectedDate)
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
-    }
-
-    result.sort(
-      (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
-    );
-    return result;
-  }, [reports, filterDate, filterMember, searchQuery]);
+  }, [reports, selectedDate]);
 
   const openEditModal = (report: DailyReport) => {
     setEditingReport(report);
@@ -228,22 +204,15 @@ export default function AdminReportPage() {
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Report Harian');
-    XLSX.writeFile(
-      wb,
-      filterDate
-        ? `report_harian_${filterDate}.xlsx`
-        : 'report_harian_semua.xlsx'
-    );
+    XLSX.writeFile(wb, `report_harian_${selectedDate}.xlsx`);
     toast.success('File Excel berhasil didownload!');
   };
 
-  const resetFilters = () => {
-    setFilterDate('');
-    setFilterMember('all');
-    setSearchQuery('');
+  const navigateDate = (days: number) => {
+    const date = new Date(selectedDate);
+    date.setDate(date.getDate() + days);
+    setSelectedDate(getLocalDateString(date));
   };
-
-  const hasActiveFilters = filterDate || filterMember !== 'all' || searchQuery;
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -374,7 +343,7 @@ export default function AdminReportPage() {
       {/* Reports Tab */}
       {activeTab === 'reports' && (
         <>
-          <div className='grid grid-cols-2 sm:grid-cols-3 gap-4'>
+          <div className='grid grid-cols-2 gap-4'>
             <Card>
               <div className='flex items-center gap-3'>
                 <div className='w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center'>
@@ -390,24 +359,11 @@ export default function AdminReportPage() {
             </Card>
             <Card>
               <div className='flex items-center gap-3'>
-                <div className='w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center'>
-                  <User className='w-5 h-5 text-purple-600' />
-                </div>
-                <div>
-                  <p className='text-xs text-gray-500'>Total Member</p>
-                  <p className='text-xl font-bold text-purple-600'>
-                    {members.length}
-                  </p>
-                </div>
-              </div>
-            </Card>
-            <Card>
-              <div className='flex items-center gap-3'>
                 <div className='w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center'>
-                  <Filter className='w-5 h-5 text-emerald-600' />
+                  <FileText className='w-5 h-5 text-emerald-600' />
                 </div>
                 <div>
-                  <p className='text-xs text-gray-500'>Hasil Filter</p>
+                  <p className='text-xs text-gray-500'>Report Hari Ini</p>
                   <p className='text-xl font-bold text-emerald-600'>
                     {filteredReports.length}
                   </p>
@@ -416,37 +372,50 @@ export default function AdminReportPage() {
             </Card>
           </div>
 
-          <FilterBar
-            searchValue={searchQuery}
-            onSearchChange={setSearchQuery}
-            searchPlaceholder='Cari report...'
-            selects={[
-              {
-                value: filterMember,
-                onChange: setFilterMember,
-                options: members.map((m) => ({
-                  value: m.id,
-                  label: m.name,
-                })),
-                placeholder: 'Semua Member',
-              },
-            ]}
-            showReset
-            onReset={resetFilters}
-            rightContent={
-              <input
-                type='date'
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value)}
-                className='px-4 py-2.5 rounded-xl border-2 border-gray-100 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-700/50 text-gray-800 dark:text-gray-100 focus:bg-white dark:focus:bg-gray-700 focus:border-[#E57373]/30 dark:focus:border-[#E57373]/50 focus:outline-none focus:ring-4 focus:ring-[#E57373]/10 dark:focus:ring-[#E57373]/20 transition-all'
-              />
-            }
-          />
+          <Card>
+            <div className='flex flex-col sm:flex-row sm:items-center gap-4'>
+              <div className='flex items-center gap-3 flex-1'>
+                <Calendar className='w-5 h-5 text-[#E57373]' />
+                <input
+                  type='date'
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className='px-4 py-2 border border-gray-200 rounded-xl font-medium'
+                />
+                <span className='text-gray-600 font-medium hidden sm:block'>
+                  {new Date(selectedDate).toLocaleDateString('id-ID', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </span>
+              </div>
+              <div className='flex items-center gap-2'>
+                <button
+                  onClick={() => setSelectedDate(getLocalDateString())}
+                  className='px-3 py-2 text-sm font-medium text-[#E57373] bg-red-50 hover:bg-red-100 rounded-lg'
+                >
+                  Hari Ini
+                </button>
+                <button
+                  onClick={() => navigateDate(-1)}
+                  className='p-2 hover:bg-gray-100 rounded-lg'
+                >
+                  <ChevronLeft className='w-5 h-5 text-gray-600' />
+                </button>
+                <button
+                  onClick={() => navigateDate(1)}
+                  className='p-2 hover:bg-gray-100 rounded-lg'
+                >
+                  <ChevronRight className='w-5 h-5 text-gray-600' />
+                </button>
+              </div>
+            </div>
+          </Card>
 
           <Card>
-            <h3 className='font-semibold text-gray-800 mb-4'>
-              Daftar Report ({filteredReports.length})
-            </h3>
+            <h3 className='font-semibold text-gray-800 mb-4'>Daftar Report</h3>
             <div className='overflow-x-auto'>
               <table className='w-full'>
                 <thead className='bg-gray-50'>

@@ -37,7 +37,7 @@ type AuditLog = {
   userAgent: string | null;
 };
 
-const ITEMS_PER_PAGE = 20;
+const ITEMS_PER_PAGE = 10;
 
 export default function AuditLogPage() {
   const [searchQuery, setSearchQuery] = useState('');

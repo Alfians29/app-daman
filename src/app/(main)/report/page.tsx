@@ -93,6 +93,9 @@ export default function ReportPage() {
   const [shiftSettings, setShiftSettings] = useState<
     { shiftType: string; name: string; color: string | null }[]
   >([]);
+  const [showMyHistory, setShowMyHistory] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
+  const historyItemsPerPage = 15;
 
   useEffect(() => {
     if (!authLoading && authUser) {
@@ -180,6 +183,16 @@ export default function ReportPage() {
     });
   }, [teamMembers, selectedDate, reportsForDate, scheduleEntries]);
 
+  // Get current user's report history
+  const userReportsHistory = useMemo(() => {
+    if (!currentUser) return [];
+    return reports
+      .filter((r) => r.memberId === currentUser.id)
+      .sort(
+        (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
+      );
+  }, [reports, currentUser]);
+
   const navigateDate = (days: number) => {
     const date = new Date(selectedDate);
     date.setDate(date.getDate() + days);
@@ -227,8 +240,8 @@ export default function ReportPage() {
     );
 
   const saveReport = async () => {
-    if (tasks.some((t) => !t.jobType || !t.keterangan.trim())) {
-      toast.error('Lengkapi semua pekerjaan!');
+    if (tasks.some((t) => !t.jobType)) {
+      toast.error('Pilih jenis pekerjaan!');
       return;
     }
     setIsSaving(true);
@@ -236,7 +249,7 @@ export default function ReportPage() {
       // Transform tasks: map jobType (which stores jobTypeId) to jobTypeId for API
       const apiTasks = tasks.map((t) => ({
         jobTypeId: t.jobType, // jobType field stores the ID
-        keterangan: t.keterangan,
+        keterangan: t.keterangan.trim() || '-',
         value: t.value,
       }));
 
@@ -340,207 +353,383 @@ export default function ReportPage() {
         description='Laporan pekerjaan harian tim'
         icon={FileText}
         actions={
-          !isCurrentUserLibur && !currentUserHasReport ? (
+          <div className='flex items-center gap-2'>
             <button
-              onClick={openNewReportModal}
-              className='flex items-center gap-2 px-4 py-2 bg-white text-[#E57373] rounded-xl font-medium hover:bg-white/90 transition-colors'
+              onClick={() => {
+                setShowMyHistory(!showMyHistory);
+                setHistoryPage(1);
+              }}
+              className={`px-4 py-2 rounded-xl font-medium transition-colors ${
+                showMyHistory
+                  ? 'bg-white text-[#E57373]'
+                  : 'bg-white/20 text-white hover:bg-white/30'
+              }`}
             >
-              <Plus className='w-4 h-4' />
-              Tambah Report
+              {showMyHistory ? 'Lihat Tim' : 'Riwayat Saya'}
             </button>
-          ) : undefined
+            {!showMyHistory && !isCurrentUserLibur && !currentUserHasReport && (
+              <button
+                onClick={openNewReportModal}
+                className='flex items-center gap-2 px-4 py-2 bg-white text-[#E57373] rounded-xl font-medium hover:bg-white/90 transition-colors'
+              >
+                <Plus className='w-4 h-4' />
+                Tambah Report
+              </button>
+            )}
+          </div>
         }
       />
 
-      <Card>
-        <div className='flex flex-col sm:flex-row sm:items-center gap-4'>
-          <div className='flex items-center gap-3 flex-1'>
-            <Calendar className='w-5 h-5 text-[#E57373]' />
-            <input
-              type='date'
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className='px-4 py-2 border border-gray-200 rounded-xl font-medium'
-            />
-            <span className='text-gray-600 font-medium hidden sm:block'>
-              {formatDate(selectedDate)}
-            </span>
+      {!showMyHistory && (
+        <Card>
+          <div className='flex flex-col sm:flex-row sm:items-center gap-4'>
+            <div className='flex items-center gap-3 flex-1'>
+              <Calendar className='w-5 h-5 text-[#E57373]' />
+              <input
+                type='date'
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className='px-4 py-2 border border-gray-200 rounded-xl font-medium'
+              />
+              <span className='text-gray-600 font-medium hidden sm:block'>
+                {formatDate(selectedDate)}
+              </span>
+            </div>
+            <div className='flex items-center gap-2'>
+              <button
+                onClick={() => setSelectedDate(getLocalDateString())}
+                className='px-3 py-2 text-sm font-medium text-[#E57373] bg-red-50 hover:bg-red-100 rounded-lg'
+              >
+                Hari Ini
+              </button>
+              <button
+                onClick={() => navigateDate(-1)}
+                className='p-2 hover:bg-gray-100 rounded-lg'
+              >
+                <ChevronLeft className='w-5 h-5 text-gray-600' />
+              </button>
+              <button
+                onClick={() => navigateDate(1)}
+                className='p-2 hover:bg-gray-100 rounded-lg'
+              >
+                <ChevronRight className='w-5 h-5 text-gray-600' />
+              </button>
+            </div>
           </div>
-          <div className='flex items-center gap-2'>
-            <button
-              onClick={() => setSelectedDate(getLocalDateString())}
-              className='px-3 py-2 text-sm font-medium text-[#E57373] bg-red-50 hover:bg-red-100 rounded-lg'
-            >
-              Hari Ini
-            </button>
-            <button
-              onClick={() => navigateDate(-1)}
-              className='p-2 hover:bg-gray-100 rounded-lg'
-            >
-              <ChevronLeft className='w-5 h-5 text-gray-600' />
-            </button>
-            <button
-              onClick={() => navigateDate(1)}
-              className='p-2 hover:bg-gray-100 rounded-lg'
-            >
-              <ChevronRight className='w-5 h-5 text-gray-600' />
-            </button>
-          </div>
-        </div>
-      </Card>
+        </Card>
+      )}
 
-      <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
-        <Card>
-          <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center'>
-              <FileText className='w-5 h-5 text-blue-600' />
+      {/* My History View */}
+      {showMyHistory ? (
+        <>
+          <Card>
+            <div className='flex items-center justify-between mb-4'>
+              <h3 className='font-semibold text-gray-800'>
+                Riwayat Report Saya
+              </h3>
+              <span className='text-sm text-gray-500'>
+                {userReportsHistory.length} data
+              </span>
             </div>
-            <div>
-              <p className='text-xs text-gray-500'>Total Report</p>
-              <p className='text-xl font-bold text-gray-800'>
-                {reportsForDate.length}
-              </p>
-            </div>
-          </div>
-        </Card>
-        <Card>
-          <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center'>
-              <CheckCircle className='w-5 h-5 text-emerald-600' />
-            </div>
-            <div>
-              <p className='text-xs text-gray-500'>Sudah Report</p>
-              <p className='text-xl font-bold text-emerald-600'>
-                {reportsForDate.length}/{teamMembers.length}
-              </p>
-            </div>
-          </div>
-        </Card>
-        <Card>
-          <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center'>
-              <Clock className='w-5 h-5 text-amber-600' />
-            </div>
-            <div>
-              <p className='text-xs text-gray-500'>Belum Report</p>
-              <p className='text-xl font-bold text-amber-600'>
-                {memberReportData.filter((m) => !m.report && !m.isLibur).length}
-              </p>
-            </div>
-          </div>
-        </Card>
-        <Card>
-          <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center'>
-              <Coffee className='w-5 h-5 text-red-600' />
-            </div>
-            <div>
-              <p className='text-xs text-gray-500'>Libur</p>
-              <p className='text-xl font-bold text-red-600'>
-                {memberReportData.filter((m) => m.isLibur).length}
-              </p>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      <Card>
-        <h3 className='font-semibold text-gray-800 mb-4'>
-          Report Tim - {formatDate(selectedDate)}
-        </h3>
-        <div className='space-y-3'>
-          {memberReportData.map(({ member, schedule, report, isLibur }) => (
-            <div
-              key={member.id}
-              className={`p-4 rounded-xl border ${
-                report
-                  ? 'bg-white border-gray-200'
-                  : isLibur
-                  ? 'bg-red-50 border-red-100'
-                  : 'bg-gray-50 border-gray-100'
-              }`}
-            >
-              <div className='flex items-start gap-3'>
-                {member.image ? (
-                  <img
-                    src={member.image}
-                    alt={member.name}
-                    className='w-10 h-10 rounded-full object-cover'
-                  />
-                ) : (
-                  <div className='w-10 h-10 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
-                    <span className='text-sm font-bold text-white'>
-                      {member.name
-                        .split(' ')
-                        .map((n) => n[0])
-                        .join('')
-                        .slice(0, 2)
-                        .toUpperCase()}
-                    </span>
-                  </div>
-                )}
-                <div className='flex-1 min-w-0'>
-                  <div className='flex items-center gap-2 mb-1'>
-                    <p className='font-medium text-gray-800'>{member.name}</p>
-                    {schedule && (
-                      <span
-                        className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                          getScheduleBadge(schedule.keterangan).bg
-                        } ${getScheduleBadge(schedule.keterangan).text}`}
+            <div className='overflow-x-auto'>
+              <table className='w-full'>
+                <thead className='bg-gray-50'>
+                  <tr>
+                    <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                      Tanggal
+                    </th>
+                    <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                      Shift
+                    </th>
+                    <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                      Pekerjaan
+                    </th>
+                    <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                      Dibuat
+                    </th>
+                    <th className='text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                      Aksi
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className='divide-y divide-gray-100'>
+                  {userReportsHistory.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className='px-4 py-12 text-center text-gray-500'
                       >
-                        {getKeteranganLabel(schedule.keterangan)}
-                      </span>
+                        <FileText className='w-12 h-12 mx-auto text-gray-300 mb-2' />
+                        <p>Belum ada riwayat report</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    userReportsHistory
+                      .slice(
+                        (historyPage - 1) * historyItemsPerPage,
+                        historyPage * historyItemsPerPage
+                      )
+                      .map((report) => {
+                        const schedule = currentUser
+                          ? getMemberSchedule(
+                              currentUser.id,
+                              report.tanggal.split('T')[0]
+                            )
+                          : null;
+                        return (
+                          <tr key={report.id} className='hover:bg-gray-50'>
+                            <td className='px-4 py-3 text-sm text-gray-700'>
+                              {formatDate(report.tanggal)}
+                            </td>
+                            <td className='px-4 py-3'>
+                              {schedule ? (
+                                <span
+                                  className={`inline-flex px-2 py-1 text-xs font-medium rounded-lg ${
+                                    getScheduleBadge(schedule.keterangan).bg
+                                  } ${
+                                    getScheduleBadge(schedule.keterangan).text
+                                  }`}
+                                >
+                                  {getKeteranganLabel(schedule.keterangan)}
+                                </span>
+                              ) : (
+                                <span className='text-xs text-gray-400'>-</span>
+                              )}
+                            </td>
+                            <td className='px-4 py-3'>
+                              <span className='inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg bg-blue-100 text-blue-700'>
+                                <FileText className='w-3 h-3' />
+                                {report.tasks.length} pekerjaan
+                              </span>
+                            </td>
+                            <td className='px-4 py-3 text-sm text-gray-600'>
+                              {new Date(report.createdAt).toLocaleTimeString(
+                                'en-GB',
+                                {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                }
+                              )}
+                            </td>
+                            <td className='px-4 py-3 text-center'>
+                              <button
+                                onClick={() => {
+                                  setViewingReport(report);
+                                  setShowDetailModal(true);
+                                }}
+                                className='px-3 py-1.5 text-xs font-medium text-[#E57373] bg-red-50 hover:bg-red-100 rounded-lg transition-colors'
+                              >
+                                Lihat
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {Math.ceil(userReportsHistory.length / historyItemsPerPage) > 1 && (
+              <div className='flex items-center justify-between mt-4 pt-4 border-t border-gray-200'>
+                <p className='text-sm text-gray-500'>
+                  Halaman {historyPage} dari{' '}
+                  {Math.ceil(userReportsHistory.length / historyItemsPerPage)}
+                </p>
+                <div className='flex items-center gap-2'>
+                  <button
+                    onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                    disabled={historyPage === 1}
+                    className='p-2 rounded-lg border border-gray-200 hover:bg-gray-100 disabled:opacity-50'
+                  >
+                    <ChevronLeft className='w-4 h-4' />
+                  </button>
+                  <button
+                    onClick={() =>
+                      setHistoryPage((p) =>
+                        Math.min(
+                          Math.ceil(
+                            userReportsHistory.length / historyItemsPerPage
+                          ),
+                          p + 1
+                        )
+                      )
+                    }
+                    disabled={
+                      historyPage ===
+                      Math.ceil(userReportsHistory.length / historyItemsPerPage)
+                    }
+                    className='p-2 rounded-lg border border-gray-200 hover:bg-gray-100 disabled:opacity-50'
+                  >
+                    <ChevronRight className='w-4 h-4' />
+                  </button>
+                </div>
+              </div>
+            )}
+          </Card>
+        </>
+      ) : (
+        <>
+          <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
+            <Card>
+              <div className='flex items-center gap-3'>
+                <div className='w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center'>
+                  <FileText className='w-5 h-5 text-blue-600' />
+                </div>
+                <div>
+                  <p className='text-xs text-gray-500'>Total Report</p>
+                  <p className='text-xl font-bold text-gray-800'>
+                    {reportsForDate.length}
+                  </p>
+                </div>
+              </div>
+            </Card>
+            <Card>
+              <div className='flex items-center gap-3'>
+                <div className='w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center'>
+                  <CheckCircle className='w-5 h-5 text-emerald-600' />
+                </div>
+                <div>
+                  <p className='text-xs text-gray-500'>Sudah Report</p>
+                  <p className='text-xl font-bold text-emerald-600'>
+                    {reportsForDate.length}/{teamMembers.length}
+                  </p>
+                </div>
+              </div>
+            </Card>
+            <Card>
+              <div className='flex items-center gap-3'>
+                <div className='w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center'>
+                  <Clock className='w-5 h-5 text-amber-600' />
+                </div>
+                <div>
+                  <p className='text-xs text-gray-500'>Belum Report</p>
+                  <p className='text-xl font-bold text-amber-600'>
+                    {
+                      memberReportData.filter((m) => !m.report && !m.isLibur)
+                        .length
+                    }
+                  </p>
+                </div>
+              </div>
+            </Card>
+            <Card>
+              <div className='flex items-center gap-3'>
+                <div className='w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center'>
+                  <Coffee className='w-5 h-5 text-red-600' />
+                </div>
+                <div>
+                  <p className='text-xs text-gray-500'>Libur</p>
+                  <p className='text-xl font-bold text-red-600'>
+                    {memberReportData.filter((m) => m.isLibur).length}
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          <Card>
+            <h3 className='font-semibold text-gray-800 mb-4'>
+              Report Tim - {formatDate(selectedDate)}
+            </h3>
+            <div className='space-y-3'>
+              {memberReportData.map(({ member, schedule, report, isLibur }) => (
+                <div
+                  key={member.id}
+                  className={`p-4 rounded-xl border ${
+                    report
+                      ? 'bg-white border-gray-200'
+                      : isLibur
+                      ? 'bg-red-50 border-red-100'
+                      : 'bg-gray-50 border-gray-100'
+                  }`}
+                >
+                  <div className='flex items-start gap-3'>
+                    {member.image ? (
+                      <img
+                        src={member.image}
+                        alt={member.name}
+                        className='w-10 h-10 rounded-full object-cover'
+                      />
+                    ) : (
+                      <div className='w-10 h-10 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                        <span className='text-sm font-bold text-white'>
+                          {member.name
+                            .split(' ')
+                            .map((n) => n[0])
+                            .join('')
+                            .slice(0, 2)
+                            .toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <div className='flex-1 min-w-0'>
+                      <div className='flex items-center gap-2 mb-1'>
+                        <p className='font-medium text-gray-800'>
+                          {member.name}
+                        </p>
+                        {schedule && (
+                          <span
+                            className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                              getScheduleBadge(schedule.keterangan).bg
+                            } ${getScheduleBadge(schedule.keterangan).text}`}
+                          >
+                            {getKeteranganLabel(schedule.keterangan)}
+                          </span>
+                        )}
+                      </div>
+                      <p className='text-xs text-gray-500 mb-2'>
+                        {member.position}
+                      </p>
+                      {isLibur ? (
+                        <div className='flex items-center gap-2 text-red-600'>
+                          <Coffee className='w-4 h-4' />
+                          <span className='text-sm font-medium'>Libur</span>
+                        </div>
+                      ) : report ? (
+                        <div className='space-y-2'>
+                          <div className='flex items-center gap-2 flex-wrap'>
+                            <span className='text-sm text-gray-600'>
+                              {report.tasks.length} pekerjaan
+                            </span>
+                            <button
+                              onClick={() => {
+                                setViewingReport(report);
+                                setShowDetailModal(true);
+                              }}
+                              className='text-xs text-[#E57373] hover:underline'
+                            >
+                              Lihat Detail
+                            </button>
+                          </div>
+                          <p className='text-xs text-gray-400'>
+                            Dibuat:{' '}
+                            {new Date(report.createdAt).toLocaleString('en-GB')}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className='flex items-center gap-2 text-amber-600'>
+                          <Clock className='w-4 h-4' />
+                          <span className='text-sm'>Belum ada report</span>
+                        </div>
+                      )}
+                    </div>
+                    {report && canEditReport(report) && (
+                      <button
+                        onClick={() => openEditModal(report)}
+                        className='p-2 hover:bg-gray-100 rounded-lg'
+                      >
+                        <Edit3 className='w-4 h-4 text-gray-500' />
+                      </button>
                     )}
                   </div>
-                  <p className='text-xs text-gray-500 mb-2'>
-                    {member.position}
-                  </p>
-                  {isLibur ? (
-                    <div className='flex items-center gap-2 text-red-600'>
-                      <Coffee className='w-4 h-4' />
-                      <span className='text-sm font-medium'>Libur</span>
-                    </div>
-                  ) : report ? (
-                    <div className='space-y-2'>
-                      <div className='flex items-center gap-2 flex-wrap'>
-                        <span className='text-sm text-gray-600'>
-                          {report.tasks.length} pekerjaan
-                        </span>
-                        <button
-                          onClick={() => {
-                            setViewingReport(report);
-                            setShowDetailModal(true);
-                          }}
-                          className='text-xs text-[#E57373] hover:underline'
-                        >
-                          Lihat Detail
-                        </button>
-                      </div>
-                      <p className='text-xs text-gray-400'>
-                        Dibuat:{' '}
-                        {new Date(report.createdAt).toLocaleString('id-ID')}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className='flex items-center gap-2 text-amber-600'>
-                      <Clock className='w-4 h-4' />
-                      <span className='text-sm'>Belum ada report</span>
-                    </div>
-                  )}
                 </div>
-                {report && canEditReport(report) && (
-                  <button
-                    onClick={() => openEditModal(report)}
-                    className='p-2 hover:bg-gray-100 rounded-lg'
-                  >
-                    <Edit3 className='w-4 h-4 text-gray-500' />
-                  </button>
-                )}
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </Card>
+          </Card>
+        </>
+      )}
 
       {/* Detail Report Modal */}
       <Modal
@@ -593,7 +782,14 @@ export default function ReportPage() {
               <div className='pt-3 border-t border-gray-100'>
                 <p className='text-xs text-gray-400'>
                   Dibuat:{' '}
-                  {new Date(viewingReport.createdAt).toLocaleString('id-ID')}
+                  {new Date(viewingReport.createdAt).toLocaleTimeString(
+                    'en-GB',
+                    {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    }
+                  )}
                 </p>
               </div>
             </div>

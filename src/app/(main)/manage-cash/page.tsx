@@ -11,6 +11,8 @@ import {
   WalletCards,
   Wallet,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -77,6 +79,8 @@ export default function AdminCashPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -523,69 +527,115 @@ export default function AdminCashPage() {
                   </td>
                 </tr>
               ) : (
-                filteredEntries.map((entry) => (
-                  <tr key={entry.id} className='hover:bg-gray-50'>
-                    <td className='px-4 py-3 text-sm text-gray-600'>
-                      {new Date(entry.date).toLocaleDateString('id-ID')}
-                    </td>
-                    <td className='px-4 py-3 text-sm text-gray-600'>
-                      {entry.member?.name || '-'}
-                    </td>
-                    <td className='px-4 py-3'>
-                      <span className='inline-flex px-2 py-1 text-xs font-medium rounded-lg bg-blue-100 text-blue-700'>
-                        {entry.transactionCategory || 'Lain-lain'}
-                      </span>
-                    </td>
-                    <td className='px-4 py-3 text-sm text-gray-800'>
-                      {entry.description || '-'}
-                    </td>
-                    <td className='px-4 py-3'>
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-lg ${
+                filteredEntries
+                  .slice(
+                    (currentPage - 1) * itemsPerPage,
+                    currentPage * itemsPerPage
+                  )
+                  .map((entry) => (
+                    <tr key={entry.id} className='hover:bg-gray-50'>
+                      <td className='px-4 py-3 text-sm text-gray-600'>
+                        {new Date(entry.date).toLocaleDateString('id-ID')}
+                      </td>
+                      <td className='px-4 py-3 text-sm text-gray-600'>
+                        {entry.member?.name || '-'}
+                      </td>
+                      <td className='px-4 py-3'>
+                        <span className='inline-flex px-2 py-1 text-xs font-medium rounded-lg bg-blue-100 text-blue-700'>
+                          {entry.transactionCategory || 'Lain-lain'}
+                        </span>
+                      </td>
+                      <td className='px-4 py-3 text-sm text-gray-800'>
+                        {entry.description || '-'}
+                      </td>
+                      <td className='px-4 py-3'>
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-medium rounded-lg ${
+                            entry.category === 'INCOME'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}
+                        >
+                          {entry.category === 'INCOME'
+                            ? 'Pemasukan'
+                            : 'Pengeluaran'}
+                        </span>
+                      </td>
+                      <td
+                        className={`px-4 py-3 text-sm font-medium text-right ${
                           entry.category === 'INCOME'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-red-100 text-red-700'
+                            ? 'text-emerald-600'
+                            : 'text-red-600'
                         }`}
                       >
-                        {entry.category === 'INCOME'
-                          ? 'Pemasukan'
-                          : 'Pengeluaran'}
-                      </span>
-                    </td>
-                    <td
-                      className={`px-4 py-3 text-sm font-medium text-right ${
-                        entry.category === 'INCOME'
-                          ? 'text-emerald-600'
-                          : 'text-red-600'
-                      }`}
-                    >
-                      {entry.category === 'INCOME' ? '+' : '-'}
-                      {formatCurrency(Number(entry.amount))}
-                    </td>
-                    <td className='px-4 py-3'>
-                      <div className='flex items-center justify-center gap-2'>
-                        <button
-                          onClick={() => openEditModal(entry)}
-                          disabled={isPending}
-                          className='p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50'
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button
-                          onClick={() => openDeleteModal(entry)}
-                          disabled={isPending}
-                          className='p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50'
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                        {entry.category === 'INCOME' ? '+' : '-'}
+                        {formatCurrency(Number(entry.amount))}
+                      </td>
+                      <td className='px-4 py-3'>
+                        <div className='flex items-center justify-center gap-2'>
+                          <button
+                            onClick={() => openEditModal(entry)}
+                            disabled={isPending}
+                            className='p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50'
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button
+                            onClick={() => openDeleteModal(entry)}
+                            disabled={isPending}
+                            className='p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50'
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {Math.ceil(filteredEntries.length / itemsPerPage) > 1 && (
+          <div className='flex items-center justify-between px-4 py-3 border-t border-gray-100'>
+            <p className='text-sm text-gray-500'>
+              Menampilkan {(currentPage - 1) * itemsPerPage + 1} -{' '}
+              {Math.min(currentPage * itemsPerPage, filteredEntries.length)}{' '}
+              dari {filteredEntries.length} data
+            </p>
+            <div className='flex items-center gap-2'>
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className='p-2 rounded-lg border border-gray-200 hover:bg-gray-100 disabled:opacity-50'
+              >
+                <ChevronLeft className='w-4 h-4' />
+              </button>
+              <span className='text-sm text-gray-600'>
+                {currentPage} /{' '}
+                {Math.ceil(filteredEntries.length / itemsPerPage)}
+              </span>
+              <button
+                onClick={() =>
+                  setCurrentPage((p) =>
+                    Math.min(
+                      Math.ceil(filteredEntries.length / itemsPerPage),
+                      p + 1
+                    )
+                  )
+                }
+                disabled={
+                  currentPage ===
+                  Math.ceil(filteredEntries.length / itemsPerPage)
+                }
+                className='p-2 rounded-lg border border-gray-200 hover:bg-gray-100 disabled:opacity-50'
+              >
+                <ChevronRight className='w-4 h-4' />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Add/Edit Modal */}

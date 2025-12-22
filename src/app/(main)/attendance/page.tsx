@@ -48,18 +48,25 @@ type Schedule = {
   keterangan: string;
 };
 
-const getCurrentPeriod = () => {
+const getCurrentPeriod = (type: 'monthly' | '16-15' = '16-15') => {
   const today = new Date();
   const day = today.getDate();
   let startDate: Date;
   let endDate: Date;
 
-  if (day >= 16) {
-    startDate = new Date(today.getFullYear(), today.getMonth(), 16);
-    endDate = new Date(today.getFullYear(), today.getMonth() + 1, 15);
+  if (type === 'monthly') {
+    // Bulanan: 1st to last day of current month
+    startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+    endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0); // Last day of current month
   } else {
-    startDate = new Date(today.getFullYear(), today.getMonth() - 1, 16);
-    endDate = new Date(today.getFullYear(), today.getMonth(), 15);
+    // 16-15: 16th of current/previous month to 15th of next month
+    if (day >= 16) {
+      startDate = new Date(today.getFullYear(), today.getMonth(), 16);
+      endDate = new Date(today.getFullYear(), today.getMonth() + 1, 15);
+    } else {
+      startDate = new Date(today.getFullYear(), today.getMonth() - 1, 16);
+      endDate = new Date(today.getFullYear(), today.getMonth(), 15);
+    }
   }
   return { startDate, endDate };
 };
@@ -73,6 +80,7 @@ export default function AttendancePage() {
   const [showMyHistory, setShowMyHistory] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [periodType, setPeriodType] = useState<'monthly' | '16-15'>('16-15');
 
   const [attendanceRecords, setAttendanceRecords] = useState<
     AttendanceRecord[]
@@ -134,7 +142,7 @@ export default function AttendancePage() {
     setIsLoading(false);
   };
 
-  const { startDate, endDate } = getCurrentPeriod();
+  const { startDate, endDate } = getCurrentPeriod(periodType);
 
   // Helper to format date to YYYY-MM-DD string for comparison
   const toDateStr = (date: Date): string => {
@@ -147,14 +155,20 @@ export default function AttendancePage() {
   const periodStartStr = toDateStr(startDate);
   const periodEndStr = toDateStr(endDate);
 
-  const periodLabel = `${startDate.toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'short',
-  })} - ${endDate.toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })}`;
+  const periodLabel =
+    periodType === 'monthly'
+      ? `01 - ${endDate.getDate()} ${startDate.toLocaleDateString('id-ID', {
+          month: 'short',
+          year: 'numeric',
+        })}`
+      : `${startDate.toLocaleDateString('id-ID', {
+          day: 'numeric',
+          month: 'short',
+        })} - ${endDate.toLocaleDateString('id-ID', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        })}`;
 
   // Build keteranganOptions from shift settings or use defaults
   const keteranganOptions =
@@ -290,7 +304,7 @@ export default function AttendancePage() {
     (r) => r.keterangan !== 'LIBUR'
   ).length;
   const myLiburCount = myScheduleKeteranganCounts.LIBUR;
-  const targetDays = 22;
+  const targetDays = 21;
   const progressPercent = Math.min((myWorkingDays / targetDays) * 100, 100);
   const daysRemaining = Math.max(targetDays - myWorkingDays, 0);
   const ontimePercent =
@@ -343,6 +357,34 @@ export default function AttendancePage() {
       {showMyHistory && currentUser && (
         <div className='space-y-4'>
           <Card className='bg-linear-to-r from-[#E57373] to-[#C62828] text-white'>
+            {/* Period Type Switch Buttons - Inside Card */}
+            <div className='flex justify-end mb-4'>
+              <div className='flex rounded-xl border border-white/30 overflow-hidden bg-white/10'>
+                <button
+                  onClick={() => setPeriodType('monthly')}
+                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                    periodType === 'monthly'
+                      ? 'bg-white text-[#E57373]'
+                      : 'text-white hover:bg-white/20'
+                  }`}
+                  title='Periode sebulan penuh'
+                >
+                  Bulanan
+                </button>
+                <button
+                  onClick={() => setPeriodType('16-15')}
+                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                    periodType === '16-15'
+                      ? 'bg-white text-[#E57373]'
+                      : 'text-white hover:bg-white/20'
+                  }`}
+                  title='Periode tanggal 16 - 15 bulan berikutnya'
+                >
+                  16-15
+                </button>
+              </div>
+            </div>
+
             <div className='flex flex-col lg:flex-row lg:items-center gap-4'>
               <div className='flex items-center gap-4 flex-1'>
                 {currentUser.image ? (

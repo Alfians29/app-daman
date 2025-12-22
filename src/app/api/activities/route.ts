@@ -49,6 +49,25 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Limit audit log to 250 records - delete oldest if exceeded
+    const MAX_AUDIT_LOG_RECORDS = 250;
+    const totalCount = await prisma.activity.count();
+
+    if (totalCount > MAX_AUDIT_LOG_RECORDS) {
+      const excessCount = totalCount - MAX_AUDIT_LOG_RECORDS;
+      const oldestRecords = await prisma.activity.findMany({
+        orderBy: { createdAt: 'asc' },
+        take: excessCount,
+        select: { id: true },
+      });
+
+      await prisma.activity.deleteMany({
+        where: {
+          id: { in: oldestRecords.map((r) => r.id) },
+        },
+      });
+    }
+
     return NextResponse.json(
       { success: true, data: activity },
       { status: 201 }
