@@ -518,7 +518,13 @@ export default function AttendancePage() {
               <div>
                 <p className='text-xs text-red-500'>Libur Hari Ini</p>
                 <p className='text-2xl font-bold text-red-600'>
-                  {todayRecords.filter((r) => r.keterangan === 'LIBUR').length}
+                  {
+                    scheduleEntries.filter(
+                      (s) =>
+                        s.tanggal.substring(0, 10) === today &&
+                        s.keterangan === 'LIBUR'
+                    ).length
+                  }
                 </p>
               </div>
             </div>
