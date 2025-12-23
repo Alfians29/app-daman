@@ -416,13 +416,11 @@ export default function Dashboard() {
 
   const formatPeriodLabel = () => {
     if (periodType === 'monthly') {
-      // Bulanan: show "1-31 Des 2025" format
-      const monthYear = startDate.toLocaleDateString('id-ID', {
-        month: 'short',
+      // Bulanan: show "Desember 2025" format
+      return startDate.toLocaleDateString('id-ID', {
+        month: 'long',
         year: 'numeric',
       });
-      const lastDay = endDate.getDate();
-      return `01 - ${lastDay} ${monthYear}`;
     } else {
       // 16-15: show "16 Des - 15 Jan 2026" format
       const startMonth = startDate.toLocaleDateString('id-ID', {
@@ -674,10 +672,51 @@ export default function Dashboard() {
                   <span className='text-sm font-normal'>hari</span>
                 </p>
               </div>
-              <div className='w-16 h-16 rounded-full border-4 border-blue-100 flex items-center justify-center relative'>
-                <span className='text-lg font-bold text-blue-600'>
-                  {attendanceProgressPercent}%
-                </span>
+              <div className='relative w-16 h-16'>
+                {/* SVG Circular Progress */}
+                <svg
+                  className='w-16 h-16 transform -rotate-90'
+                  viewBox='0 0 64 64'
+                >
+                  {/* Background circle */}
+                  <circle
+                    cx='32'
+                    cy='32'
+                    r='28'
+                    stroke='#dbeafe'
+                    strokeWidth='6'
+                    fill='transparent'
+                  />
+                  {/* Progress circle */}
+                  <circle
+                    cx='32'
+                    cy='32'
+                    r='28'
+                    stroke={
+                      attendanceProgressPercent >= 100 ? '#10b981' : '#3b82f6'
+                    }
+                    strokeWidth='6'
+                    fill='transparent'
+                    strokeLinecap='round'
+                    strokeDasharray={`${2 * Math.PI * 28}`}
+                    strokeDashoffset={`${
+                      2 * Math.PI * 28 * (1 - attendanceProgressPercent / 100)
+                    }`}
+                    className='transition-all duration-500'
+                  />
+                </svg>
+                {/* Percentage text */}
+                <div className='absolute inset-0 flex items-center justify-center'>
+                  <span
+                    className={`text-sm font-bold ${
+                      attendanceProgressPercent >= 100
+                        ? 'text-emerald-600'
+                        : 'text-blue-600'
+                    }`}
+                  >
+                    {attendanceProgressPercent}%
+                  </span>
+                </div>
               </div>
             </div>
           </div>

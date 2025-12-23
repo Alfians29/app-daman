@@ -157,10 +157,10 @@ export default function AttendancePage() {
 
   const periodLabel =
     periodType === 'monthly'
-      ? `01 - ${endDate.getDate()} ${startDate.toLocaleDateString('id-ID', {
-          month: 'short',
+      ? startDate.toLocaleDateString('id-ID', {
+          month: 'long',
           year: 'numeric',
-        })}`
+        })
       : `${startDate.toLocaleDateString('id-ID', {
           day: 'numeric',
           month: 'short',
@@ -357,9 +357,40 @@ export default function AttendancePage() {
       {showMyHistory && currentUser && (
         <div className='space-y-4'>
           <Card className='bg-linear-to-r from-[#E57373] to-[#C62828] text-white'>
-            {/* Period Type Switch Buttons - Inside Card */}
-            <div className='flex justify-end mb-4'>
-              <div className='flex rounded-xl border border-white/30 overflow-hidden bg-white/10'>
+            {/* Row 1: User Info + Switch Buttons */}
+            <div className='flex items-center justify-between gap-4 mb-4'>
+              {/* User Info */}
+              <div className='flex items-center gap-3 min-w-0 flex-1'>
+                {currentUser.image ? (
+                  <img
+                    src={currentUser.image}
+                    alt={currentUser.name}
+                    className='w-12 h-12 rounded-full object-cover shrink-0'
+                  />
+                ) : (
+                  <div className='w-12 h-12 rounded-full bg-white/20 flex items-center justify-center shrink-0'>
+                    <span className='text-lg font-bold text-white'>
+                      {currentUser.name
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')
+                        .slice(0, 2)
+                        .toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                <div className='min-w-0'>
+                  <p className='font-semibold text-base truncate'>
+                    {currentUser.name}
+                  </p>
+                  <p className='text-white/80 text-sm truncate'>
+                    {currentUser.position}
+                  </p>
+                </div>
+              </div>
+
+              {/* Period Type Switch Buttons */}
+              <div className='flex rounded-xl border border-white/30 overflow-hidden bg-white/10 shrink-0'>
                 <button
                   onClick={() => setPeriodType('monthly')}
                   className={`px-3 py-1.5 text-sm font-medium transition-colors ${
@@ -385,44 +416,25 @@ export default function AttendancePage() {
               </div>
             </div>
 
-            <div className='flex flex-col lg:flex-row lg:items-center gap-4'>
-              <div className='flex items-center gap-4 flex-1'>
-                {currentUser.image ? (
-                  <img
-                    src={currentUser.image}
-                    alt={currentUser.name}
-                    className='w-14 h-14 rounded-full object-cover'
-                  />
-                ) : (
-                  <div className='w-14 h-14 rounded-full bg-white/20 flex items-center justify-center'>
-                    <span className='text-xl font-bold text-white'>
-                      {currentUser.name
-                        .split(' ')
-                        .map((n) => n[0])
-                        .join('')
-                        .slice(0, 2)
-                        .toUpperCase()}
-                    </span>
-                  </div>
-                )}
-                <div>
-                  <p className='font-semibold text-lg'>{currentUser.name}</p>
-                  <p className='text-white/80 text-sm'>
-                    {currentUser.position}
-                  </p>
-                  <p className='text-white/60 text-xs mt-1'>
-                    Periode: {periodLabel}
-                  </p>
+            {/* Row 2: Periode + Progress Bar (side by side) */}
+            <div className='flex flex-col md:flex-row gap-3'>
+              {/* Periode Info */}
+              <div className='bg-white/10 rounded-xl px-4 py-3 flex items-center justify-center md:w-48 shrink-0'>
+                <div className='text-center'>
+                  <p className='text-xs text-white/60 mb-0.5'>Periode</p>
+                  <p className='text-sm font-semibold'>{periodLabel}</p>
                 </div>
               </div>
-              <div className='flex-1'>
-                <div className='flex items-center justify-between mb-1'>
-                  <span className='text-sm'>Target Kehadiran</span>
+
+              {/* Progress Bar Section */}
+              <div className='bg-white/10 rounded-xl p-4 flex-1'>
+                <div className='flex items-center justify-between mb-2'>
+                  <span className='text-sm font-medium'>Target Kehadiran</span>
                   <span className='text-sm font-bold'>
                     {myWorkingDays}/{targetDays} hari
                   </span>
                 </div>
-                <div className='h-3 bg-white/20 rounded-full overflow-hidden'>
+                <div className='h-2.5 bg-white/20 rounded-full overflow-hidden'>
                   <div
                     className={`h-full rounded-full transition-all ${
                       progressPercent >= 100 ? 'bg-emerald-400' : 'bg-white'
@@ -430,7 +442,7 @@ export default function AttendancePage() {
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
-                <p className='text-xs text-white/80 mt-1'>
+                <p className='text-xs text-white/80 mt-2 text-center'>
                   {progressPercent >= 100
                     ? '✅ Target tercapai!'
                     : `${daysRemaining} hari lagi menuju target`}
