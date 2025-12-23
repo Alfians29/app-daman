@@ -478,9 +478,6 @@ export default function CashBookPage() {
                 {yearlyStats.totalPaidPayments} dari{' '}
                 {yearlyStats.totalPossiblePayments} pembayaran
               </span>
-              <span>
-                {formatCurrency(yearlyStats.totalAmountCollected)} terkumpul
-              </span>
             </div>
           </div>
 

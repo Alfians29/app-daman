@@ -176,25 +176,32 @@ export default function SchedulePage() {
   };
 
   const getKeteranganStyle = (keterangan: string) => {
-    // Use dynamic color from shift settings if available
+    // Use dynamic color from shift settings (from manage-shift page) if available
+    const shiftSetting = shiftSettings.find((s) => s.shiftType === keterangan);
+    if (shiftSetting?.color) {
+      const colorClasses = getShiftColorClasses(shiftSetting.color);
+      return `${colorClasses.bg} ${colorClasses.text}`;
+    }
+
+    // Fallback: try shiftColors from schedule API
     const shiftColor = shiftColors[keterangan];
     if (shiftColor) {
       const colorClasses = getShiftColorClasses(shiftColor);
       return `${colorClasses.bg} ${colorClasses.text}`;
     }
 
-    // Fallback to default colors if not configured in shift settings
+    // Final fallback to default colors matching manage-shift page
     switch (keterangan) {
       case 'PAGI':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-indigo-100 text-indigo-700';
       case 'MALAM':
-        return 'bg-gray-200 text-gray-700';
+        return 'bg-purple-100 text-purple-700';
       case 'PAGI_MALAM':
         return 'bg-amber-100 text-amber-700';
       case 'PIKET_PAGI':
         return 'bg-emerald-100 text-emerald-700';
       case 'PIKET_MALAM':
-        return 'bg-purple-100 text-purple-700';
+        return 'bg-cyan-100 text-cyan-700';
       case 'LIBUR':
         return 'bg-red-100 text-red-700';
       default:
@@ -303,10 +310,10 @@ export default function SchedulePage() {
   // Dynamic period label
   const periodLabel =
     periodType === 'monthly'
-      ? `01 - ${periodEnd.getDate()} ${periodStart.toLocaleDateString('id-ID', {
-          month: 'short',
+      ? periodStart.toLocaleDateString('id-ID', {
+          month: 'long',
           year: 'numeric',
-        })}`
+        })
       : `${periodStart.toLocaleDateString('id-ID', {
           day: 'numeric',
           month: 'short',
@@ -351,9 +358,40 @@ export default function SchedulePage() {
       {/* My Schedule Summary */}
       {showMySchedule && currentUser && (
         <Card className='bg-linear-to-r from-[#E57373] to-[#C62828] text-white'>
-          {/* Period Type Switch Buttons - Inside Card */}
-          <div className='flex justify-end mb-4'>
-            <div className='flex rounded-xl border border-white/30 overflow-hidden bg-white/10'>
+          {/* Row 1: User Info + Switch Buttons */}
+          <div className='flex items-center justify-between gap-4 mb-4'>
+            {/* User Info */}
+            <div className='flex items-center gap-3 min-w-0 flex-1'>
+              {currentUser.image ? (
+                <img
+                  src={currentUser.image}
+                  alt={currentUser.name}
+                  className='w-12 h-12 rounded-full object-cover shrink-0'
+                />
+              ) : (
+                <div className='w-12 h-12 rounded-full bg-white/20 flex items-center justify-center shrink-0'>
+                  <span className='text-lg font-bold text-white'>
+                    {currentUser.name
+                      .split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </span>
+                </div>
+              )}
+              <div className='min-w-0'>
+                <p className='font-semibold text-base truncate'>
+                  {currentUser.name}
+                </p>
+                <p className='text-white/80 text-sm truncate'>
+                  {currentUser.position}
+                </p>
+              </div>
+            </div>
+
+            {/* Period Type Switch Buttons */}
+            <div className='flex rounded-xl border border-white/30 overflow-hidden bg-white/10 shrink-0'>
               <button
                 onClick={() => setPeriodType('monthly')}
                 className={`px-3 py-1.5 text-sm font-medium transition-colors ${
@@ -379,42 +417,25 @@ export default function SchedulePage() {
             </div>
           </div>
 
-          <div className='flex flex-col lg:flex-row lg:items-center gap-4'>
-            <div className='flex items-center gap-4 flex-1'>
-              {currentUser.image ? (
-                <img
-                  src={currentUser.image}
-                  alt={currentUser.name}
-                  className='w-14 h-14 rounded-full object-cover'
-                />
-              ) : (
-                <div className='w-14 h-14 rounded-full bg-white/20 flex items-center justify-center'>
-                  <span className='text-xl font-bold text-white'>
-                    {currentUser.name
-                      .split(' ')
-                      .map((n) => n[0])
-                      .join('')
-                      .slice(0, 2)
-                      .toUpperCase()}
-                  </span>
-                </div>
-              )}
-              <div>
-                <p className='font-semibold text-lg'>{currentUser.name}</p>
-                <p className='text-white/80 text-sm'>{currentUser.position}</p>
-                <p className='text-white/60 text-xs mt-1'>
-                  Periode: {periodLabel}
-                </p>
+          {/* Row 2: Periode + Progress Bar (side by side) */}
+          <div className='flex flex-col md:flex-row gap-3'>
+            {/* Periode Info */}
+            <div className='bg-white/10 rounded-xl px-4 py-3 flex items-center justify-center md:w-48 shrink-0'>
+              <div className='text-center'>
+                <p className='text-xs text-white/60 mb-0.5'>Periode</p>
+                <p className='text-sm font-semibold'>{periodLabel}</p>
               </div>
             </div>
-            <div className='flex-1'>
-              <div className='flex items-center justify-between mb-1'>
-                <span className='text-sm'>Target Kehadiran (Jadwal)</span>
+
+            {/* Progress Bar Section */}
+            <div className='bg-white/10 rounded-xl p-4 flex-1'>
+              <div className='flex items-center justify-between mb-2'>
+                <span className='text-sm font-medium'>Target Kehadiran</span>
                 <span className='text-sm font-bold'>
                   {myWorkingDays}/{targetDays} hari
                 </span>
               </div>
-              <div className='h-3 bg-white/20 rounded-full overflow-hidden'>
+              <div className='h-2.5 bg-white/20 rounded-full overflow-hidden'>
                 <div
                   className={`h-full rounded-full transition-all ${
                     progressPercent >= 100 ? 'bg-emerald-400' : 'bg-white'
@@ -422,7 +443,7 @@ export default function SchedulePage() {
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
-              <p className='text-xs text-white/80 mt-1'>
+              <p className='text-xs text-white/80 mt-2 text-center'>
                 {progressPercent >= 100
                   ? '✅ Target tercapai!'
                   : `${daysRemaining} hari lagi menuju target`}
@@ -433,91 +454,125 @@ export default function SchedulePage() {
       )}
 
       {/* My Schedule Summary - Shift counts in cards (only when showMySchedule) */}
+      {/* Colors are dynamic based on shift settings from manage-shift */}
       {showMySchedule && currentUser && (
         <div className='grid grid-cols-3 sm:grid-cols-6 gap-3'>
-          <Card className='text-center py-3'>
-            <p className='text-2xl font-bold text-blue-600'>
-              {myScheduleSummary.PAGI}
-            </p>
-            <p className='text-xs text-gray-500'>Pagi</p>
-          </Card>
-          <Card className='text-center py-3'>
-            <p className='text-2xl font-bold text-gray-600'>
-              {myScheduleSummary.MALAM}
-            </p>
-            <p className='text-xs text-gray-500'>Malam</p>
-          </Card>
-          <Card className='text-center py-3'>
-            <p className='text-2xl font-bold text-amber-600'>
-              {myScheduleSummary.PAGI_MALAM}
-            </p>
-            <p className='text-xs text-gray-500'>P&M</p>
-          </Card>
-          <Card className='text-center py-3'>
-            <p className='text-2xl font-bold text-emerald-600'>
-              {myScheduleSummary.PIKET_PAGI}
-            </p>
-            <p className='text-xs text-gray-500'>PP</p>
-          </Card>
-          <Card className='text-center py-3'>
-            <p className='text-2xl font-bold text-purple-600'>
-              {myScheduleSummary.PIKET_MALAM}
-            </p>
-            <p className='text-xs text-gray-500'>PM</p>
-          </Card>
-          <Card className='text-center py-3'>
-            <p className='text-2xl font-bold text-red-600'>
-              {myScheduleSummary.LIBUR}
-            </p>
-            <p className='text-xs text-gray-500'>Libur</p>
-          </Card>
+          {[
+            {
+              shiftType: 'PAGI',
+              key: 'PAGI',
+              label: 'Pagi',
+              defaultColor: 'indigo',
+            },
+            {
+              shiftType: 'MALAM',
+              key: 'MALAM',
+              label: 'Malam',
+              defaultColor: 'purple',
+            },
+            {
+              shiftType: 'PAGI_MALAM',
+              key: 'PAGI_MALAM',
+              label: 'Pagi Malam',
+              defaultColor: 'amber',
+            },
+            {
+              shiftType: 'PIKET_PAGI',
+              key: 'PIKET_PAGI',
+              label: 'Piket Pagi',
+              defaultColor: 'emerald',
+            },
+            {
+              shiftType: 'PIKET_MALAM',
+              key: 'PIKET_MALAM',
+              label: 'Piket Malam',
+              defaultColor: 'cyan',
+            },
+            {
+              shiftType: 'LIBUR',
+              key: 'LIBUR',
+              label: 'Libur',
+              defaultColor: 'red',
+            },
+          ].map((item) => {
+            // Get color from shift settings, fallback to default
+            const shiftSetting = shiftSettings.find(
+              (s) => s.shiftType === item.shiftType
+            );
+            const color = shiftSetting?.color || item.defaultColor;
+            const colorClasses = getShiftColorClasses(color);
+            const count =
+              myScheduleSummary[item.key as keyof typeof myScheduleSummary];
+            return (
+              <Card key={item.key} className='text-center py-3'>
+                <div
+                  className={`w-10 h-10 rounded-lg ${colorClasses.bg} flex items-center justify-center mx-auto mb-1`}
+                >
+                  <span className={`text-lg font-bold ${colorClasses.text}`}>
+                    {count}
+                  </span>
+                </div>
+                <p className='text-xs text-gray-600 dark:text-gray-400 font-medium'>
+                  {item.label}
+                </p>
+              </Card>
+            );
+          })}
         </div>
       )}
 
-      {/* Legend - Dynamic cards from shift settings */}
-      <div className='grid grid-cols-3 sm:grid-cols-6 gap-3'>
-        {(shiftSettings.length > 0
-          ? shiftSettings
-          : [
-              { shiftType: 'PAGI', name: 'Pagi', color: 'blue' },
-              { shiftType: 'MALAM', name: 'Malam', color: 'gray' },
-              { shiftType: 'PIKET_PAGI', name: 'Piket Pagi', color: 'emerald' },
-              {
-                shiftType: 'PIKET_MALAM',
-                name: 'Piket Malam',
-                color: 'purple',
-              },
-              { shiftType: 'PAGI_MALAM', name: 'Pagi Malam', color: 'amber' },
-              { shiftType: 'LIBUR', name: 'Libur', color: 'red' },
-            ]
-        ).map((shift) => {
-          const colorClasses = getShiftColorClasses(shift.color);
-          return (
-            <Card key={shift.shiftType} className='text-center py-3'>
-              <div
-                className={`w-8 h-8 rounded-lg ${colorClasses.bg} flex items-center justify-center mx-auto mb-1`}
-              >
-                <span className={`text-xs font-bold ${colorClasses.text}`}>
-                  {getKeteranganShort(shift.shiftType)}
-                </span>
-              </div>
-              <p className='text-xs text-gray-600 font-medium'>{shift.name}</p>
-            </Card>
-          );
-        })}
-      </div>
+      {/* Legend - Dynamic cards from shift settings (hidden when showing my schedule) */}
+      {!showMySchedule && (
+        <div className='grid grid-cols-3 sm:grid-cols-6 gap-3'>
+          {(shiftSettings.length > 0
+            ? shiftSettings
+            : [
+                { shiftType: 'PAGI', name: 'Pagi', color: 'indigo' },
+                { shiftType: 'MALAM', name: 'Malam', color: 'purple' },
+                {
+                  shiftType: 'PIKET_PAGI',
+                  name: 'Piket Pagi',
+                  color: 'emerald',
+                },
+                {
+                  shiftType: 'PIKET_MALAM',
+                  name: 'Piket Malam',
+                  color: 'cyan',
+                },
+                { shiftType: 'PAGI_MALAM', name: 'Pagi Malam', color: 'amber' },
+                { shiftType: 'LIBUR', name: 'Libur', color: 'red' },
+              ]
+          ).map((shift) => {
+            const colorClasses = getShiftColorClasses(shift.color);
+            return (
+              <Card key={shift.shiftType} className='text-center py-3'>
+                <div
+                  className={`w-8 h-8 rounded-lg ${colorClasses.bg} flex items-center justify-center mx-auto mb-1`}
+                >
+                  <span className={`text-xs font-bold ${colorClasses.text}`}>
+                    {getKeteranganShort(shift.shiftType)}
+                  </span>
+                </div>
+                <p className='text-xs text-gray-600 dark:text-gray-400 font-medium'>
+                  {shift.name}
+                </p>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {/* Schedule Card */}
       <Card>
         <div className='flex items-center justify-between mb-6'>
           <button
             onClick={prevMonth}
-            className='p-2 hover:bg-gray-100 rounded-lg transition-colors'
+            className='p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors'
           >
-            <ChevronLeft className='w-5 h-5 text-gray-600' />
+            <ChevronLeft className='w-5 h-5 text-gray-600 dark:text-gray-300' />
           </button>
           <div className='text-center'>
-            <p className='font-semibold text-gray-800 text-lg'>
+            <p className='font-semibold text-gray-800 dark:text-white text-lg'>
               {getMonthLabel()}
             </p>
             <button
@@ -529,17 +584,17 @@ export default function SchedulePage() {
           </div>
           <button
             onClick={nextMonth}
-            className='p-2 hover:bg-gray-100 rounded-lg transition-colors'
+            className='p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors'
           >
-            <ChevronRight className='w-5 h-5 text-gray-600' />
+            <ChevronRight className='w-5 h-5 text-gray-600 dark:text-gray-300' />
           </button>
         </div>
 
         <div className='overflow-x-auto'>
           <table className='w-full border-collapse'>
             <thead>
-              <tr className='border-b border-gray-200'>
-                <th className='text-left py-3 px-2 text-sm font-medium text-gray-500 sticky left-0 bg-white min-w-[120px]'>
+              <tr className='border-b border-gray-200 dark:border-gray-700'>
+                <th className='text-left py-3 px-2 text-sm font-medium text-gray-500 dark:text-gray-400 sticky left-0 bg-white dark:bg-gray-800 min-w-[120px]'>
                   Member
                 </th>
                 {monthDates.map((date, index) => (
@@ -569,7 +624,7 @@ export default function SchedulePage() {
                 <tr>
                   <td
                     colSpan={monthDates.length + 1}
-                    className='py-12 text-center text-gray-500'
+                    className='py-12 text-center text-gray-500 dark:text-gray-400'
                   >
                     Tidak ada member ditemukan
                   </td>
@@ -578,9 +633,9 @@ export default function SchedulePage() {
                 filteredMembers.map((member) => (
                   <tr
                     key={member.id}
-                    className='border-b border-gray-100 hover:bg-gray-50'
+                    className='border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                   >
-                    <td className='py-2 px-2 sticky left-0 bg-white'>
+                    <td className='py-2 px-2 sticky left-0 bg-white dark:bg-gray-800'>
                       <div className='flex items-center gap-2'>
                         {member.image ? (
                           <img
@@ -600,7 +655,7 @@ export default function SchedulePage() {
                             </span>
                           </div>
                         )}
-                        <p className='text-sm font-medium text-gray-800 truncate'>
+                        <p className='text-sm font-medium text-gray-800 dark:text-gray-200 truncate'>
                           {member.nickname || member.name}
                         </p>
                       </div>
@@ -619,7 +674,7 @@ export default function SchedulePage() {
                               {getKeteranganShort(schedule.keterangan)}
                             </span>
                           ) : (
-                            <span className='inline-flex w-6 h-6 items-center justify-center rounded text-[10px] text-gray-300 bg-gray-50'>
+                            <span className='inline-flex w-6 h-6 items-center justify-center rounded text-[10px] text-gray-300 dark:text-gray-600 bg-gray-50 dark:bg-gray-700'>
                               -
                             </span>
                           )}
