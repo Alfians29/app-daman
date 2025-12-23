@@ -587,19 +587,21 @@ export default function AdminSchedulePage() {
         }
       />
 
-      {/* Legend */}
-      <div className='flex flex-wrap gap-3'>
+      {/* Legend - Card style */}
+      <div className='grid grid-cols-3 sm:grid-cols-6 gap-3'>
         {keteranganOptions.map((ket) => (
-          <div key={ket.value} className='flex items-center gap-2 text-sm'>
-            <span
-              className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${getKeteranganStyle(
+          <Card key={ket.value} className='text-center py-3'>
+            <div
+              className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto mb-1 ${getKeteranganStyle(
                 ket.value
               )}`}
             >
-              {getKeteranganShort(ket.value)}
-            </span>
-            <span className='text-gray-600'>{ket.label}</span>
-          </div>
+              <span className='text-xs font-bold'>
+                {getKeteranganShort(ket.value)}
+              </span>
+            </div>
+            <p className='text-xs text-gray-600 font-medium'>{ket.label}</p>
+          </Card>
         ))}
       </div>
 

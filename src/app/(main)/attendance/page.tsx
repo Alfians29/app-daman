@@ -439,7 +439,7 @@ export default function AttendancePage() {
             </div>
           </Card>
 
-          <div className='grid grid-cols-2 lg:grid-cols-6 gap-3'>
+          <div className='grid grid-cols-2 lg:grid-cols-4 gap-3'>
             <Card className='text-center py-4'>
               <p className='text-2xl font-bold text-gray-800'>
                 {myAllRecords.length}
@@ -464,38 +464,6 @@ export default function AttendancePage() {
               </p>
               <p className='text-xs text-gray-500'>Telat</p>
             </Card>
-            <Card className='text-center py-4'>
-              <p className='text-2xl font-bold text-gray-800'>
-                {myWorkingDays}
-              </p>
-              <p className='text-xs text-gray-500'>Hari Kerja</p>
-            </Card>
-            <Card className='text-center py-4'>
-              <p className='text-2xl font-bold text-gray-600'>{myLiburCount}</p>
-              <p className='text-xs text-gray-500'>Libur</p>
-            </Card>
-          </div>
-
-          <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3'>
-            {keteranganOptions.map((opt) => {
-              const Icon = opt.icon;
-              const count =
-                myScheduleKeteranganCounts[
-                  opt.value as keyof typeof myScheduleKeteranganCounts
-                ] || 0;
-              const colorClasses = getShiftColorClasses(opt.color);
-              return (
-                <Card key={opt.value} className='text-center py-3'>
-                  <div
-                    className={`w-8 h-8 rounded-lg ${colorClasses.bg} flex items-center justify-center mx-auto mb-1`}
-                  >
-                    <Icon className={`w-4 h-4 ${colorClasses.text}`} />
-                  </div>
-                  <p className='text-lg font-bold text-gray-800'>{count}</p>
-                  <p className='text-xs text-gray-500'>{opt.label}</p>
-                </Card>
-              );
-            })}
           </div>
         </div>
       )}
