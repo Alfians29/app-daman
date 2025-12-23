@@ -11,8 +11,11 @@ import {
   Download,
   ClipboardCheck,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { FilterBar } from '@/components/ui/FilterBar';
 import { SkeletonPage } from '@/components/ui/Skeleton';
@@ -95,6 +98,11 @@ export default function AdminAttendancePage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+
+  // Export date range
+  const [exportStartDate, setExportStartDate] = useState(getLocalDateString());
+  const [exportEndDate, setExportEndDate] = useState(getLocalDateString());
 
   const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(
     null
@@ -279,7 +287,13 @@ export default function AdminAttendancePage() {
   const handleExport = async () => {
     const XLSX = await import('xlsx');
 
-    const exportData = filteredRecords.map((r) => ({
+    // Filter records by date range
+    const exportRecords = records.filter((r) => {
+      const recordDate = getLocalDateString(new Date(r.tanggal));
+      return recordDate >= exportStartDate && recordDate <= exportEndDate;
+    });
+
+    const exportData = exportRecords.map((r) => ({
       Tanggal: new Date(r.tanggal).toLocaleDateString('id-ID'),
       Nama: r.member?.name || '-',
       'Jam Absen': r.jamAbsen,
@@ -290,8 +304,9 @@ export default function AdminAttendancePage() {
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Kehadiran');
-    XLSX.writeFile(wb, `kehadiran_${selectedDate}.xlsx`);
+    XLSX.writeFile(wb, `kehadiran_${exportStartDate}_${exportEndDate}.xlsx`);
     toast.success('File Excel berhasil didownload!');
+    setShowExportModal(false);
   };
 
   const resetForm = () => {
@@ -328,6 +343,12 @@ export default function AdminAttendancePage() {
     resetForm();
   };
 
+  const navigateDate = (days: number) => {
+    const date = new Date(selectedDate);
+    date.setDate(date.getDate() + days);
+    setSelectedDate(getLocalDateString(date));
+  };
+
   if (isLoading) {
     return <SkeletonPage />;
   }
@@ -342,7 +363,11 @@ export default function AdminAttendancePage() {
         actions={
           <>
             <button
-              onClick={handleExport}
+              onClick={() => {
+                setExportStartDate(getLocalDateString());
+                setExportEndDate(getLocalDateString());
+                setShowExportModal(true);
+              }}
               className='flex items-center gap-2 px-4 py-2 bg-white/20 text-white border border-white/30 rounded-xl font-medium hover:bg-white/30 transition-colors'
             >
               <Download className='w-4 h-4' />
@@ -402,46 +427,48 @@ export default function AdminAttendancePage() {
         </div>
       </div>
 
-      {/* Search & Filters */}
-      <FilterBar
-        searchValue={searchQuery}
-        onSearchChange={setSearchQuery}
-        searchPlaceholder='Cari nama anggota...'
-        selects={[
-          {
-            value: filterKeterangan,
-            onChange: setFilterKeterangan,
-            options: shiftOptions.map((k) => ({
-              value: k.value,
-              label: k.label,
-            })),
-            placeholder: 'Semua Keterangan',
-          },
-          {
-            value: filterStatus,
-            onChange: setFilterStatus,
-            options: [
-              { value: 'ONTIME', label: 'Ontime' },
-              { value: 'TELAT', label: 'Telat' },
-            ],
-            placeholder: 'Semua Status',
-          },
-        ]}
-        showReset
-        onReset={() => {
-          setFilterKeterangan('all');
-          setFilterStatus('all');
-          setSearchQuery('');
-        }}
-        rightContent={
-          <input
-            type='date'
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className='px-4 py-2.5 rounded-xl border-2 border-gray-100 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-700/50 text-gray-800 dark:text-gray-100 focus:bg-white dark:focus:bg-gray-700 focus:border-[#E57373]/30 dark:focus:border-[#E57373]/50 focus:outline-none focus:ring-4 focus:ring-[#E57373]/10 dark:focus:ring-[#E57373]/20 transition-all'
-          />
-        }
-      />
+      {/* Date Filter */}
+      <Card>
+        <div className='flex flex-col sm:flex-row sm:items-center gap-4'>
+          <div className='flex items-center gap-3 flex-1'>
+            <Calendar className='w-5 h-5 text-[#E57373]' />
+            <input
+              type='date'
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className='px-4 py-2 border border-gray-200 rounded-xl font-medium'
+            />
+            <span className='text-gray-600 font-medium hidden sm:block'>
+              {new Date(selectedDate).toLocaleDateString('id-ID', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}
+            </span>
+          </div>
+          <div className='flex items-center gap-2'>
+            <button
+              onClick={() => setSelectedDate(getLocalDateString())}
+              className='px-3 py-2 text-sm font-medium text-[#E57373] bg-red-50 hover:bg-red-100 rounded-lg'
+            >
+              Hari Ini
+            </button>
+            <button
+              onClick={() => navigateDate(-1)}
+              className='p-2 hover:bg-gray-100 rounded-lg'
+            >
+              <ChevronLeft className='w-5 h-5 text-gray-600' />
+            </button>
+            <button
+              onClick={() => navigateDate(1)}
+              className='p-2 hover:bg-gray-100 rounded-lg'
+            >
+              <ChevronRight className='w-5 h-5 text-gray-600' />
+            </button>
+          </div>
+        </div>
+      </Card>
 
       {/* Table */}
       <div className='bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden'>
@@ -661,6 +688,52 @@ export default function AdminAttendancePage() {
         cancelText='Batal'
         variant='danger'
       />
+
+      {/* Export Date Range Modal */}
+      <Modal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        size='sm'
+      >
+        <ModalHeader
+          title='Download Data Kehadiran'
+          subtitle='Pilih rentang tanggal untuk export'
+          onClose={() => setShowExportModal(false)}
+        />
+        <ModalBody>
+          <div className='space-y-4'>
+            <Input
+              label='Tanggal Mulai'
+              type='date'
+              value={exportStartDate}
+              onChange={(e) => setExportStartDate(e.target.value)}
+            />
+            <Input
+              label='Tanggal Akhir'
+              type='date'
+              value={exportEndDate}
+              onChange={(e) => setExportEndDate(e.target.value)}
+            />
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            variant='secondary'
+            onClick={() => setShowExportModal(false)}
+            className='flex-1'
+          >
+            Batal
+          </Button>
+          <Button
+            onClick={handleExport}
+            disabled={exportStartDate > exportEndDate}
+            className='flex-1'
+          >
+            <Download className='w-4 h-4 mr-2' />
+            Download
+          </Button>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 }

@@ -85,7 +85,12 @@ export default function AdminCashPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<CashEntry | null>(null);
+
+  // Export date range
+  const [exportStartDate, setExportStartDate] = useState(getLocalDateString());
+  const [exportEndDate, setExportEndDate] = useState(getLocalDateString());
 
   const [formData, setFormData] = useState<TransactionForm>({
     date: getLocalDateString(),
@@ -244,7 +249,13 @@ export default function AdminCashPage() {
   const handleExport = async () => {
     const XLSX = await import('xlsx');
 
-    const exportData = filteredEntries.map((e) => ({
+    // Filter entries by export date range
+    const exportEntries = entries.filter((e) => {
+      const entryDate = getLocalDateString(new Date(e.date));
+      return entryDate >= exportStartDate && entryDate <= exportEndDate;
+    });
+
+    const exportData = exportEntries.map((e) => ({
       Tanggal: new Date(e.date).toLocaleDateString('id-ID'),
       Deskripsi: e.description,
       Kategori: e.category === 'INCOME' ? 'Pemasukan' : 'Pengeluaran',
@@ -255,8 +266,9 @@ export default function AdminCashPage() {
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Kas');
-    XLSX.writeFile(wb, `kas_${getLocalDateString()}.xlsx`);
+    XLSX.writeFile(wb, `kas_${exportStartDate}_${exportEndDate}.xlsx`);
     toast.success('File Excel berhasil didownload!');
+    setShowExportModal(false);
   };
 
   // Save monthly fee setting
@@ -385,7 +397,11 @@ export default function AdminCashPage() {
               Pengaturan
             </button>
             <button
-              onClick={handleExport}
+              onClick={() => {
+                setExportStartDate(getLocalDateString());
+                setExportEndDate(getLocalDateString());
+                setShowExportModal(true);
+              }}
               className='flex items-center gap-2 px-4 py-2 bg-white/20 text-white border border-white/30 rounded-xl font-medium hover:bg-white/30 transition-colors'
             >
               <Download className='w-4 h-4' />
@@ -867,6 +883,52 @@ export default function AdminCashPage() {
             ) : (
               'Simpan'
             )}
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Export Date Range Modal */}
+      <Modal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        size='sm'
+      >
+        <ModalHeader
+          title='Download Data Kas'
+          subtitle='Pilih rentang tanggal untuk export'
+          onClose={() => setShowExportModal(false)}
+        />
+        <ModalBody>
+          <div className='space-y-4'>
+            <Input
+              label='Tanggal Mulai'
+              type='date'
+              value={exportStartDate}
+              onChange={(e) => setExportStartDate(e.target.value)}
+            />
+            <Input
+              label='Tanggal Akhir'
+              type='date'
+              value={exportEndDate}
+              onChange={(e) => setExportEndDate(e.target.value)}
+            />
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            variant='secondary'
+            onClick={() => setShowExportModal(false)}
+            className='flex-1'
+          >
+            Batal
+          </Button>
+          <Button
+            onClick={handleExport}
+            disabled={exportStartDate > exportEndDate}
+            className='flex-1'
+          >
+            <Download className='w-4 h-4 mr-2' />
+            Download
           </Button>
         </ModalFooter>
       </Modal>

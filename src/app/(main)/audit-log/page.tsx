@@ -22,8 +22,10 @@ import {
   ModalBody,
   ModalFooter,
 } from '@/components/ui/Modal';
+import { Input } from '@/components/ui/Form';
 import toast from 'react-hot-toast';
 import { activitiesAPI } from '@/lib/api';
+import { getLocalDateString } from '@/lib/utils';
 
 type AuditLog = {
   id: string;
@@ -45,10 +47,15 @@ export default function AuditLogPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Export date range
+  const [exportStartDate, setExportStartDate] = useState(getLocalDateString());
+  const [exportEndDate, setExportEndDate] = useState(getLocalDateString());
 
   useEffect(() => {
     loadActivities();
@@ -131,7 +138,14 @@ export default function AuditLogPage() {
 
   const handleExport = async () => {
     const XLSX = await import('xlsx');
-    const exportData = filteredLogs.map((log) => ({
+
+    // Filter logs by export date range
+    const exportLogs = logs.filter((log) => {
+      const logDate = new Date(log.createdAt).toISOString().split('T')[0];
+      return logDate >= exportStartDate && logDate <= exportEndDate;
+    });
+
+    const exportData = exportLogs.map((log) => ({
       Waktu: new Date(log.createdAt).toLocaleString('id-ID'),
       Aksi: log.action,
       Target: log.target,
@@ -143,11 +157,9 @@ export default function AuditLogPage() {
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Audit Log');
-    XLSX.writeFile(
-      wb,
-      `audit_log_${new Date().toISOString().split('T')[0]}.xlsx`
-    );
+    XLSX.writeFile(wb, `audit_log_${exportStartDate}_${exportEndDate}.xlsx`);
     toast.success('Audit log berhasil diexport!');
+    setShowExportModal(false);
   };
 
   const openDetailModal = (log: AuditLog) => {
@@ -177,7 +189,11 @@ export default function AuditLogPage() {
         icon={ScrollText}
         actions={
           <button
-            onClick={handleExport}
+            onClick={() => {
+              setExportStartDate(getLocalDateString());
+              setExportEndDate(getLocalDateString());
+              setShowExportModal(true);
+            }}
             className='flex items-center gap-2 px-4 py-2 bg-white/20 text-white border border-white/30 rounded-xl font-medium hover:bg-white/30 transition-colors'
           >
             <Download className='w-4 h-4' />
@@ -473,6 +489,52 @@ export default function AuditLogPage() {
             className='flex-1'
           >
             Tutup
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Export Date Range Modal */}
+      <Modal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        size='sm'
+      >
+        <ModalHeader
+          title='Download Audit Log'
+          subtitle='Pilih rentang tanggal untuk export'
+          onClose={() => setShowExportModal(false)}
+        />
+        <ModalBody>
+          <div className='space-y-4'>
+            <Input
+              label='Tanggal Mulai'
+              type='date'
+              value={exportStartDate}
+              onChange={(e) => setExportStartDate(e.target.value)}
+            />
+            <Input
+              label='Tanggal Akhir'
+              type='date'
+              value={exportEndDate}
+              onChange={(e) => setExportEndDate(e.target.value)}
+            />
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            variant='secondary'
+            onClick={() => setShowExportModal(false)}
+            className='flex-1'
+          >
+            Batal
+          </Button>
+          <Button
+            onClick={handleExport}
+            disabled={exportStartDate > exportEndDate}
+            className='flex-1'
+          >
+            <Download className='w-4 h-4 mr-2' />
+            Download
           </Button>
         </ModalFooter>
       </Modal>
