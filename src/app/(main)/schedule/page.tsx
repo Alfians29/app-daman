@@ -36,6 +36,7 @@ type Schedule = {
 export default function SchedulePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showMySchedule, setShowMySchedule] = useState(false);
+  const [periodType, setPeriodType] = useState<'monthly' | '16-15'>('16-15');
   const [selectedMemberId, setSelectedMemberId] = useState<string>('all');
   const [currentStartDate, setCurrentStartDate] = useState(() => {
     const today = new Date();
@@ -224,20 +225,28 @@ export default function SchedulePage() {
     date.toDateString() === new Date().toDateString();
   const isWeekend = (date: Date) => date.getDay() === 0 || date.getDay() === 6;
 
-  // Calculate custom period: 16th of previous month to 15th of current month
-  const getPeriodDates = () => {
-    const year = currentStartDate.getFullYear();
-    const month = currentStartDate.getMonth();
+  // Calculate period based on periodType and displayed month (currentStartDate)
+  const getCurrentPeriod = (type: 'monthly' | '16-15' = '16-15') => {
+    // Use the displayed month from the schedule table, not today
+    const displayedYear = currentStartDate.getFullYear();
+    const displayedMonth = currentStartDate.getMonth();
+    let startDate: Date;
+    let endDate: Date;
 
-    // Start: 16th of previous month
-    const startDate = new Date(year, month - 1, 16);
-    // End: 15th of current month
-    const endDate = new Date(year, month, 15);
-
+    if (type === 'monthly') {
+      // Bulanan: 1st to last day of displayed month
+      startDate = new Date(displayedYear, displayedMonth, 1);
+      endDate = new Date(displayedYear, displayedMonth + 1, 0);
+    } else {
+      // 16-15: 16th of previous month to 15th of displayed month
+      startDate = new Date(displayedYear, displayedMonth - 1, 16);
+      endDate = new Date(displayedYear, displayedMonth, 15);
+    }
     return { startDate, endDate };
   };
 
-  const { startDate: periodStart, endDate: periodEnd } = getPeriodDates();
+  const { startDate: periodStart, endDate: periodEnd } =
+    getCurrentPeriod(periodType);
 
   // Helper to format date to YYYY-MM-DD string
   const toDateStr = (date: Date): string => {
@@ -283,6 +292,30 @@ export default function SchedulePage() {
     LIBUR: myMonthSchedules.filter((s) => s.keterangan === 'LIBUR').length,
   };
 
+  // Calculate target: 21 working days (P, M, PP, PM, P&M - excluding L/Libur)
+  const myWorkingDays = myMonthSchedules.filter(
+    (s) => s.keterangan !== 'LIBUR'
+  ).length;
+  const targetDays = 21;
+  const progressPercent = Math.min((myWorkingDays / targetDays) * 100, 100);
+  const daysRemaining = Math.max(targetDays - myWorkingDays, 0);
+
+  // Dynamic period label
+  const periodLabel =
+    periodType === 'monthly'
+      ? `01 - ${periodEnd.getDate()} ${periodStart.toLocaleDateString('id-ID', {
+          month: 'short',
+          year: 'numeric',
+        })}`
+      : `${periodStart.toLocaleDateString('id-ID', {
+          day: 'numeric',
+          month: 'short',
+        })} - ${periodEnd.toLocaleDateString('id-ID', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        })}`;
+
   if (isLoading) {
     return <SkeletonPage />;
   }
@@ -318,6 +351,34 @@ export default function SchedulePage() {
       {/* My Schedule Summary */}
       {showMySchedule && currentUser && (
         <Card className='bg-linear-to-r from-[#E57373] to-[#C62828] text-white'>
+          {/* Period Type Switch Buttons - Inside Card */}
+          <div className='flex justify-end mb-4'>
+            <div className='flex rounded-xl border border-white/30 overflow-hidden bg-white/10'>
+              <button
+                onClick={() => setPeriodType('monthly')}
+                className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                  periodType === 'monthly'
+                    ? 'bg-white text-[#E57373]'
+                    : 'text-white hover:bg-white/20'
+                }`}
+                title='Periode sebulan penuh'
+              >
+                Bulanan
+              </button>
+              <button
+                onClick={() => setPeriodType('16-15')}
+                className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                  periodType === '16-15'
+                    ? 'bg-white text-[#E57373]'
+                    : 'text-white hover:bg-white/20'
+                }`}
+                title='Periode tanggal 16 - 15 bulan berikutnya'
+              >
+                16-15
+              </button>
+            </div>
+          </div>
+
           <div className='flex flex-col lg:flex-row lg:items-center gap-4'>
             <div className='flex items-center gap-4 flex-1'>
               {currentUser.image ? (
@@ -342,48 +403,79 @@ export default function SchedulePage() {
                 <p className='font-semibold text-lg'>{currentUser.name}</p>
                 <p className='text-white/80 text-sm'>{currentUser.position}</p>
                 <p className='text-white/60 text-xs mt-1'>
-                  Periode: {getPeriodLabel()}
+                  Periode: {periodLabel}
                 </p>
               </div>
             </div>
-            <div className='grid grid-cols-3 sm:grid-cols-6 gap-3'>
-              <div className='text-center'>
-                <p className='text-xl font-bold'>{myScheduleSummary.PAGI}</p>
-                <p className='text-xs text-white/80'>Pagi</p>
+            <div className='flex-1'>
+              <div className='flex items-center justify-between mb-1'>
+                <span className='text-sm'>Target Kehadiran (Jadwal)</span>
+                <span className='text-sm font-bold'>
+                  {myWorkingDays}/{targetDays} hari
+                </span>
               </div>
-              <div className='text-center'>
-                <p className='text-xl font-bold'>{myScheduleSummary.MALAM}</p>
-                <p className='text-xs text-white/80'>Malam</p>
+              <div className='h-3 bg-white/20 rounded-full overflow-hidden'>
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    progressPercent >= 100 ? 'bg-emerald-400' : 'bg-white'
+                  }`}
+                  style={{ width: `${progressPercent}%` }}
+                />
               </div>
-              <div className='text-center'>
-                <p className='text-xl font-bold'>
-                  {myScheduleSummary.PAGI_MALAM}
-                </p>
-                <p className='text-xs text-white/80'>P&M</p>
-              </div>
-              <div className='text-center'>
-                <p className='text-xl font-bold'>
-                  {myScheduleSummary.PIKET_PAGI}
-                </p>
-                <p className='text-xs text-white/80'>PP</p>
-              </div>
-              <div className='text-center'>
-                <p className='text-xl font-bold'>
-                  {myScheduleSummary.PIKET_MALAM}
-                </p>
-                <p className='text-xs text-white/80'>PM</p>
-              </div>
-              <div className='text-center'>
-                <p className='text-xl font-bold'>{myScheduleSummary.LIBUR}</p>
-                <p className='text-xs text-white/80'>Libur</p>
-              </div>
+              <p className='text-xs text-white/80 mt-1'>
+                {progressPercent >= 100
+                  ? '✅ Target tercapai!'
+                  : `${daysRemaining} hari lagi menuju target`}
+              </p>
             </div>
           </div>
         </Card>
       )}
 
-      {/* Legend - Dynamic from shift settings */}
-      <div className='flex flex-wrap gap-3'>
+      {/* My Schedule Summary - Shift counts in cards (only when showMySchedule) */}
+      {showMySchedule && currentUser && (
+        <div className='grid grid-cols-3 sm:grid-cols-6 gap-3'>
+          <Card className='text-center py-3'>
+            <p className='text-2xl font-bold text-blue-600'>
+              {myScheduleSummary.PAGI}
+            </p>
+            <p className='text-xs text-gray-500'>Pagi</p>
+          </Card>
+          <Card className='text-center py-3'>
+            <p className='text-2xl font-bold text-gray-600'>
+              {myScheduleSummary.MALAM}
+            </p>
+            <p className='text-xs text-gray-500'>Malam</p>
+          </Card>
+          <Card className='text-center py-3'>
+            <p className='text-2xl font-bold text-amber-600'>
+              {myScheduleSummary.PAGI_MALAM}
+            </p>
+            <p className='text-xs text-gray-500'>P&M</p>
+          </Card>
+          <Card className='text-center py-3'>
+            <p className='text-2xl font-bold text-emerald-600'>
+              {myScheduleSummary.PIKET_PAGI}
+            </p>
+            <p className='text-xs text-gray-500'>PP</p>
+          </Card>
+          <Card className='text-center py-3'>
+            <p className='text-2xl font-bold text-purple-600'>
+              {myScheduleSummary.PIKET_MALAM}
+            </p>
+            <p className='text-xs text-gray-500'>PM</p>
+          </Card>
+          <Card className='text-center py-3'>
+            <p className='text-2xl font-bold text-red-600'>
+              {myScheduleSummary.LIBUR}
+            </p>
+            <p className='text-xs text-gray-500'>Libur</p>
+          </Card>
+        </div>
+      )}
+
+      {/* Legend - Dynamic cards from shift settings */}
+      <div className='grid grid-cols-3 sm:grid-cols-6 gap-3'>
         {(shiftSettings.length > 0
           ? shiftSettings
           : [
@@ -401,17 +493,16 @@ export default function SchedulePage() {
         ).map((shift) => {
           const colorClasses = getShiftColorClasses(shift.color);
           return (
-            <div
-              key={shift.shiftType}
-              className='flex items-center gap-2 text-sm'
-            >
-              <span
-                className={`w-6 h-6 rounded-lg ${colorClasses.bg} ${colorClasses.text} flex items-center justify-center text-xs font-bold`}
+            <Card key={shift.shiftType} className='text-center py-3'>
+              <div
+                className={`w-8 h-8 rounded-lg ${colorClasses.bg} flex items-center justify-center mx-auto mb-1`}
               >
-                {getKeteranganShort(shift.shiftType)}
-              </span>
-              <span className='text-gray-600'>{shift.name}</span>
-            </div>
+                <span className={`text-xs font-bold ${colorClasses.text}`}>
+                  {getKeteranganShort(shift.shiftType)}
+                </span>
+              </div>
+              <p className='text-xs text-gray-600 font-medium'>{shift.name}</p>
+            </Card>
           );
         })}
       </div>
