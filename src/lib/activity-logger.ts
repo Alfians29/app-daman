@@ -55,18 +55,7 @@ export function serverLog(
   const targetTag = `${colors.dim}[${target}]${colors.reset}`;
   const timeTag = `${colors.dim}[${timestamp}]${colors.reset}`;
 
-  let logLine = `${timeTag} ${typeTag} ${targetTag} ${message}`;
-
-  if (metadata && Object.keys(metadata).length > 0) {
-    const metaStr = Object.entries(metadata)
-      .filter(([_, v]) => v !== undefined && v !== null)
-      .map(([k, v]) => `${k}: ${v}`)
-      .join(', ');
-    if (metaStr) {
-      logLine += ` ${colors.dim}| ${metaStr}${colors.reset}`;
-    }
-  }
-
+  const logLine = `${timeTag} ${typeTag} ${targetTag} ${message}`;
   console.log(logLine);
 }
 
