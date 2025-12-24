@@ -32,13 +32,13 @@ const typeColors: Record<string, string> = {
 };
 
 /**
- * Print formatted log to terminal
+ * Print formatted log to terminal (simple format)
  */
 export function serverLog(
   type: string,
   target: string,
   message: string,
-  metadata?: Record<string, unknown>
+  _metadata?: Record<string, unknown>
 ) {
   const now = new Date();
   const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
@@ -55,19 +55,8 @@ export function serverLog(
   const targetTag = `${colors.dim}[${target}]${colors.reset}`;
   const timeTag = `${colors.dim}[${timestamp}]${colors.reset}`;
 
-  let logLine = `${timeTag} ${typeTag} ${targetTag} ${message}`;
-
-  if (metadata && Object.keys(metadata).length > 0) {
-    const metaStr = Object.entries(metadata)
-      .filter(([_, v]) => v !== undefined && v !== null)
-      .map(([k, v]) => `${k}: ${v}`)
-      .join(', ');
-    if (metaStr) {
-      logLine += ` ${colors.dim}| ${metaStr}${colors.reset}`;
-    }
-  }
-
-  console.log(logLine);
+  // Simple log format without metadata details
+  console.log(`${timeTag} ${typeTag} ${targetTag} ${message}`);
 }
 
 /**

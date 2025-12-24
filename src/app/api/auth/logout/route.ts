@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
 
       if (user) {
         await logActivity({
-          action: `User "${user.name}" telah logout`,
+          action: 'Logout',
           target: 'Auth',
           userId: user.id,
           type: 'LOGOUT',

@@ -59,9 +59,9 @@ export async function POST(request: NextRequest) {
       data: { lastLogin: new Date() },
     });
 
-    // Log login activity
+    // Log login activity (metadata stored in DB for audit log UI, terminal log is simple)
     await logActivity({
-      action: 'melakukan login',
+      action: 'Login',
       target: 'Auth',
       userId: user.id,
       type: 'LOGIN',
