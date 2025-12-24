@@ -38,6 +38,9 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         member: { select: { id: true, name: true, image: true } },
+        createdBy: {
+          select: { id: true, name: true, nickname: true, image: true },
+        },
       },
       orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
     });
@@ -77,6 +80,7 @@ export async function POST(request: NextRequest) {
     } = await request.json();
 
     const newId = `cash-${Date.now()}`;
+    const createdById = getUserIdFromRequest(request);
 
     const entry = await prisma.cashEntry.create({
       data: {
@@ -87,13 +91,20 @@ export async function POST(request: NextRequest) {
         category: category.toUpperCase() as TransactionCategory,
         amount,
         memberId: memberId || null,
+        createdById: createdById || null,
+      },
+      include: {
+        member: { select: { id: true, name: true, image: true } },
+        createdBy: {
+          select: { id: true, name: true, nickname: true, image: true },
+        },
       },
     });
 
     await logActivity({
       action: `Created cash entry: ${description}`,
       target: 'CashEntry',
-      userId: getUserIdFromRequest(request),
+      userId: createdById,
       type: 'CREATE',
       metadata: { entryId: newId, category, amount },
     });

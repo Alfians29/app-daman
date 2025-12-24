@@ -25,6 +25,7 @@ type CashEntry = {
   id: string;
   memberId: string;
   member?: { id: string; name: string; image?: string };
+  createdBy?: { id: string; name: string; nickname?: string; image?: string };
   date: string;
   amount: number;
   category: string;
@@ -54,6 +55,21 @@ const monthNames = [
   'Okt',
   'Nov',
   'Des',
+];
+
+const monthNamesFull = [
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
 ];
 
 export default function CashBookPage() {
@@ -663,6 +679,9 @@ export default function CashBookPage() {
                 <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
                   Tipe
                 </th>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                  Diinput Oleh
+                </th>
                 <th className='text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
                   Jumlah
                 </th>
@@ -672,7 +691,7 @@ export default function CashBookPage() {
               {paginatedTransactions.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={showMyContribution ? 5 : 6}
+                    colSpan={showMyContribution ? 6 : 7}
                     className='px-4 py-12 text-center text-gray-500'
                   >
                     <Wallet className='w-12 h-12 mx-auto text-gray-300 mb-2' />
@@ -736,6 +755,9 @@ export default function CashBookPage() {
                           ? 'Pemasukan'
                           : 'Pengeluaran'}
                       </span>
+                    </td>
+                    <td className='px-4 py-3 text-sm text-gray-700'>
+                      {tx.createdBy?.nickname || tx.createdBy?.name || '-'}
                     </td>
                     <td
                       className={`px-4 py-3 text-sm font-medium text-right ${
@@ -814,7 +836,7 @@ export default function CashBookPage() {
           <>
             <ModalHeader
               title={`Kas ${
-                selectedMonthData.month
+                monthNamesFull[monthNames.indexOf(selectedMonthData.month)]
               } ${new Date().getFullYear()}`}
               subtitle={`${selectedMonthData.paidCount}/${selectedMonthData.totalMembers} anggota lunas`}
               onClose={() => setSelectedMonth(null)}

@@ -36,9 +36,12 @@ export function AuthGuard({ children }: AuthGuardProps) {
     warningMinutes: 5,
     enabled: isAuthenticated,
     onWarning: () => {
+      // Dismiss any existing session warning toast first
+      toast.dismiss('session-warning');
       toast(
         'Sesi Anda akan berakhir dalam 5 menit karena tidak ada aktivitas',
         {
+          id: 'session-warning',
           icon: '⚠️',
           duration: 10000,
           style: {
@@ -50,7 +53,10 @@ export function AuthGuard({ children }: AuthGuardProps) {
       );
     },
     onTimeout: () => {
+      // Dismiss any existing session toast first
+      toast.dismiss('session-expired');
       toast.error('Sesi Anda telah berakhir. Silakan login kembali.', {
+        id: 'session-expired',
         duration: 5000,
       });
     },

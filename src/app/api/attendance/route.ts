@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { ShiftType, AttendanceStatus, AttendanceSource } from '@prisma/client';
-import { logActivity, getUserIdFromRequest } from '@/lib/activity-logger';
 
 /**
  * Parse date string as local timezone date
@@ -46,9 +45,6 @@ export async function POST(request: NextRequest) {
 
     const newId = `att-${Date.now()}`;
 
-    // Get member info for logging
-    const member = await prisma.user.findUnique({ where: { id: memberId } });
-
     const record = await prisma.attendance.create({
       data: {
         id: newId,
@@ -58,24 +54,6 @@ export async function POST(request: NextRequest) {
         keterangan: keterangan as ShiftType,
         status: (status || 'ONTIME') as AttendanceStatus,
         source: (source || 'WEB') as AttendanceSource,
-      },
-    });
-
-    const sourceLabel =
-      source === 'TELEGRAM_BOT' ? 'via Telegram Bot' : 'via Web';
-
-    await logActivity({
-      action: `Absen ${sourceLabel}: ${member?.name || memberId}`,
-      target: 'Attendance',
-      userId: memberId,
-      type: 'CREATE',
-      metadata: {
-        attendanceId: newId,
-        memberId,
-        memberName: member?.name,
-        source: source || 'WEB',
-        jamAbsen,
-        keterangan,
       },
     });
 

@@ -26,25 +26,42 @@ export function useSessionTimeout({
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const warningRef = useRef<NodeJS.Timeout | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
+  const warningShownRef = useRef<boolean>(false);
 
   const timeoutMs = timeoutMinutes * 60 * 1000;
   const warningMs = (timeoutMinutes - warningMinutes) * 60 * 1000;
 
   const handleLogout = useCallback(async () => {
-    // Get userId before clearing
-    const userId = localStorage.getItem('userId');
+    // Get userId from stored user object
+    let userId: string | null = null;
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        userId = user?.id || null;
+      }
+    } catch {
+      userId = null;
+    }
 
     // Call logout API with session_expired reason to log to audit
     if (userId) {
       try {
+        console.log('[Session Timeout] Logging out user:', userId);
         await fetch('/api/auth/logout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId, reason: 'session_expired' }),
         });
+        console.log('[Session Timeout] Logout logged successfully');
       } catch (error) {
-        console.error('Failed to log session timeout:', error);
+        console.error(
+          '[Session Timeout] Failed to log session timeout:',
+          error
+        );
       }
+    } else {
+      console.warn('[Session Timeout] No userId found in localStorage');
     }
 
     // Clear session
@@ -73,10 +90,17 @@ export function useSessionTimeout({
 
     if (!enabled) return;
 
+    // Reset warning flag when user becomes active again
+    warningShownRef.current = false;
+
     // Set warning timer
     if (onWarning && warningMinutes > 0) {
       warningRef.current = setTimeout(() => {
-        onWarning();
+        // Only show warning once per idle period
+        if (!warningShownRef.current) {
+          warningShownRef.current = true;
+          onWarning();
+        }
       }, warningMs);
     }
 

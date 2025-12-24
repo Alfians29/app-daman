@@ -24,6 +24,7 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  ConfirmModal,
 } from '@/components/ui/Modal';
 import { Input, Select, Textarea } from '@/components/ui/Form';
 import { FileCog } from 'lucide-react';
@@ -88,6 +89,11 @@ export default function AdminReportPage() {
   const [exportFormat, setExportFormat] = useState<'excel' | 'csv'>('excel');
 
   const [selectedDate, setSelectedDate] = useState(getLocalDateString());
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingReport, setDeletingReport] = useState<DailyReport | null>(
+    null
+  );
 
   useEffect(() => {
     loadData();
@@ -330,6 +336,27 @@ export default function AdminReportPage() {
     });
   };
 
+  const openDeleteModal = (report: DailyReport) => {
+    setDeletingReport(report);
+    setShowDeleteModal(true);
+  };
+
+  const deleteReport = async () => {
+    if (!deletingReport) return;
+
+    startTransition(async () => {
+      const result = await reportsAPI.delete(deletingReport.id);
+      if (result.success) {
+        toast.success('Report berhasil dihapus!');
+        loadData();
+        setShowDeleteModal(false);
+        setDeletingReport(null);
+      } else {
+        toast.error(result.error || 'Gagal menghapus report');
+      }
+    });
+  };
+
   if (isLoading) {
     return <SkeletonPage />;
   }
@@ -566,13 +593,22 @@ export default function AdminReportPage() {
                             </div>
                           </td>
                           <td className='px-4 py-3 text-center'>
-                            <button
-                              onClick={() => openEditModal(report)}
-                              disabled={isPending}
-                              className='p-2 hover:bg-gray-100 rounded-lg transition-colors inline-flex disabled:opacity-50'
-                            >
-                              <Edit3 className='w-4 h-4 text-gray-500' />
-                            </button>
+                            <div className='flex items-center justify-center gap-1'>
+                              <button
+                                onClick={() => openEditModal(report)}
+                                disabled={isPending}
+                                className='p-2 hover:bg-gray-100 rounded-lg transition-colors inline-flex disabled:opacity-50'
+                              >
+                                <Edit3 className='w-4 h-4 text-gray-500' />
+                              </button>
+                              <button
+                                onClick={() => openDeleteModal(report)}
+                                disabled={isPending}
+                                className='p-2 hover:bg-red-100 rounded-lg transition-colors inline-flex disabled:opacity-50'
+                              >
+                                <Trash2 className='w-4 h-4 text-red-500' />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -863,6 +899,28 @@ export default function AdminReportPage() {
           </Button>
         </ModalFooter>
       </Modal>
+
+      {/* Delete Confirm Modal */}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setDeletingReport(null);
+        }}
+        onConfirm={deleteReport}
+        title='Hapus Report'
+        message={`Apakah Anda yakin ingin menghapus report dari "${
+          deletingReport?.member?.name
+        }" tanggal ${
+          deletingReport
+            ? new Date(deletingReport.tanggal).toLocaleDateString('id-ID')
+            : ''
+        }?`}
+        confirmText='Hapus'
+        cancelText='Batal'
+        variant='danger'
+        isLoading={isPending}
+      />
     </div>
   );
 }
