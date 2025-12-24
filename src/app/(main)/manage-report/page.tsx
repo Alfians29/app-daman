@@ -195,15 +195,15 @@ export default function AdminReportPage() {
       return reportDate >= exportStartDate && reportDate <= exportEndDate;
     });
 
-    const exportData: Array<Record<string, string>> = [];
+    const exportData: Array<Record<string, string | number>> = [];
     exportReports.forEach((r) => {
       r.tasks.forEach((task, idx) => {
         exportData.push({
           Tanggal: new Date(r.tanggal).toLocaleDateString('id-ID'),
           Nama: r.member?.name || '-',
-          No: String(idx + 1),
+          No: idx + 1,
           'Jenis Pekerjaan': task.jobType?.name || '-',
-          Value: String(task.value),
+          Value: task.value,
           Keterangan: task.keterangan,
           'Dibuat Pada': new Date(r.createdAt).toLocaleString('id-ID'),
         });
@@ -226,12 +226,11 @@ export default function AdminReportPage() {
         ...exportData.map((row) =>
           headers
             .map((header) => {
-              const value = row[header] || '';
-              // Escape quotes and wrap in quotes if contains comma
-              if (value.includes(',') || value.includes('"')) {
-                return `"${value.replace(/"/g, '""')}"`;
-              }
-              return value;
+              let value = String(row[header] ?? '');
+              // Remove newlines and carriage returns to prevent CSV row breaking
+              value = value.replace(/[\r\n]+/g, ' ').trim();
+              // Always wrap in quotes and escape existing quotes for safety
+              return `"${value.replace(/"/g, '""')}"`;
             })
             .join(',')
         ),
