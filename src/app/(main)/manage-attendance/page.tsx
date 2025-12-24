@@ -100,9 +100,10 @@ export default function AdminAttendancePage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
 
-  // Export date range
+  // Export date range and format
   const [exportStartDate, setExportStartDate] = useState(getLocalDateString());
   const [exportEndDate, setExportEndDate] = useState(getLocalDateString());
+  const [exportFormat, setExportFormat] = useState<'excel' | 'csv'>('excel');
 
   const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(
     null
@@ -283,10 +284,8 @@ export default function AdminAttendancePage() {
     });
   };
 
-  // Export to Excel
+  // Export to Excel or CSV
   const handleExport = async () => {
-    const XLSX = await import('xlsx');
-
     // Filter records by date range
     const exportRecords = records.filter((r) => {
       const recordDate = getLocalDateString(new Date(r.tanggal));
@@ -301,11 +300,42 @@ export default function AdminAttendancePage() {
       Status: r.status,
     }));
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Kehadiran');
-    XLSX.writeFile(wb, `kehadiran_${exportStartDate}_${exportEndDate}.xlsx`);
-    toast.success('File Excel berhasil didownload!');
+    if (exportFormat === 'csv') {
+      // Export to CSV
+      const headers = ['Tanggal', 'Nama', 'Jam Absen', 'Keterangan', 'Status'];
+      const csvContent = [
+        headers.join(','),
+        ...exportData.map((row) =>
+          headers
+            .map((header) => {
+              const value = row[header as keyof typeof row] || '';
+              // Escape quotes and wrap in quotes if contains comma
+              if (value.includes(',') || value.includes('"')) {
+                return `"${value.replace(/"/g, '""')}"`;
+              }
+              return value;
+            })
+            .join(',')
+        ),
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `kehadiran_${exportStartDate}_${exportEndDate}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success('File CSV berhasil didownload!');
+    } else {
+      // Export to Excel
+      const XLSX = await import('xlsx');
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Kehadiran');
+      XLSX.writeFile(wb, `kehadiran_${exportStartDate}_${exportEndDate}.xlsx`);
+      toast.success('File Excel berhasil didownload!');
+    }
     setShowExportModal(false);
   };
 
@@ -714,6 +744,35 @@ export default function AdminAttendancePage() {
               value={exportEndDate}
               onChange={(e) => setExportEndDate(e.target.value)}
             />
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>
+                Format File
+              </label>
+              <div className='flex gap-2'>
+                <button
+                  type='button'
+                  onClick={() => setExportFormat('excel')}
+                  className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                    exportFormat === 'excel'
+                      ? 'bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Excel (.xlsx)
+                </button>
+                <button
+                  type='button'
+                  onClick={() => setExportFormat('csv')}
+                  className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                    exportFormat === 'csv'
+                      ? 'bg-blue-100 text-blue-700 ring-2 ring-blue-500'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  CSV (.csv)
+                </button>
+              </div>
+            </div>
           </div>
         </ModalBody>
         <ModalFooter>

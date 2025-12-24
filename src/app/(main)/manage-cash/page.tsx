@@ -88,9 +88,10 @@ export default function AdminCashPage() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<CashEntry | null>(null);
 
-  // Export date range
+  // Export date range and format
   const [exportStartDate, setExportStartDate] = useState(getLocalDateString());
   const [exportEndDate, setExportEndDate] = useState(getLocalDateString());
+  const [exportFormat, setExportFormat] = useState<'excel' | 'csv'>('excel');
 
   const [formData, setFormData] = useState<TransactionForm>({
     date: getLocalDateString(),
@@ -247,8 +248,6 @@ export default function AdminCashPage() {
   };
 
   const handleExport = async () => {
-    const XLSX = await import('xlsx');
-
     // Filter entries by export date range
     const exportEntries = entries.filter((e) => {
       const entryDate = getLocalDateString(new Date(e.date));
@@ -263,11 +262,42 @@ export default function AdminCashPage() {
       Member: e.member?.name || '-',
     }));
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Kas');
-    XLSX.writeFile(wb, `kas_${exportStartDate}_${exportEndDate}.xlsx`);
-    toast.success('File Excel berhasil didownload!');
+    if (exportFormat === 'csv') {
+      // Export to CSV
+      const headers = ['Tanggal', 'Deskripsi', 'Kategori', 'Jumlah', 'Member'];
+      const csvContent = [
+        headers.join(','),
+        ...exportData.map((row) =>
+          headers
+            .map((header) => {
+              const value = String(row[header as keyof typeof row] ?? '');
+              // Escape quotes and wrap in quotes if contains comma
+              if (value.includes(',') || value.includes('"')) {
+                return `"${value.replace(/"/g, '""')}"`;
+              }
+              return value;
+            })
+            .join(',')
+        ),
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `kas_${exportStartDate}_${exportEndDate}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success('File CSV berhasil didownload!');
+    } else {
+      // Export to Excel
+      const XLSX = await import('xlsx');
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Kas');
+      XLSX.writeFile(wb, `kas_${exportStartDate}_${exportEndDate}.xlsx`);
+      toast.success('File Excel berhasil didownload!');
+    }
     setShowExportModal(false);
   };
 
@@ -912,6 +942,35 @@ export default function AdminCashPage() {
               value={exportEndDate}
               onChange={(e) => setExportEndDate(e.target.value)}
             />
+            <div>
+              <label className='block text-xs text-gray-500 mb-2'>
+                Format File
+              </label>
+              <div className='flex gap-2'>
+                <button
+                  type='button'
+                  onClick={() => setExportFormat('excel')}
+                  className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                    exportFormat === 'excel'
+                      ? 'bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Excel (.xlsx)
+                </button>
+                <button
+                  type='button'
+                  onClick={() => setExportFormat('csv')}
+                  className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                    exportFormat === 'csv'
+                      ? 'bg-blue-100 text-blue-700 ring-2 ring-blue-500'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  CSV (.csv)
+                </button>
+              </div>
+            </div>
           </div>
         </ModalBody>
         <ModalFooter>
