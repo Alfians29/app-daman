@@ -74,11 +74,12 @@ model User {
   updatedAt        DateTime  @updatedAt
 
   // Relations
-  attendances      Attendance[]
-  schedules        Schedule[]
-  cashEntries      CashEntry[]
-  dailyReports     DailyReport[]
-  activities       Activity[]
+  attendances         Attendance[]
+  schedules           Schedule[]
+  cashEntriesMember   CashEntry[]   @relation("CashEntryMember")
+  cashEntriesCreated  CashEntry[]   @relation("CashEntryCreator")
+  dailyReports        DailyReport[]
+  activities          Activity[]
 
   @@index([username])
   @@index([usernameTelegram])
@@ -180,11 +181,14 @@ model CashEntry {
   amount              Decimal             @db.Decimal(15, 2)
   transactionCategory String?             // "Kas Bulanan", "Donasi", "ATK", dll
   memberId            String?
-  member              User?               @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  member              User?               @relation("CashEntryMember", fields: [memberId], references: [id], onDelete: SetNull)
+  createdById         String?
+  createdBy           User?               @relation("CashEntryCreator", fields: [createdById], references: [id], onDelete: SetNull)
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
 
   @@index([memberId])
+  @@index([createdById])
   @@index([date])
   @@index([category])
 }

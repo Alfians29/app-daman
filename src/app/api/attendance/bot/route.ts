@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { ShiftType, AttendanceStatus, AttendanceSource } from '@prisma/client';
-import { logActivity } from '@/lib/activity-logger';
 
 // POST create attendance from Telegram Bot
 export async function POST(request: NextRequest) {
@@ -53,22 +52,6 @@ export async function POST(request: NextRequest) {
       },
       include: {
         member: { select: { id: true, name: true } },
-      },
-    });
-
-    // Log activity from Bot
-    await logActivity({
-      action: `Absen via Telegram Bot: ${user.name}`,
-      target: 'Attendance',
-      userId: user.id,
-      type: 'CREATE',
-      metadata: {
-        attendanceId: newId,
-        memberId: user.id,
-        memberName: user.name,
-        source: 'TELEGRAM_BOT',
-        jamAbsen: record.jamAbsen,
-        keterangan: record.keterangan,
       },
     });
 

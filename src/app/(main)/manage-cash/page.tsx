@@ -39,6 +39,7 @@ type CashEntry = {
   amount: number;
   memberId: string | null;
   member: { id: string; name: string } | null;
+  createdBy?: { id: string; name: string; nickname?: string } | null;
 };
 
 type Member = {
@@ -553,6 +554,9 @@ export default function AdminCashPage() {
                 <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
                   Tipe
                 </th>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                  Diinput Oleh
+                </th>
                 <th className='text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
                   Jumlah
                 </th>
@@ -565,7 +569,7 @@ export default function AdminCashPage() {
               {filteredEntries.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className='px-4 py-8 text-center text-gray-500'
                   >
                     Tidak ada transaksi ditemukan
@@ -605,6 +609,11 @@ export default function AdminCashPage() {
                             ? 'Pemasukan'
                             : 'Pengeluaran'}
                         </span>
+                      </td>
+                      <td className='px-4 py-3 text-sm text-gray-700'>
+                        {entry.createdBy?.nickname ||
+                          entry.createdBy?.name ||
+                          '-'}
                       </td>
                       <td
                         className={`px-4 py-3 text-sm font-medium text-right ${
