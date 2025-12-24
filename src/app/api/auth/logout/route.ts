@@ -5,17 +5,24 @@ import { logActivity } from '@/lib/activity-logger';
 // POST logout
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await request.json();
+    const { userId, reason } = await request.json();
 
     if (userId) {
       const user = await prisma.user.findUnique({ where: { id: userId } });
 
       if (user) {
+        // Determine logout message based on reason
+        let actionMessage = `User "${user.name}" telah logout`;
+        if (reason === 'session_expired') {
+          actionMessage = `User "${user.name}" logout otomatis karena session habis`;
+        }
+
         await logActivity({
-          action: `User "${user.name}" telah logout`,
+          action: actionMessage,
           target: 'Auth',
           userId: user.id,
           type: 'LOGOUT',
+          metadata: reason ? { reason } : undefined,
         });
       }
     }

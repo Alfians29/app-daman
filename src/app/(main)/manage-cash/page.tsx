@@ -270,12 +270,11 @@ export default function AdminCashPage() {
         ...exportData.map((row) =>
           headers
             .map((header) => {
-              const value = String(row[header as keyof typeof row] ?? '');
-              // Escape quotes and wrap in quotes if contains comma
-              if (value.includes(',') || value.includes('"')) {
-                return `"${value.replace(/"/g, '""')}"`;
-              }
-              return value;
+              let value = String(row[header as keyof typeof row] ?? '');
+              // Remove newlines and carriage returns to prevent CSV row breaking
+              value = value.replace(/[\r\n]+/g, ' ').trim();
+              // Always wrap in quotes and escape existing quotes for safety
+              return `"${value.replace(/"/g, '""')}"`;
             })
             .join(',')
         ),

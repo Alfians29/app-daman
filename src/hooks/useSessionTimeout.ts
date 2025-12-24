@@ -30,7 +30,23 @@ export function useSessionTimeout({
   const timeoutMs = timeoutMinutes * 60 * 1000;
   const warningMs = (timeoutMinutes - warningMinutes) * 60 * 1000;
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
+    // Get userId before clearing
+    const userId = localStorage.getItem('userId');
+
+    // Call logout API with session_expired reason to log to audit
+    if (userId) {
+      try {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, reason: 'session_expired' }),
+        });
+      } catch (error) {
+        console.error('Failed to log session timeout:', error);
+      }
+    }
+
     // Clear session
     localStorage.removeItem('userId');
     sessionStorage.clear();
