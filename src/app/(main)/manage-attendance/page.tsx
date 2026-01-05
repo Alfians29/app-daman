@@ -120,12 +120,23 @@ export default function AdminAttendancePage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [selectedDate]);
 
   const loadData = async () => {
     setIsLoading(true);
+
+    // Load current month data - reload when selectedDate changes
+    const targetDate = new Date(selectedDate);
+    const month = targetDate.getMonth();
+    const year = targetDate.getFullYear();
+    const dateFrom = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const dateTo = `${year}-${String(month + 1).padStart(2, '0')}-${String(
+      lastDay
+    ).padStart(2, '0')}`;
+
     const [attendanceResult, usersResult, shiftsResult] = await Promise.all([
-      attendanceAPI.getAll(),
+      attendanceAPI.getAll({ dateFrom, dateTo }),
       usersAPI.getAll(),
       shiftsAPI.getAll(),
     ]);

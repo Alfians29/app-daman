@@ -82,11 +82,21 @@ export default function Dashboard() {
 
   const loadData = async () => {
     setIsLoading(true);
+
+    // Get current year date range for optimized loading
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    // Load data for current year only (sufficient for dashboard charts and stats)
+    const yearStart = `${currentYear}-01-01`;
+    const yearEnd = `${currentYear}-12-31`;
+
     const [usersRes, attRes, schedRes, cashRes, shiftsRes] = await Promise.all([
       usersAPI.getAll(),
-      attendanceAPI.getAll(),
-      scheduleAPI.getAll(),
-      cashAPI.getAll(),
+      attendanceAPI.getAll({ dateFrom: yearStart, dateTo: yearEnd }),
+      scheduleAPI.getAll({ year: currentYear }),
+      cashAPI.getAll({ year: currentYear }),
       shiftsAPI.getAll(),
     ]);
     if (usersRes.success && usersRes.data) {

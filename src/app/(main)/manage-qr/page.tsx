@@ -56,9 +56,12 @@ export default function ManageQRPage() {
   const [entries, setEntries] = useState<QREntry[]>([]);
   const [groupedData, setGroupedData] = useState<GroupedQR[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalQrIds, setTotalQrIds] = useState(0);
   const itemsPerPage = 10;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -81,11 +84,21 @@ export default function ManageQRPage() {
   const userRole = currentUser?.role?.name?.toLowerCase() || '';
   const canDelete = userRole === 'admin' || userRole === 'superadmin';
 
+  // Debounce search query
   useEffect(() => {
-    loadData();
-  }, []);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  // Group entries by QR ID
+  // Load data when page or search changes
+  useEffect(() => {
+    loadData(currentPage, debouncedSearch);
+  }, [currentPage, debouncedSearch]);
+
+  // Group entries by QR ID (for modal detail view only)
   useEffect(() => {
     const grouped = entries.reduce((acc, entry) => {
       const existing = acc.find((g) => g.qrId === entry.qrId);
@@ -113,32 +126,32 @@ export default function ManageQRPage() {
     setGroupedData(grouped);
   }, [entries]);
 
-  const loadData = async () => {
+  const loadData = async (page: number = 1, search: string = '') => {
     setIsLoading(true);
-    const result = await qrAPI.getAll();
+    const result = (await qrAPI.getAll({
+      page,
+      limit: itemsPerPage,
+      qrId: search || undefined,
+    })) as {
+      success: boolean;
+      data?: QREntry[];
+      total?: number;
+      totalQrIds?: number;
+      error?: string;
+    };
 
     if (result.success) {
-      setEntries(result.data as QREntry[]);
+      setEntries(result.data || []);
+      setTotalCount(result.total || 0);
+      setTotalQrIds(result.totalQrIds || 0);
     } else {
       toast.error('Gagal memuat data QR');
     }
     setIsLoading(false);
   };
 
-  const filteredGroups = groupedData.filter((group) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      group.qrId.toLowerCase().includes(query) ||
-      group.entries.some((e) => e.labelQr.toLowerCase().includes(query))
-    );
-  });
-
-  // Pagination
-  const totalPages = Math.ceil(filteredGroups.length / itemsPerPage);
-  const paginatedGroups = filteredGroups.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Server-side pagination - groups are already filtered and paginated from API
+  const totalPages = Math.ceil(totalQrIds / itemsPerPage);
 
   const openDetailModal = (group: GroupedQR) => {
     setSelectedGroup(group);
@@ -190,6 +203,15 @@ export default function ManageQRPage() {
         return;
       }
 
+      // Check max upload limit
+      const MAX_UPLOAD_LIMIT = 5000;
+      if (parsed.length > MAX_UPLOAD_LIMIT) {
+        toast.error(
+          `Maksimal ${MAX_UPLOAD_LIMIT} data per upload. File ini berisi ${parsed.length} data.`
+        );
+        return;
+      }
+
       setPreviewData(parsed);
       setPreviewFile(file);
       setShowPreviewModal(true);
@@ -211,7 +233,7 @@ export default function ManageQRPage() {
 
       if (result.success) {
         toast.success(result.message || 'Berhasil mengupload data QR');
-        loadData();
+        loadData(currentPage, debouncedSearch);
         setShowPreviewModal(false);
         setPreviewData([]);
         setPreviewFile(null);
@@ -229,7 +251,7 @@ export default function ManageQRPage() {
 
       if (result.success) {
         toast.success('Data QR berhasil dihapus');
-        loadData();
+        loadData(currentPage, debouncedSearch);
         setShowDeleteModal(false);
         setSelectedEntry(null);
         // Update detail modal if open
@@ -272,7 +294,7 @@ export default function ManageQRPage() {
 
       if (success) {
         toast.success(`Semua data QR ID ${selectedGroupId} berhasil dihapus`);
-        loadData();
+        loadData(currentPage, debouncedSearch);
         setShowDetailModal(false);
         setSelectedGroup(null);
       } else {
@@ -379,7 +401,7 @@ export default function ManageQRPage() {
             Daftar QR ID
           </h3>
           <span className='text-sm text-gray-500'>
-            {groupedData.length} QR ID, {entries.length} data
+            {totalQrIds} QR ID, {totalCount} data
           </span>
         </div>
 
@@ -405,7 +427,7 @@ export default function ManageQRPage() {
               </tr>
             </thead>
             <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
-              {paginatedGroups.length === 0 ? (
+              {groupedData.length === 0 ? (
                 <tr>
                   <td
                     colSpan={5}
@@ -420,7 +442,7 @@ export default function ManageQRPage() {
                   </td>
                 </tr>
               ) : (
-                paginatedGroups.map((group) => (
+                groupedData.map((group: GroupedQR) => (
                   <tr
                     key={group.qrId}
                     className='hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -537,16 +559,14 @@ export default function ManageQRPage() {
               <thead className='bg-gray-50 dark:bg-gray-700 sticky top-0'>
                 <tr>
                   <th className='text-left px-3 py-2 text-xs font-medium text-gray-500 uppercase'>
+                    QR ID
+                  </th>
+                  <th className='text-left px-3 py-2 text-xs font-medium text-gray-500 uppercase'>
                     Port ID
                   </th>
                   <th className='text-left px-3 py-2 text-xs font-medium text-gray-500 uppercase'>
                     Label QR
                   </th>
-                  {canDelete && (
-                    <th className='text-center px-3 py-2 text-xs font-medium text-gray-500 uppercase'>
-                      Aksi
-                    </th>
-                  )}
                 </tr>
               </thead>
               <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
@@ -555,24 +575,15 @@ export default function ManageQRPage() {
                     key={entry.id}
                     className='hover:bg-gray-50 dark:hover:bg-gray-600'
                   >
+                    <td className='px-3 py-2 font-mono text-gray-600 dark:text-gray-400'>
+                      {selectedGroup.qrId}
+                    </td>
                     <td className='px-3 py-2 font-medium'>{entry.nomorUrut}</td>
                     <td className='px-3 py-2'>
                       <span className='inline-flex px-3 py-1 text-sm font-mono font-medium rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'>
                         {entry.labelQr}
                       </span>
                     </td>
-                    {canDelete && (
-                      <td className='px-3 py-2 text-center'>
-                        <button
-                          onClick={() => openDeleteSingleModal(entry)}
-                          disabled={isPending}
-                          className='p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-50'
-                          title='Hapus'
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    )}
                   </tr>
                 ))}
               </tbody>

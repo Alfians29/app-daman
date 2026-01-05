@@ -59,13 +59,18 @@ export default function SchedulePage() {
     if (!authLoading && authUser) {
       loadData();
     }
-  }, [authLoading, authUser]);
+  }, [authLoading, authUser, currentStartDate]);
 
   const loadData = async () => {
     setIsLoading(true);
+
+    // Get current displayed month/year for filtering
+    const month = currentStartDate.getMonth() + 1;
+    const year = currentStartDate.getFullYear();
+
     const [usersResult, schedResult] = await Promise.all([
       usersAPI.getAll(),
-      scheduleAPI.getAll(),
+      scheduleAPI.getAll({ month, year }),
     ]);
 
     if (usersResult.success && usersResult.data) {

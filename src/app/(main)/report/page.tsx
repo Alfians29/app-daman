@@ -105,11 +105,28 @@ export default function ReportPage() {
 
   const loadData = async () => {
     setIsLoading(true);
+
+    // Get current month/year for filtering
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    // Load current month reports only
+    const dateFrom = `${currentYear}-${String(currentMonth).padStart(
+      2,
+      '0'
+    )}-01`;
+    const lastDay = new Date(currentYear, currentMonth, 0).getDate();
+    const dateTo = `${currentYear}-${String(currentMonth).padStart(
+      2,
+      '0'
+    )}-${String(lastDay).padStart(2, '0')}`;
+
     const [reportsRes, usersRes, schedRes, jobsRes, shiftsRes] =
       await Promise.all([
-        reportsAPI.getAll(),
+        reportsAPI.getAll({ dateFrom, dateTo }),
         usersAPI.getAll(),
-        scheduleAPI.getAll(),
+        scheduleAPI.getAll({ month: currentMonth, year: currentYear }),
         jobTypesAPI.getAll(),
         shiftsAPI.getAll(),
       ]);

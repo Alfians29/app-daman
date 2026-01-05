@@ -102,11 +102,28 @@ export default function AttendancePage() {
 
   const loadData = async () => {
     setIsLoading(true);
+
+    // Calculate date range for loading - 2 months back for 16-15 period
+    const now = new Date();
+    const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+    const dateFrom = `${twoMonthsAgo.getFullYear()}-${String(
+      twoMonthsAgo.getMonth() + 1
+    ).padStart(2, '0')}-01`;
+    const dateTo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
+      2,
+      '0'
+    )}-${String(
+      new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+    ).padStart(2, '0')}`;
+
     const [attResult, usersResult, schedResult, shiftsResult] =
       await Promise.all([
-        attendanceAPI.getAll(),
+        attendanceAPI.getAll({ dateFrom, dateTo }),
         usersAPI.getAll(),
-        scheduleAPI.getAll(),
+        scheduleAPI.getAll({
+          month: now.getMonth() + 1,
+          year: now.getFullYear(),
+        }),
         shiftsAPI.getAll(),
       ]);
 
