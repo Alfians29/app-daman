@@ -3,16 +3,21 @@ import prisma from '@/lib/prisma';
 import { logActivity, getUserIdFromRequest } from '@/lib/activity-logger';
 import * as XLSX from 'xlsx';
 
-// GET all QR data with pagination
+// GET all QR data with optional pagination
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const qrId = searchParams.get('qrId');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const pageParam = searchParams.get('page');
+    const limitParam = searchParams.get('limit');
 
     const where: Record<string, unknown> = {};
     if (qrId) where.qrId = qrId;
+
+    // If no limit is specified, fetch all data without pagination
+    const usePagination = limitParam !== null;
+    const page = parseInt(pageParam || '1');
+    const limit = usePagination ? parseInt(limitParam || '50') : undefined;
 
     const [entries, total] = await Promise.all([
       prisma.qRData.findMany({
@@ -21,8 +26,9 @@ export async function GET(request: NextRequest) {
           uploadedBy: { select: { id: true, name: true, nickname: true } },
         },
         orderBy: [{ qrId: 'asc' }, { nomorUrut: 'asc' }],
-        skip: (page - 1) * limit,
-        take: limit,
+        ...(usePagination && limit
+          ? { skip: (page - 1) * limit, take: limit }
+          : {}),
       }),
       prisma.qRData.count({ where }),
     ]);
@@ -30,12 +36,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: entries,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+      pagination:
+        usePagination && limit
+          ? {
+              page,
+              limit,
+              total,
+              totalPages: Math.ceil(total / limit),
+            }
+          : { total },
     });
   } catch (error) {
     console.error('Error fetching QR data:', error);

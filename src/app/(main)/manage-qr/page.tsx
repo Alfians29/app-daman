@@ -115,7 +115,7 @@ export default function ManageQRPage() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const result = await qrAPI.getAll({ page: 1, limit: 1000 });
+    const result = await qrAPI.getAll();
 
     if (result.success) {
       setEntries(result.data as QREntry[]);
