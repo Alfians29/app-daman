@@ -80,10 +80,26 @@ model User {
   cashEntriesCreated  CashEntry[]   @relation("CashEntryCreator")
   dailyReports        DailyReport[]
   activities          Activity[]
+  qrDataUploaded      QRData[]      @relation("QRDataUploader")
 
   @@index([username])
   @@index([usernameTelegram])
   @@index([roleId])
+}
+
+/// QRData - Tabel untuk menyimpan data QR yang diupload dari Excel
+model QRData {
+  id           String   @id @default(cuid())
+  qrId         String   // QR ID dari Excel (kolom A: 100192)
+  nomorUrut    Int      // Nomor urut (kolom B: 1-20)
+  labelQr      String   // Label QR (kolom C: T7D02KY4C3P6)
+  uploadedById String?  // User yang upload
+  uploadedBy   User?    @relation("QRDataUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+
+  @@unique([qrId, nomorUrut]) // Kombinasi harus unik
+  @@index([qrId])
+  @@index([labelQr])
 }
 
 /// Role - Tabel master untuk role/jabatan dalam sistem

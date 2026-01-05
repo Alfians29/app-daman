@@ -24,6 +24,8 @@ import {
   Moon,
   ChevronUp,
   Clock,
+  Search,
+  QrCode,
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
@@ -86,6 +88,18 @@ const allNavItems = [
     label: 'Kelola Kas',
     icon: Banknote,
     permission: 'admin.cash',
+  },
+  {
+    href: '/qr-search',
+    label: 'QR Search',
+    icon: Search,
+    permission: 'menu.qr',
+  },
+  {
+    href: '/manage-qr',
+    label: 'Kelola QR',
+    icon: QrCode,
+    permission: 'admin.qr',
   },
   {
     href: '/team',

@@ -263,3 +263,36 @@ export const cashSettingsAPI = {
       body: JSON.stringify({ key, value, description }),
     }),
 };
+
+// ============================================
+// QR DATA API
+// ============================================
+export const qrAPI = {
+  getAll: (params?: { qrId?: string; page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.qrId) query.set('qrId', params.qrId);
+    if (params?.page) query.set('page', params.page.toString());
+    if (params?.limit) query.set('limit', params.limit.toString());
+    return fetchAPI(`/qr${query.toString() ? `?${query}` : ''}`);
+  },
+  search: (queries: Array<{ qrId: string; start: number; end: number }>) =>
+    fetchAPI('/qr/search', {
+      method: 'POST',
+      body: JSON.stringify({ queries }),
+    }),
+  upload: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const userId = getCurrentUserId();
+    const headers: Record<string, string> = {};
+    if (userId) headers['X-User-ID'] = userId;
+
+    const res = await fetch('/api/qr', {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    return res.json();
+  },
+  delete: (id: string) => fetchAPI(`/qr/${id}`, { method: 'DELETE' }),
+};

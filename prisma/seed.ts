@@ -3,6 +3,35 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
+  // ============================================
+  // ADD QR PERMISSIONS
+  // ============================================
+  console.log('\\n🌱 Adding QR Permissions...');
+
+  const qrPermissions = [
+    {
+      id: 'perm-menu-qr',
+      code: 'menu.qr',
+      name: 'QR Search',
+      module: 'menu',
+    },
+    {
+      id: 'perm-admin-qr',
+      code: 'admin.qr',
+      name: 'Kelola QR',
+      module: 'admin',
+    },
+  ];
+
+  for (const perm of qrPermissions) {
+    await prisma.permission.upsert({
+      where: { code: perm.code },
+      update: { name: perm.name, module: perm.module },
+      create: perm,
+    });
+    console.log(`✅ Created permission: ${perm.name} (${perm.code})`);
+  }
+
   // console.log('🌱 Seeding database (Superadmin only)...');
 
   // // Create Superadmin Role
