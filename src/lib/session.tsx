@@ -68,8 +68,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   };
 
   const login = (userData: User) => {
-    setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
+    const userWithTimestamp = { ...userData, loginAt: Date.now() };
+    setUser(userWithTimestamp);
+    localStorage.setItem('user', JSON.stringify(userWithTimestamp));
   };
 
   const logout = async () => {

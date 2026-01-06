@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useTransition } from 'react';
+import { useState, useMemo, useTransition } from 'react';
 import {
   FileText,
   Edit3,
@@ -29,8 +29,9 @@ import {
 import { Input, Select, Textarea } from '@/components/ui/Form';
 import { FileCog } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { reportsAPI, jobTypesAPI, usersAPI } from '@/lib/api';
+import { reportsAPI, jobTypesAPI } from '@/lib/api';
 import { getLocalDateString } from '@/lib/utils';
+import { useUsers, useJobTypes, useReports } from '@/lib/swr-hooks';
 
 type JobType = {
   id: string;
@@ -65,10 +66,6 @@ type Member = {
 };
 
 export default function AdminReportPage() {
-  const [reports, setReports] = useState<DailyReport[]>([]);
-  const [jobTypes, setJobTypes] = useState<JobType[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
 
   const [showEditModal, setShowEditModal] = useState(false);
@@ -95,25 +92,30 @@ export default function AdminReportPage() {
     null
   );
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // SWR hooks for cached data
+  const { users, isLoading: usersLoading } = useUsers();
+  const {
+    jobTypes: rawJobTypes,
+    isLoading: jobsLoading,
+    mutate: mutateJobTypes,
+  } = useJobTypes();
+  const {
+    reports: rawReports,
+    isLoading: reportsLoading,
+    mutate: mutateReports,
+  } = useReports();
 
-  const loadData = async () => {
-    setIsLoading(true);
-    const [reportsResult, jobTypesResult, usersResult] = await Promise.all([
-      reportsAPI.getAll(),
-      jobTypesAPI.getAll(),
-      usersAPI.getAll(),
-    ]);
+  const isLoading = usersLoading || jobsLoading || reportsLoading;
 
-    if (reportsResult.success) setReports(reportsResult.data as DailyReport[]);
-    if (jobTypesResult.success) setJobTypes(jobTypesResult.data as JobType[]);
-    if (usersResult.success) setMembers(usersResult.data as Member[]);
-    setIsLoading(false);
-  };
+  // Process data with useMemo
+  const members = users as Member[];
+  const reports = rawReports as DailyReport[];
+  const jobTypes = rawJobTypes as JobType[];
 
-  const activeJobTypes = jobTypes.filter((jt) => jt.isActive);
+  const activeJobTypes = useMemo(
+    () => jobTypes.filter((jt) => jt.isActive),
+    [jobTypes]
+  );
 
   const filteredReports = useMemo(() => {
     return reports
@@ -184,7 +186,7 @@ export default function AdminReportPage() {
 
       if (result.success) {
         toast.success('Report berhasil diupdate!');
-        loadData();
+        mutateReports();
         setShowEditModal(false);
         setEditingTasks([]);
         setEditingReport(null);
@@ -307,7 +309,7 @@ export default function AdminReportPage() {
         });
         if (result.success) {
           toast.success('Jenis pekerjaan berhasil diupdate!');
-          loadData();
+          mutateJobTypes();
         } else {
           toast.error(result.error || 'Gagal mengupdate');
         }
@@ -315,7 +317,7 @@ export default function AdminReportPage() {
         const result = await jobTypesAPI.create({ name: jobTypeName });
         if (result.success) {
           toast.success('Jenis pekerjaan berhasil ditambahkan!');
-          loadData();
+          mutateJobTypes();
         } else {
           toast.error(result.error || 'Gagal menambahkan');
         }
@@ -331,7 +333,7 @@ export default function AdminReportPage() {
     startTransition(async () => {
       const result = await jobTypesAPI.toggle(jtId);
       if (result.success) {
-        loadData();
+        mutateJobTypes();
       }
     });
   };
@@ -348,7 +350,7 @@ export default function AdminReportPage() {
       const result = await reportsAPI.delete(deletingReport.id);
       if (result.success) {
         toast.success('Report berhasil dihapus!');
-        loadData();
+        mutateReports();
         setShowDeleteModal(false);
         setDeletingReport(null);
       } else {

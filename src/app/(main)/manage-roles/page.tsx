@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useTransition, useMemo } from 'react';
 import {
   Plus,
   Edit2,
@@ -26,6 +26,8 @@ import {
 } from '@/components/ui/Modal';
 import { Input, Select, Textarea } from '@/components/ui/Form';
 import { rolesAPI, usersAPI } from '@/lib/api';
+import { useUsers, useRoles } from '@/lib/swr-hooks';
+import useSWR from 'swr';
 
 type Role = {
   id: string;
@@ -59,13 +61,36 @@ const colorOptions = [
   { value: 'bg-red-100 text-red-700', label: 'Merah' },
 ];
 
+// Fetcher for permissions
+const fetchPermissions = async () => {
+  const result = await rolesAPI.getPermissions();
+  if (result.success) return result.data as Permission[];
+  return [];
+};
+
 export default function ManageRolesPage() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
+
+  // SWR hooks for cached data
+  const {
+    roles: rawRoles,
+    isLoading: rolesLoading,
+    mutate: mutateRoles,
+  } = useRoles();
+  const {
+    users: rawUsers,
+    isLoading: usersLoading,
+    mutate: mutateUsers,
+  } = useUsers();
+  const { data: permissions = [], isLoading: permsLoading } = useSWR(
+    '/api/roles/permissions',
+    fetchPermissions
+  );
+
+  const roles = rawRoles as Role[];
+  const users = rawUsers as User[];
+  const isLoading = rolesLoading || usersLoading || permsLoading;
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -86,39 +111,33 @@ export default function ManageRolesPage() {
   const [assignUserId, setAssignUserId] = useState('');
   const [assignRoleId, setAssignRoleId] = useState('');
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setIsLoading(true);
-    const [rolesResult, permsResult, usersResult] = await Promise.all([
-      rolesAPI.getAll(),
-      rolesAPI.getPermissions(),
-      usersAPI.getAll(),
-    ]);
-
-    if (rolesResult.success) setRoles(rolesResult.data as Role[]);
-    if (permsResult.success) setPermissions(permsResult.data as Permission[]);
-    if (usersResult.success) setUsers(usersResult.data as User[]);
-    setIsLoading(false);
-  };
-
-  const filteredRoles = roles.filter(
-    (role) =>
-      role.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (role.description || '').toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredRoles = useMemo(
+    () =>
+      roles.filter(
+        (role) =>
+          role.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (role.description || '')
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase())
+      ),
+    [roles, searchQuery]
   );
 
-  const roleOptions = [
-    { value: '', label: 'Pilih role' },
-    ...roles.map((r) => ({ value: r.id, label: r.name })),
-  ];
+  const roleOptions = useMemo(
+    () => [
+      { value: '', label: 'Pilih role' },
+      ...roles.map((r) => ({ value: r.id, label: r.name })),
+    ],
+    [roles]
+  );
 
-  const userOptions = [
-    { value: '', label: 'Pilih member' },
-    ...users.map((u) => ({ value: u.id, label: u.name })),
-  ];
+  const userOptions = useMemo(
+    () => [
+      { value: '', label: 'Pilih member' },
+      ...users.map((u) => ({ value: u.id, label: u.name })),
+    ],
+    [users]
+  );
 
   const handleAdd = async () => {
     if (!formData.name) {
@@ -136,7 +155,7 @@ export default function ManageRolesPage() {
 
       if (result.success) {
         toast.success('Role berhasil ditambahkan!');
-        loadData();
+        mutateRoles();
         setShowAddModal(false);
         resetForm();
       } else {
@@ -158,7 +177,7 @@ export default function ManageRolesPage() {
 
       if (result.success) {
         toast.success('Role berhasil diubah!');
-        loadData();
+        mutateRoles();
         setShowEditModal(false);
         setSelectedRole(null);
         resetForm();
@@ -176,7 +195,7 @@ export default function ManageRolesPage() {
 
       if (result.success) {
         toast.success('Role berhasil dihapus!');
-        loadData();
+        mutateRoles();
         setShowDeleteModal(false);
         setSelectedRole(null);
       } else {
@@ -198,7 +217,8 @@ export default function ManageRolesPage() {
 
       if (result.success) {
         toast.success('Role berhasil ditetapkan!');
-        loadData();
+        mutateRoles();
+        mutateUsers();
         setShowAssignModal(false);
         setAssignUserId('');
         setAssignRoleId('');

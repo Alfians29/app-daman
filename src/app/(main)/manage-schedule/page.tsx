@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useTransition } from 'react';
+import { useState, useRef, useMemo, useTransition } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import toast from 'react-hot-toast';
@@ -24,8 +24,9 @@ import {
   ModalFooter,
 } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Form';
-import { scheduleAPI, usersAPI, shiftsAPI } from '@/lib/api';
+import { scheduleAPI } from '@/lib/api';
 import { getShiftColorClasses } from '@/lib/utils';
+import { useUsers, useShifts, useSchedule } from '@/lib/swr-hooks';
 
 type Keterangan =
   | 'PAGI'
@@ -79,18 +80,9 @@ export default function AdminSchedulePage() {
     return today;
   });
 
-  const [members, setMembers] = useState<Member[]>([]);
-  const [schedules, setSchedules] = useState<ScheduleEntry[]>([]);
-  const [shiftColors, setShiftColors] = useState<Record<string, string | null>>(
-    {}
-  );
-  const [shiftSettings, setShiftSettings] = useState<
-    { shiftType: string; name: string; color: string | null }[]
-  >([]);
   const [scheduleChanges, setScheduleChanges] = useState<
     Record<string, Keterangan>
   >({});
-  const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
 
   const [editingMember, setEditingMember] = useState<Member | null>(null);
@@ -125,53 +117,50 @@ export default function AdminSchedulePage() {
     label: String(year),
   }));
 
-  useEffect(() => {
-    loadData();
-  }, [currentStartDate]);
+  // SWR hooks for cached data
+  const currentMonth = currentStartDate.getMonth() + 1;
+  const currentYear = currentStartDate.getFullYear();
 
-  const loadData = async () => {
-    setIsLoading(true);
-    const month = currentStartDate.getMonth() + 1;
-    const year = currentStartDate.getFullYear();
+  const { users, isLoading: usersLoading } = useUsers();
+  const { shifts, isLoading: shiftsLoading } = useShifts();
+  const {
+    schedules: rawSchedules,
+    isLoading: schedLoading,
+    mutate: mutateSchedule,
+  } = useSchedule(currentMonth, currentYear);
 
-    const [usersResult, scheduleResult] = await Promise.all([
-      usersAPI.getAll(),
-      scheduleAPI.getAll({ month, year }),
-    ]);
+  const isLoading = usersLoading || shiftsLoading || schedLoading;
 
-    if (usersResult.success) {
-      // Filter: Only show Data Management - TA for Schedule management
-      const allUsers = usersResult.data as Member[];
-      const filteredUsers = allUsers.filter(
-        (m) => m.isActive && m.department === 'Data Management - TA'
-      );
-      // Sort by NIK
-      filteredUsers.sort((a, b) => a.nik.localeCompare(b.nik));
-      setMembers(filteredUsers);
-    }
-    if (scheduleResult.success) {
-      setSchedules(scheduleResult.data as ScheduleEntry[]);
-      // Get shift colors from API response
-      const resultWithColors = scheduleResult as unknown as {
-        shiftColors?: Record<string, string | null>;
-      };
-      if (resultWithColors.shiftColors) {
-        setShiftColors(resultWithColors.shiftColors);
-      }
-    }
-    // Fetch shift settings for dynamic options
-    const shiftsResult = await shiftsAPI.getAll();
-    if (shiftsResult.success && shiftsResult.data) {
-      const shifts = shiftsResult.data as {
+  // Process data with useMemo
+  const members = useMemo(() => {
+    const allUsers = users as Member[];
+    const filteredUsers = allUsers.filter(
+      (m) => m.isActive && m.department === 'Data Management - TA'
+    );
+    // Sort by NIK
+    return filteredUsers.sort((a, b) => a.nik.localeCompare(b.nik));
+  }, [users]);
+
+  const schedules = rawSchedules as ScheduleEntry[];
+
+  const shiftSettings = useMemo(() => {
+    return (
+      shifts as {
         shiftType: string;
         name: string;
         color: string | null;
         isActive: boolean;
-      }[];
-      setShiftSettings(shifts.filter((s) => s.isActive));
-    }
-    setIsLoading(false);
-  };
+      }[]
+    ).filter((s) => s.isActive);
+  }, [shifts]);
+
+  const shiftColors = useMemo(() => {
+    const colors: Record<string, string | null> = {};
+    shiftSettings.forEach((s) => {
+      colors[s.shiftType] = s.color;
+    });
+    return colors;
+  }, [shiftSettings]);
 
   // Dynamic keteranganOptions from shift settings
   const keteranganOptions =
@@ -309,7 +298,7 @@ export default function AdminSchedulePage() {
         toast.success('Jadwal berhasil disimpan!');
         setScheduleChanges({});
         setHasChanges(false);
-        loadData();
+        mutateSchedule();
       } else {
         toast.error(result.error || 'Gagal menyimpan jadwal');
       }

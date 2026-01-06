@@ -66,10 +66,31 @@ export function AuthGuard({ children }: AuthGuardProps) {
     checkAuth();
   }, [pathname]);
 
+  // Session expiry duration: 8 hours in milliseconds
+  const SESSION_EXPIRY_MS = 8 * 60 * 60 * 1000;
+
   const checkAuth = () => {
     try {
-      const user = localStorage.getItem('user');
-      if (user) {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const userData = JSON.parse(userStr);
+
+        // Check if session has expired (8 hours from login)
+        if (userData.loginAt) {
+          const loginTime = userData.loginAt;
+          const now = Date.now();
+          const sessionAge = now - loginTime;
+
+          if (sessionAge > SESSION_EXPIRY_MS) {
+            // Session expired - clear and redirect
+            localStorage.removeItem('user');
+            setIsAuthenticated(false);
+            toast.error('Sesi Anda telah berakhir. Silakan login kembali.');
+            router.push('/sign-in/login');
+            return;
+          }
+        }
+
         setIsAuthenticated(true);
       } else {
         setIsAuthenticated(false);

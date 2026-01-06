@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition, useRef } from 'react';
+import { useState, useEffect, useTransition, useRef, useMemo } from 'react';
 import {
   QrCode,
   Upload,
@@ -25,6 +25,7 @@ import {
   ModalFooter,
 } from '@/components/ui/Modal';
 import { qrAPI } from '@/lib/api';
+import { useQR } from '@/lib/swr-hooks';
 import toast from 'react-hot-toast';
 import { useCurrentUser } from '@/components/AuthGuard';
 import * as XLSX from 'xlsx';
@@ -53,15 +54,10 @@ type PreviewData = {
 };
 
 export default function ManageQRPage() {
-  const [entries, setEntries] = useState<QREntry[]>([]);
-  const [groupedData, setGroupedData] = useState<GroupedQR[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const [totalQrIds, setTotalQrIds] = useState(0);
   const itemsPerPage = 10;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -93,13 +89,20 @@ export default function ManageQRPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Load data when page or search changes
-  useEffect(() => {
-    loadData(currentPage, debouncedSearch);
-  }, [currentPage, debouncedSearch]);
+  // SWR hook for cached data with per-page caching
+  const {
+    qrEntries,
+    total,
+    totalQrIds,
+    isLoading,
+    mutate: mutateQR,
+  } = useQR(currentPage, itemsPerPage, debouncedSearch);
+
+  const entries = qrEntries as QREntry[];
+  const totalCount = total;
 
   // Group entries by QR ID (for modal detail view only)
-  useEffect(() => {
+  const groupedData = useMemo(() => {
     const grouped = entries.reduce((acc, entry) => {
       const existing = acc.find((g) => g.qrId === entry.qrId);
       if (existing) {
@@ -123,32 +126,8 @@ export default function ManageQRPage() {
       g.entries.sort((a, b) => a.nomorUrut - b.nomorUrut);
     });
 
-    setGroupedData(grouped);
+    return grouped;
   }, [entries]);
-
-  const loadData = async (page: number = 1, search: string = '') => {
-    setIsLoading(true);
-    const result = (await qrAPI.getAll({
-      page,
-      limit: itemsPerPage,
-      qrId: search || undefined,
-    })) as {
-      success: boolean;
-      data?: QREntry[];
-      total?: number;
-      totalQrIds?: number;
-      error?: string;
-    };
-
-    if (result.success) {
-      setEntries(result.data || []);
-      setTotalCount(result.total || 0);
-      setTotalQrIds(result.totalQrIds || 0);
-    } else {
-      toast.error('Gagal memuat data QR');
-    }
-    setIsLoading(false);
-  };
 
   // Server-side pagination - groups are already filtered and paginated from API
   const totalPages = Math.ceil(totalQrIds / itemsPerPage);
@@ -233,7 +212,7 @@ export default function ManageQRPage() {
 
       if (result.success) {
         toast.success(result.message || 'Berhasil mengupload data QR');
-        loadData(currentPage, debouncedSearch);
+        mutateQR();
         setShowPreviewModal(false);
         setPreviewData([]);
         setPreviewFile(null);
@@ -251,7 +230,7 @@ export default function ManageQRPage() {
 
       if (result.success) {
         toast.success('Data QR berhasil dihapus');
-        loadData(currentPage, debouncedSearch);
+        mutateQR();
         setShowDeleteModal(false);
         setSelectedEntry(null);
         // Update detail modal if open
@@ -294,7 +273,7 @@ export default function ManageQRPage() {
 
       if (success) {
         toast.success(`Semua data QR ID ${selectedGroupId} berhasil dihapus`);
-        loadData(currentPage, debouncedSearch);
+        mutateQR();
         setShowDetailModal(false);
         setSelectedGroup(null);
       } else {

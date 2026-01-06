@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Download,
   FileText,
@@ -26,6 +26,7 @@ import { Input } from '@/components/ui/Form';
 import toast from 'react-hot-toast';
 import { activitiesAPI } from '@/lib/api';
 import { getLocalDateString } from '@/lib/utils';
+import { useActivities } from '@/lib/swr-hooks';
 
 type AuditLog = {
   id: string;
@@ -58,17 +59,7 @@ export default function AuditLogPage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalLogs, setTotalLogs] = useState(0);
-  const [stats, setStats] = useState<Stats>({
-    total: 0,
-    today: 0,
-    create: 0,
-    update: 0,
-    delete: 0,
-  });
 
   // Export date range
   const [exportStartDate, setExportStartDate] = useState(getLocalDateString());
@@ -88,36 +79,35 @@ export default function AuditLogPage() {
     setCurrentPage(1);
   }, [filterType, dateFrom, dateTo]);
 
-  // Load data when page or filters change
-  useEffect(() => {
-    loadActivities();
-  }, [currentPage, debouncedSearch, filterType, dateFrom, dateTo]);
+  // SWR hook for cached data with per-page caching
+  const {
+    activities,
+    total,
+    stats: rawStats,
+    isLoading,
+  } = useActivities({
+    page: currentPage,
+    limit: ITEMS_PER_PAGE,
+    type: filterType !== 'all' ? filterType : undefined,
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+    search: debouncedSearch || undefined,
+  });
 
-  const loadActivities = async () => {
-    setIsLoading(true);
-    const result = (await activitiesAPI.getAll({
-      page: currentPage,
-      limit: ITEMS_PER_PAGE,
-      type: filterType,
-      dateFrom: dateFrom || undefined,
-      dateTo: dateTo || undefined,
-      search: debouncedSearch || undefined,
-    })) as {
-      success: boolean;
-      data?: AuditLog[];
-      total?: number;
-      stats?: Stats;
-    };
+  const logs = activities as AuditLog[];
+  const totalLogs = total;
 
-    if (result.success && result.data) {
-      setLogs(result.data);
-      setTotalLogs(result.total || 0);
-      if (result.stats) {
-        setStats(result.stats);
+  const stats = useMemo(() => {
+    return (
+      rawStats || {
+        total: 0,
+        today: 0,
+        create: 0,
+        update: 0,
+        delete: 0,
       }
-    }
-    setIsLoading(false);
-  };
+    );
+  }, [rawStats]);
 
   // Server-side pagination
   const totalPages = Math.ceil(totalLogs / ITEMS_PER_PAGE);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Wallet,
   ArrowUpCircle,
@@ -17,9 +17,9 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { FilterBar } from '@/components/ui/FilterBar';
 import { SkeletonPage } from '@/components/ui/Skeleton';
 import { Modal, ModalHeader, ModalBody } from '@/components/ui/Modal';
-import { cashAPI, usersAPI, cashSettingsAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { useCurrentUser } from '@/components/AuthGuard';
+import { useUsers, useCash, useCashSettings } from '@/lib/swr-hooks';
 
 type CashEntry = {
   id: string;
@@ -82,47 +82,36 @@ export default function CashBookPage() {
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const itemsPerPage = 10;
 
-  const [cashEntries, setCashEntries] = useState<CashEntry[]>([]);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const { user: authUser, isLoading: authLoading } = useCurrentUser();
-  const [currentUser, setCurrentUser] = useState<TeamMember | null>(null);
-  const [monthlyFee, setMonthlyFee] = useState<number>(15000); // Dynamic from settings
 
-  useEffect(() => {
-    if (!authLoading && authUser) {
-      loadData();
-    }
-  }, [authLoading, authUser]);
+  // SWR hooks for cached data
+  const { users, isLoading: usersLoading } = useUsers();
+  const { cashEntries: rawCashEntries, isLoading: cashLoading } = useCash();
+  const { settings: cashSettings, isLoading: settingsLoading } =
+    useCashSettings();
 
-  const loadData = async () => {
-    setIsLoading(true);
-    const [cashRes, usersRes, settingsRes] = await Promise.all([
-      cashAPI.getAll(),
-      usersAPI.getAll(),
-      cashSettingsAPI.getAll(),
-    ]);
-    if (cashRes.success && cashRes.data)
-      setCashEntries(cashRes.data as CashEntry[]);
-    if (usersRes.success && usersRes.data) {
-      const activeUsers = (usersRes.data as TeamMember[]).filter(
-        (u: TeamMember) => u.isActive
-      );
-      setTeamMembers(activeUsers);
-      // Find user matching authenticated session
-      if (authUser?.id) {
-        setCurrentUser(
-          activeUsers.find((u: TeamMember) => u.id === authUser.id) ||
-            activeUsers[0]
-        );
-      }
-    }
-    if (settingsRes.success && settingsRes.data) {
-      const fee = parseInt(settingsRes.data['monthly_fee'] || '15000', 10);
-      setMonthlyFee(fee);
-    }
-    setIsLoading(false);
-  };
+  const isLoading =
+    authLoading || usersLoading || cashLoading || settingsLoading;
+
+  // Process data with useMemo
+  const teamMembers = useMemo(() => {
+    return (users as TeamMember[]).filter((u: TeamMember) => u.isActive);
+  }, [users]);
+
+  const currentUser = useMemo(() => {
+    if (!authUser?.id) return null;
+    return (
+      teamMembers.find((u: TeamMember) => u.id === authUser.id) ||
+      teamMembers[0] ||
+      null
+    );
+  }, [authUser, teamMembers]);
+
+  const cashEntries = rawCashEntries as CashEntry[];
+
+  const monthlyFee = useMemo(() => {
+    return parseInt(cashSettings['monthly_fee'] || '15000', 10);
+  }, [cashSettings]);
 
   // Helper: check if entry is a kas payment (transactionCategory = 'Kas Bulanan')
   const isKasPayment = (entry: CashEntry): boolean => {

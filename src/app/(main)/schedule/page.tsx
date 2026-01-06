@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { SkeletonPage } from '@/components/ui/Skeleton';
-import { usersAPI, scheduleAPI, shiftsAPI } from '@/lib/api';
 import { useCurrentUser } from '@/components/AuthGuard';
 import { getShiftColorClasses } from '@/lib/utils';
+import { useUsers, useShifts, useSchedule } from '@/lib/swr-hooks';
 import {
   ChevronLeft,
   ChevronRight,
@@ -43,75 +43,53 @@ export default function SchedulePage() {
     return new Date(today.getFullYear(), today.getMonth(), 1);
   });
 
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [scheduleEntries, setScheduleEntries] = useState<Schedule[]>([]);
-  const [shiftColors, setShiftColors] = useState<Record<string, string | null>>(
-    {}
-  );
-  const [shiftSettings, setShiftSettings] = useState<
-    { shiftType: string; name: string; color: string | null }[]
-  >([]);
-  const [isLoading, setIsLoading] = useState(true);
   const { user: authUser, isLoading: authLoading } = useCurrentUser();
-  const [currentUser, setCurrentUser] = useState<TeamMember | null>(null);
 
-  useEffect(() => {
-    if (!authLoading && authUser) {
-      loadData();
-    }
-  }, [authLoading, authUser, currentStartDate]);
+  // SWR hooks with caching
+  const month = currentStartDate.getMonth() + 1;
+  const year = currentStartDate.getFullYear();
 
-  const loadData = async () => {
-    setIsLoading(true);
+  const { users, isLoading: usersLoading } = useUsers();
+  const {
+    schedules,
+    shiftColors,
+    isLoading: schedLoading,
+  } = useSchedule(month, year);
+  const { shifts, isLoading: shiftsLoading } = useShifts();
 
-    // Get current displayed month/year for filtering
-    const month = currentStartDate.getMonth() + 1;
-    const year = currentStartDate.getFullYear();
+  const isLoading =
+    authLoading || usersLoading || schedLoading || shiftsLoading;
 
-    const [usersResult, schedResult] = await Promise.all([
-      usersAPI.getAll(),
-      scheduleAPI.getAll({ month, year }),
-    ]);
+  // Filter and process users
+  const teamMembers = useMemo(() => {
+    const activeUsers = (users as TeamMember[]).filter(
+      (u: TeamMember) => u.isActive && u.department === 'Data Management - TA'
+    );
+    activeUsers.sort((a, b) => a.nik.localeCompare(b.nik));
+    return activeUsers;
+  }, [users]);
 
-    if (usersResult.success && usersResult.data) {
-      // Filter: Only show Data Management - TA for Schedule
-      const activeUsers = (usersResult.data as TeamMember[]).filter(
-        (u: TeamMember) => u.isActive && u.department === 'Data Management - TA'
-      );
-      // Sort by NIK
-      activeUsers.sort((a, b) => a.nik.localeCompare(b.nik));
-      setTeamMembers(activeUsers);
-      // Find user matching authenticated session
-      if (authUser?.id) {
-        setCurrentUser(
-          activeUsers.find((u: TeamMember) => u.id === authUser.id) ||
-            activeUsers[0]
-        );
-      }
-    }
-    if (schedResult.success && schedResult.data) {
-      setScheduleEntries(schedResult.data as Schedule[]);
-      // Get shift colors from API response
-      const resultWithColors = schedResult as unknown as {
-        shiftColors?: Record<string, string | null>;
-      };
-      if (resultWithColors.shiftColors) {
-        setShiftColors(resultWithColors.shiftColors);
-      }
-    }
-    // Also fetch shift settings for legend
-    const shiftsResult = await shiftsAPI.getAll();
-    if (shiftsResult.success && shiftsResult.data) {
-      const shifts = shiftsResult.data as {
+  const scheduleEntries = schedules as Schedule[];
+
+  const shiftSettings = useMemo(() => {
+    return (
+      shifts as {
         shiftType: string;
         name: string;
         color: string | null;
         isActive: boolean;
-      }[];
-      setShiftSettings(shifts.filter((s) => s.isActive));
-    }
-    setIsLoading(false);
-  };
+      }[]
+    ).filter((s) => s.isActive);
+  }, [shifts]);
+
+  // Find current user
+  const currentUser = useMemo(() => {
+    if (!authUser?.id) return null;
+    return (
+      teamMembers.find((u: TeamMember) => u.id === authUser.id) ||
+      teamMembers[0]
+    );
+  }, [authUser, teamMembers]);
 
   const getDaysInMonth = (startDate: Date) => {
     const year = startDate.getFullYear();

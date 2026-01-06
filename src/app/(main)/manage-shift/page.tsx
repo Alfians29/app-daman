@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useTransition, useMemo } from 'react';
 import {
   Plus,
   Clock,
@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/Modal';
 import toast from 'react-hot-toast';
 import { shiftsAPI } from '@/lib/api';
+import { useShifts } from '@/lib/swr-hooks';
 
 // ============ TYPES ============
 interface ShiftSetting {
@@ -96,10 +97,12 @@ const getTelegramCommand = (shiftType: string): string | null => {
 };
 
 export default function ManageShiftPage() {
-  const [shifts, setShifts] = useState<ShiftSetting[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
+
+  // SWR hook for cached shifts data
+  const { shifts: rawShifts, isLoading, mutate } = useShifts();
+  const shifts = rawShifts as ShiftSetting[];
 
   // Modal states
   const [showModal, setShowModal] = useState(false);
@@ -117,27 +120,15 @@ export default function ManageShiftPage() {
     color: 'emerald',
   });
 
-  // Fetch data on mount
-  useEffect(() => {
-    loadShifts();
-  }, []);
-
-  const loadShifts = async () => {
-    setIsLoading(true);
-    const result = await shiftsAPI.getAll();
-    if (result.success && result.data) {
-      setShifts(result.data as ShiftSetting[]);
-    } else {
-      toast.error('Gagal memuat data shift');
-    }
-    setIsLoading(false);
-  };
-
   // Filter shifts
-  const filteredShifts = shifts.filter(
-    (shift) =>
-      shift.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      shift.shiftType.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredShifts = useMemo(
+    () =>
+      shifts.filter(
+        (shift) =>
+          shift.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          shift.shiftType.toLowerCase().includes(searchQuery.toLowerCase())
+      ),
+    [shifts, searchQuery]
   );
 
   // Open add modal
@@ -196,7 +187,7 @@ export default function ManageShiftPage() {
 
         if (result.success) {
           toast.success('Shift berhasil diperbarui!');
-          loadShifts();
+          mutate();
         } else {
           toast.error(result.error || 'Gagal memperbarui shift');
         }
@@ -214,7 +205,7 @@ export default function ManageShiftPage() {
 
         if (result.success) {
           toast.success('Shift baru berhasil ditambahkan!');
-          loadShifts();
+          mutate();
         } else {
           toast.error(result.error || 'Gagal menambah shift');
         }
@@ -233,7 +224,7 @@ export default function ManageShiftPage() {
 
       if (result.success) {
         toast.success('Shift berhasil dihapus!');
-        loadShifts();
+        mutate();
       } else {
         toast.error(result.error || 'Gagal menghapus shift');
       }
@@ -250,7 +241,7 @@ export default function ManageShiftPage() {
 
       if (result.success) {
         toast.success('Status shift diubah!');
-        loadShifts();
+        mutate();
       } else {
         toast.error(result.error || 'Gagal mengubah status');
       }

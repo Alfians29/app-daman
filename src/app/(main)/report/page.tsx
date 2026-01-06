@@ -30,16 +30,17 @@ import {
   FormGroup,
   FormSection,
 } from '@/components/ui/Form';
-import {
-  reportsAPI,
-  jobTypesAPI,
-  usersAPI,
-  scheduleAPI,
-  shiftsAPI,
-} from '@/lib/api';
+import { reportsAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { useCurrentUser } from '@/components/AuthGuard';
 import { getLocalDateString, getShiftColorClasses } from '@/lib/utils';
+import {
+  useUsers,
+  useShifts,
+  useSchedule,
+  useJobTypes,
+  useReports,
+} from '@/lib/swr-hooks';
 
 type ReportTask = {
   id: string;
@@ -77,92 +78,82 @@ type Schedule = {
 
 export default function ReportPage() {
   const [selectedDate, setSelectedDate] = useState(getLocalDateString());
-  const [reports, setReports] = useState<DailyReport[]>([]);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [scheduleEntries, setScheduleEntries] = useState<Schedule[]>([]);
-  const [jobTypes, setJobTypes] = useState<JobType[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [viewingReport, setViewingReport] = useState<DailyReport | null>(null);
   const [editingReport, setEditingReport] = useState<DailyReport | null>(null);
   const [tasks, setTasks] = useState<ReportTask[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const { user: authUser, isLoading: authLoading } = useCurrentUser();
-  const [currentUser, setCurrentUser] = useState<TeamMember | null>(null);
-  const [shiftSettings, setShiftSettings] = useState<
-    { shiftType: string; name: string; color: string | null }[]
-  >([]);
   const [showMyHistory, setShowMyHistory] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
   const historyItemsPerPage = 15;
 
-  useEffect(() => {
-    if (!authLoading && authUser) {
-      loadData();
-    }
-  }, [authLoading, authUser]);
+  // Get current month/year for filtering
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  const dateFrom = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+  const lastDay = new Date(currentYear, currentMonth, 0).getDate();
+  const dateTo = `${currentYear}-${String(currentMonth).padStart(
+    2,
+    '0'
+  )}-${String(lastDay).padStart(2, '0')}`;
 
-  const loadData = async () => {
-    setIsLoading(true);
+  // SWR hooks for cached data
+  const { users, isLoading: usersLoading } = useUsers();
+  const { shifts, isLoading: shiftsLoading } = useShifts();
+  const { schedules, isLoading: schedLoading } = useSchedule(
+    currentMonth,
+    currentYear
+  );
+  const { jobTypes: rawJobTypes, isLoading: jobsLoading } = useJobTypes();
+  const {
+    reports: rawReports,
+    isLoading: reportsLoading,
+    mutate: mutateReports,
+  } = useReports(dateFrom, dateTo);
 
-    // Get current month/year for filtering
-    const now = new Date();
-    const currentMonth = now.getMonth() + 1;
-    const currentYear = now.getFullYear();
+  const isLoading =
+    authLoading ||
+    usersLoading ||
+    shiftsLoading ||
+    schedLoading ||
+    jobsLoading ||
+    reportsLoading;
 
-    // Load current month reports only
-    const dateFrom = `${currentYear}-${String(currentMonth).padStart(
-      2,
-      '0'
-    )}-01`;
-    const lastDay = new Date(currentYear, currentMonth, 0).getDate();
-    const dateTo = `${currentYear}-${String(currentMonth).padStart(
-      2,
-      '0'
-    )}-${String(lastDay).padStart(2, '0')}`;
+  // Process data with useMemo
+  const teamMembers = useMemo(() => {
+    return (users as TeamMember[]).filter(
+      (u: TeamMember) => u.isActive && u.department === 'Data Management - TA'
+    );
+  }, [users]);
 
-    const [reportsRes, usersRes, schedRes, jobsRes, shiftsRes] =
-      await Promise.all([
-        reportsAPI.getAll({ dateFrom, dateTo }),
-        usersAPI.getAll(),
-        scheduleAPI.getAll({ month: currentMonth, year: currentYear }),
-        jobTypesAPI.getAll(),
-        shiftsAPI.getAll(),
-      ]);
-    if (reportsRes.success && reportsRes.data)
-      setReports(reportsRes.data as DailyReport[]);
-    if (usersRes.success && usersRes.data) {
-      // Filter: Only show Data Management - TA for Report
-      const activeUsers = (usersRes.data as TeamMember[]).filter(
-        (u: TeamMember) => u.isActive && u.department === 'Data Management - TA'
-      );
-      setTeamMembers(activeUsers);
-      // Find user matching authenticated session
-      if (authUser?.id) {
-        setCurrentUser(
-          activeUsers.find((u: TeamMember) => u.id === authUser.id) ||
-            activeUsers[0]
-        );
-      }
-    }
-    if (schedRes.success && schedRes.data)
-      setScheduleEntries(schedRes.data as Schedule[]);
-    if (jobsRes.success && jobsRes.data)
-      setJobTypes(
-        (jobsRes.data as JobType[]).filter((j: JobType) => j.isActive)
-      );
-    if (shiftsRes.success && shiftsRes.data) {
-      const shifts = shiftsRes.data as {
+  const currentUser = useMemo(() => {
+    if (!authUser?.id) return null;
+    return (
+      teamMembers.find((u: TeamMember) => u.id === authUser.id) ||
+      teamMembers[0] ||
+      null
+    );
+  }, [authUser, teamMembers]);
+
+  const reports = rawReports as DailyReport[];
+  const scheduleEntries = schedules as Schedule[];
+  const jobTypes = useMemo(() => {
+    return (rawJobTypes as JobType[]).filter((j: JobType) => j.isActive);
+  }, [rawJobTypes]);
+
+  const shiftSettings = useMemo(() => {
+    return (
+      shifts as {
         shiftType: string;
         name: string;
         color: string | null;
         isActive: boolean;
-      }[];
-      setShiftSettings(shifts.filter((s) => s.isActive));
-    }
-    setIsLoading(false);
-  };
+      }[]
+    ).filter((s) => s.isActive);
+  }, [shifts]);
 
   const getMemberSchedule = (memberId: string, date: string) =>
     scheduleEntries.find(
@@ -276,7 +267,7 @@ export default function ReportPage() {
         });
         if (result.success) {
           toast.success('Report diupdate!');
-          loadData();
+          mutateReports();
         } else toast.error(result.error || 'Gagal update');
       } else {
         if (!currentUser || hasReportForDate(currentUser.id, selectedDate)) {
@@ -291,7 +282,7 @@ export default function ReportPage() {
         });
         if (result.success) {
           toast.success('Report ditambahkan!');
-          loadData();
+          mutateReports();
         } else toast.error(result.error || 'Gagal simpan');
       }
       setShowModal(false);

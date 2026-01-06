@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import {
@@ -22,7 +22,7 @@ import {
   ModalBody,
   ModalFooter,
 } from '@/components/ui/Modal';
-import { usersAPI } from '@/lib/api';
+import { useUsers } from '@/lib/swr-hooks';
 
 type TeamMember = {
   id: string;
@@ -44,22 +44,15 @@ export default function AboutPage() {
   const [filterPosition, setFilterPosition] = useState<string>('all');
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [showOrgChart, setShowOrgChart] = useState(true);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
 
-  useEffect(() => {
-    loadMembers();
-  }, []);
+  // SWR hook for cached users data
+  const { users, isLoading } = useUsers();
 
-  const loadMembers = async () => {
-    setIsLoading(true);
-    const result = await usersAPI.getAll();
-    if (result.success && result.data) {
-      setTeamMembers((result.data as TeamMember[]).filter((m) => m.isActive));
-    }
-    setIsLoading(false);
-  };
+  // Filter active members
+  const teamMembers = useMemo(() => {
+    return (users as TeamMember[]).filter((m) => m.isActive);
+  }, [users]);
 
   const filteredMembers = teamMembers.filter((member) => {
     const matchesSearch =

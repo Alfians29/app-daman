@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useTransition, useMemo, useEffect } from 'react';
 import {
   Plus,
   Edit2,
@@ -27,6 +27,7 @@ import {
 import { Input, Select, FormRow } from '@/components/ui/Form';
 import toast from 'react-hot-toast';
 import { usersAPI } from '@/lib/api';
+import { useUsers, useRoles } from '@/lib/swr-hooks';
 
 type User = {
   id: string;
@@ -78,10 +79,15 @@ const departmentOptions = [
 export default function AdminTeamPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPosition, setFilterPosition] = useState<string>('all');
-  const [members, setMembers] = useState<User[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
+
+  // SWR hooks for cached data
+  const { users, isLoading: usersLoading, mutate: mutateUsers } = useUsers();
+  const { roles: rawRoles, isLoading: rolesLoading } = useRoles();
+  const members = users as User[];
+  const roles = rawRoles as Role[];
+
+  const isLoading = usersLoading || rolesLoading;
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -104,41 +110,29 @@ export default function AdminTeamPage() {
     roleId: '',
   });
 
+  // Set default roleId when roles load
   useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setIsLoading(true);
-    const [usersResult, rolesResult] = await Promise.all([
-      usersAPI.getAll(),
-      usersAPI.getRolesForSelect(),
-    ]);
-
-    if (usersResult.success) setMembers(usersResult.data as User[]);
-    if (rolesResult.success) {
-      const rolesData = rolesResult.data as Role[];
-      setRoles(rolesData);
-      // Set default roleId if available
-      if (rolesData && rolesData.length > 0) {
-        const memberRole = rolesData.find((r) => r.name === 'Member');
-        if (memberRole) {
-          setFormData((prev) => ({ ...prev, roleId: memberRole.id }));
-        }
+    if (roles.length > 0 && !formData.roleId) {
+      const memberRole = roles.find((r) => r.name === 'Member');
+      if (memberRole) {
+        setFormData((prev) => ({ ...prev, roleId: memberRole.id }));
       }
     }
-    setIsLoading(false);
-  };
+  }, [roles, formData.roleId]);
 
-  const filteredMembers = members.filter((member) => {
-    const matchesSearch =
-      member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.nik.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.username.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesPosition =
-      filterPosition === 'all' || member.position === filterPosition;
-    return matchesSearch && matchesPosition;
-  });
+  const filteredMembers = useMemo(
+    () =>
+      members.filter((member) => {
+        const matchesSearch =
+          member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          member.nik.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          member.username.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesPosition =
+          filterPosition === 'all' || member.position === filterPosition;
+        return matchesSearch && matchesPosition;
+      }),
+    [members, searchQuery, filterPosition]
+  );
 
   // Add member
   const handleAdd = async () => {
@@ -174,7 +168,7 @@ export default function AdminTeamPage() {
 
       if (result.success) {
         toast.success('Member berhasil ditambahkan!');
-        loadData();
+        mutateUsers();
         setShowAddModal(false);
         resetForm();
       } else {
@@ -203,7 +197,7 @@ export default function AdminTeamPage() {
 
       if (result.success) {
         toast.success('Member berhasil diubah!');
-        loadData();
+        mutateUsers();
         setShowEditModal(false);
         setSelectedMember(null);
         resetForm();
@@ -222,7 +216,7 @@ export default function AdminTeamPage() {
 
       if (result.success) {
         toast.success('Member berhasil dihapus!');
-        loadData();
+        mutateUsers();
         setShowDeleteModal(false);
         setSelectedMember(null);
       } else {

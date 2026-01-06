@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Users,
   Clock,
@@ -17,9 +17,14 @@ import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { FilterBar } from '@/components/ui/FilterBar';
 import { SkeletonPage } from '@/components/ui/Skeleton';
-import { attendanceAPI, usersAPI, scheduleAPI, shiftsAPI } from '@/lib/api';
 import { useCurrentUser } from '@/components/AuthGuard';
 import { getShiftColorClasses, getLocalDateString } from '@/lib/utils';
+import {
+  useUsers,
+  useShifts,
+  useSchedule,
+  useAttendance,
+} from '@/lib/swr-hooks';
 
 type AttendanceRecord = {
   id: string;
@@ -82,82 +87,64 @@ export default function AttendancePage() {
   const itemsPerPage = 10;
   const [periodType, setPeriodType] = useState<'monthly' | '16-15'>('16-15');
 
-  const [attendanceRecords, setAttendanceRecords] = useState<
-    AttendanceRecord[]
-  >([]);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [scheduleEntries, setScheduleEntries] = useState<Schedule[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [shiftSettings, setShiftSettings] = useState<
-    { shiftType: string; name: string; color: string | null }[]
-  >([]);
   const { user: authUser, isLoading: authLoading } = useCurrentUser();
-  const [currentUser, setCurrentUser] = useState<TeamMember | null>(null);
 
-  useEffect(() => {
-    if (!authLoading && authUser) {
-      loadData();
-    }
-  }, [authLoading, authUser]);
+  // Calculate date range for SWR - 2 months back for 16-15 period
+  const now = new Date();
+  const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+  const loadDateFrom = `${twoMonthsAgo.getFullYear()}-${String(
+    twoMonthsAgo.getMonth() + 1
+  ).padStart(2, '0')}-01`;
+  const loadDateTo = `${now.getFullYear()}-${String(
+    now.getMonth() + 1
+  ).padStart(2, '0')}-${String(
+    new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  ).padStart(2, '0')}`;
 
-  const loadData = async () => {
-    setIsLoading(true);
+  // SWR hooks for cached data
+  const { users, isLoading: usersLoading } = useUsers();
+  const { shifts, isLoading: shiftsLoading } = useShifts();
+  const { schedules, isLoading: schedLoading } = useSchedule(
+    now.getMonth() + 1,
+    now.getFullYear()
+  );
+  const { attendance, isLoading: attLoading } = useAttendance(
+    loadDateFrom,
+    loadDateTo
+  );
 
-    // Calculate date range for loading - 2 months back for 16-15 period
-    const now = new Date();
-    const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-    const dateFrom = `${twoMonthsAgo.getFullYear()}-${String(
-      twoMonthsAgo.getMonth() + 1
-    ).padStart(2, '0')}-01`;
-    const dateTo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
-      2,
-      '0'
-    )}-${String(
-      new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-    ).padStart(2, '0')}`;
+  const isLoading =
+    authLoading || usersLoading || shiftsLoading || schedLoading || attLoading;
 
-    const [attResult, usersResult, schedResult, shiftsResult] =
-      await Promise.all([
-        attendanceAPI.getAll({ dateFrom, dateTo }),
-        usersAPI.getAll(),
-        scheduleAPI.getAll({
-          month: now.getMonth() + 1,
-          year: now.getFullYear(),
-        }),
-        shiftsAPI.getAll(),
-      ]);
+  // Process data with useMemo
+  const teamMembers = useMemo(() => {
+    return (users as TeamMember[]).filter(
+      (u: TeamMember) => u.isActive && u.department === 'Data Management - TA'
+    );
+  }, [users]);
 
-    if (attResult.success && attResult.data) {
-      setAttendanceRecords(attResult.data as AttendanceRecord[]);
-    }
-    if (usersResult.success && usersResult.data) {
-      // Filter: Only show Data Management - TA for Attendance
-      const activeUsers = (usersResult.data as TeamMember[]).filter(
-        (u: TeamMember) => u.isActive && u.department === 'Data Management - TA'
-      );
-      setTeamMembers(activeUsers);
-      // Find user matching authenticated session
-      if (authUser?.id) {
-        setCurrentUser(
-          activeUsers.find((u: TeamMember) => u.id === authUser.id) ||
-            activeUsers[0]
-        );
-      }
-    }
-    if (schedResult.success && schedResult.data) {
-      setScheduleEntries(schedResult.data as Schedule[]);
-    }
-    if (shiftsResult.success && shiftsResult.data) {
-      const shifts = shiftsResult.data as {
+  const currentUser = useMemo(() => {
+    if (!authUser?.id) return null;
+    return (
+      teamMembers.find((u: TeamMember) => u.id === authUser.id) ||
+      teamMembers[0] ||
+      null
+    );
+  }, [authUser, teamMembers]);
+
+  const attendanceRecords = attendance as AttendanceRecord[];
+  const scheduleEntries = schedules as Schedule[];
+
+  const shiftSettings = useMemo(() => {
+    return (
+      shifts as {
         shiftType: string;
         name: string;
         color: string | null;
         isActive: boolean;
-      }[];
-      setShiftSettings(shifts.filter((s) => s.isActive));
-    }
-    setIsLoading(false);
-  };
+      }[]
+    ).filter((s) => s.isActive);
+  }, [shifts]);
 
   const { startDate, endDate } = getCurrentPeriod(periodType);
 
