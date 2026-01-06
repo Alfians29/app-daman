@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useMemo, useTransition } from 'react';
 import {
   Edit2,
   Trash2,
@@ -28,8 +28,9 @@ import {
 } from '@/components/ui/Modal';
 import { Input, Select } from '@/components/ui/Form';
 import toast from 'react-hot-toast';
-import { attendanceAPI, usersAPI, shiftsAPI } from '@/lib/api';
+import { attendanceAPI } from '@/lib/api';
 import { getShiftColorClasses, getLocalDateString } from '@/lib/utils';
+import { useUsers, useShifts, useAttendance } from '@/lib/swr-hooks';
 
 type AttendanceRecord = {
   id: string;
@@ -80,18 +81,6 @@ export default function AdminAttendancePage() {
   const [selectedDate, setSelectedDate] = useState(getLocalDateString());
   const [filterKeterangan, setFilterKeterangan] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [records, setRecords] = useState<AttendanceRecord[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [shiftOptions, setShiftOptions] = useState<
-    { value: string; label: string; color: string | null }[]
-  >([]);
-  const [keteranganLabels, setKeteranganLabels] = useState<
-    Record<string, string>
-  >(defaultKeteranganLabels);
-  const [shiftColors, setShiftColors] = useState<Record<string, string | null>>(
-    {}
-  );
-  const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
 
   // Modal states
@@ -118,58 +107,63 @@ export default function AdminAttendancePage() {
     status: 'ONTIME',
   });
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // Calculate date range for current month
+  const targetDate = new Date(selectedDate);
+  const month = targetDate.getMonth();
+  const year = targetDate.getFullYear();
+  const dateFrom = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const dateTo = `${year}-${String(month + 1).padStart(2, '0')}-${String(
+    lastDay
+  ).padStart(2, '0')}`;
 
-  const loadData = async () => {
-    setIsLoading(true);
-    const [attendanceResult, usersResult, shiftsResult] = await Promise.all([
-      attendanceAPI.getAll(),
-      usersAPI.getAll(),
-      shiftsAPI.getAll(),
-    ]);
+  // SWR hooks for cached data
+  const { users, isLoading: usersLoading } = useUsers();
+  const { shifts, isLoading: shiftsLoading } = useShifts();
+  const {
+    attendance,
+    isLoading: attLoading,
+    mutate: mutateAttendance,
+  } = useAttendance(dateFrom, dateTo);
 
-    if (attendanceResult.success) {
-      setRecords(attendanceResult.data as AttendanceRecord[]);
-    }
-    if (usersResult.success) {
-      setMembers(usersResult.data as Member[]);
-    }
-    if (shiftsResult.success && shiftsResult.data) {
-      const shifts = shiftsResult.data as {
-        shiftType: string;
-        name: string;
-        color: string | null;
-        isActive: boolean;
-      }[];
-      // Filter only active shifts
-      const activeShifts = shifts.filter((s) => s.isActive);
-      // Create options for dropdown
-      const options = activeShifts.map((s) => ({
-        value: s.shiftType,
-        label: s.name,
-        color: s.color,
-      }));
-      setShiftOptions(
-        options.length > 0
-          ? options
-          : defaultKeteranganOptions.map((o) => ({ ...o, color: null }))
-      );
-      // Create labels map
-      const labels: Record<string, string> = {};
-      const colors: Record<string, string | null> = {};
-      activeShifts.forEach((s) => {
-        labels[s.shiftType] = s.name;
-        colors[s.shiftType] = s.color;
-      });
-      setKeteranganLabels(
-        Object.keys(labels).length > 0 ? labels : defaultKeteranganLabels
-      );
-      setShiftColors(colors);
-    }
-    setIsLoading(false);
-  };
+  const isLoading = usersLoading || shiftsLoading || attLoading;
+
+  // Process data with useMemo
+  const members = users as Member[];
+  const records = attendance as AttendanceRecord[];
+
+  const { shiftOptions, keteranganLabels, shiftColors } = useMemo(() => {
+    const rawShifts = shifts as {
+      shiftType: string;
+      name: string;
+      color: string | null;
+      isActive: boolean;
+    }[];
+    const activeShifts = rawShifts.filter((s) => s.isActive);
+
+    const options =
+      activeShifts.length > 0
+        ? activeShifts.map((s) => ({
+            value: s.shiftType,
+            label: s.name,
+            color: s.color,
+          }))
+        : defaultKeteranganOptions.map((o) => ({ ...o, color: null }));
+
+    const labels: Record<string, string> = {};
+    const colors: Record<string, string | null> = {};
+    activeShifts.forEach((s) => {
+      labels[s.shiftType] = s.name;
+      colors[s.shiftType] = s.color;
+    });
+
+    return {
+      shiftOptions: options,
+      keteranganLabels:
+        Object.keys(labels).length > 0 ? labels : defaultKeteranganLabels,
+      shiftColors: colors,
+    };
+  }, [shifts]);
 
   const filteredRecords = records.filter((record) => {
     const memberName = record.member?.name || '';
@@ -233,7 +227,7 @@ export default function AdminAttendancePage() {
 
       if (result.success) {
         toast.success('Data kehadiran berhasil ditambahkan!');
-        loadData();
+        mutateAttendance();
         setShowAddModal(false);
         resetForm();
       } else {
@@ -256,7 +250,7 @@ export default function AdminAttendancePage() {
 
       if (result.success) {
         toast.success('Data kehadiran berhasil diubah!');
-        loadData();
+        mutateAttendance();
         setShowEditModal(false);
         setSelectedRecord(null);
         resetForm();
@@ -275,7 +269,7 @@ export default function AdminAttendancePage() {
 
       if (result.success) {
         toast.success('Data kehadiran berhasil dihapus!');
-        loadData();
+        mutateAttendance();
         setShowDeleteModal(false);
         setSelectedRecord(null);
       } else {

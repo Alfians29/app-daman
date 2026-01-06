@@ -26,6 +26,7 @@ import { Input } from '@/components/ui/Form';
 import toast from 'react-hot-toast';
 import { activitiesAPI } from '@/lib/api';
 import { getLocalDateString } from '@/lib/utils';
+import { useActivities } from '@/lib/swr-hooks';
 
 type AuditLog = {
   id: string;
@@ -41,63 +42,75 @@ type AuditLog = {
 
 const ITEMS_PER_PAGE = 10;
 
+type Stats = {
+  total: number;
+  today: number;
+  create: number;
+  update: number;
+  delete: number;
+};
+
 export default function AuditLogPage() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
 
   // Export date range
   const [exportStartDate, setExportStartDate] = useState(getLocalDateString());
   const [exportEndDate, setExportEndDate] = useState(getLocalDateString());
 
+  // Debounce search query
   useEffect(() => {
-    loadActivities();
-  }, []);
-
-  const loadActivities = async () => {
-    setIsLoading(true);
-    const result = await activitiesAPI.getAll(500);
-    if (result.success && result.data) {
-      setLogs(result.data as AuditLog[]);
-    }
-    setIsLoading(false);
-  };
-
-  const filteredLogs = useMemo(() => {
-    return logs.filter((log) => {
-      const matchesSearch =
-        log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        log.target.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        log.user.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesType = filterType === 'all' || log.type === filterType;
-
-      let matchesDate = true;
-      const logDate = new Date(log.createdAt).toISOString().split('T')[0];
-      if (dateFrom) matchesDate = matchesDate && logDate >= dateFrom;
-      if (dateTo) matchesDate = matchesDate && logDate <= dateTo;
-
-      return matchesSearch && matchesType && matchesDate;
-    });
-  }, [logs, searchQuery, filterType, dateFrom, dateTo]);
-
-  // Pagination
-  const totalPages = Math.ceil(filteredLogs.length / ITEMS_PER_PAGE);
-  const paginatedLogs = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredLogs.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredLogs, currentPage]);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterType, dateFrom, dateTo]);
+  }, [filterType, dateFrom, dateTo]);
+
+  // SWR hook for cached data with per-page caching
+  const {
+    activities,
+    total,
+    stats: rawStats,
+    isLoading,
+  } = useActivities({
+    page: currentPage,
+    limit: ITEMS_PER_PAGE,
+    type: filterType !== 'all' ? filterType : undefined,
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+    search: debouncedSearch || undefined,
+  });
+
+  const logs = activities as AuditLog[];
+  const totalLogs = total;
+
+  const stats = useMemo(() => {
+    return (
+      rawStats || {
+        total: 0,
+        today: 0,
+        create: 0,
+        update: 0,
+        delete: 0,
+      }
+    );
+  }, [rawStats]);
+
+  // Server-side pagination
+  const totalPages = Math.ceil(totalLogs / ITEMS_PER_PAGE);
 
   const types = [
     { value: 'CREATE', label: 'Tambah', icon: Plus },
@@ -165,16 +178,6 @@ export default function AuditLogPage() {
   const openDetailModal = (log: AuditLog) => {
     setSelectedLog(log);
     setShowDetailModal(true);
-  };
-
-  const stats = {
-    total: logs.length,
-    today: logs.filter(
-      (l) => new Date(l.createdAt).toDateString() === new Date().toDateString()
-    ).length,
-    create: logs.filter((l) => l.type === 'CREATE').length,
-    update: logs.filter((l) => l.type === 'UPDATE').length,
-    delete: logs.filter((l) => l.type === 'DELETE').length,
   };
 
   if (isLoading) {
@@ -306,7 +309,7 @@ export default function AuditLogPage() {
               </tr>
             </thead>
             <tbody className='divide-y divide-gray-100'>
-              {paginatedLogs.length === 0 ? (
+              {logs.length === 0 ? (
                 <tr>
                   <td
                     colSpan={6}
@@ -316,7 +319,7 @@ export default function AuditLogPage() {
                   </td>
                 </tr>
               ) : (
-                paginatedLogs.map((log) => (
+                logs.map((log: AuditLog) => (
                   <tr key={log.id} className='hover:bg-gray-50'>
                     <td className='px-4 py-3 text-sm text-gray-600'>
                       {new Date(log.createdAt).toLocaleString('id-ID')}
@@ -367,8 +370,8 @@ export default function AuditLogPage() {
           <div className='flex items-center justify-between px-4 py-3 border-t border-gray-100'>
             <p className='text-sm text-gray-500'>
               Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} -{' '}
-              {Math.min(currentPage * ITEMS_PER_PAGE, filteredLogs.length)} dari{' '}
-              {filteredLogs.length} log
+              {Math.min(currentPage * ITEMS_PER_PAGE, totalLogs)} dari{' '}
+              {totalLogs} log
             </p>
             <div className='flex items-center gap-2'>
               <button

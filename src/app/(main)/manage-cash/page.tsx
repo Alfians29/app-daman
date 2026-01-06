@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useMemo, useTransition } from 'react';
 import {
   Plus,
   Edit2,
@@ -27,8 +27,9 @@ import {
 } from '@/components/ui/Modal';
 import { Input, Select } from '@/components/ui/Form';
 import toast from 'react-hot-toast';
-import { cashAPI, usersAPI, cashSettingsAPI } from '@/lib/api';
+import { cashAPI, cashSettingsAPI } from '@/lib/api';
 import { getLocalDateString } from '@/lib/utils';
+import { useUsers, useCash, useCashSettings } from '@/lib/swr-hooks';
 
 type CashEntry = {
   id: string;
@@ -76,9 +77,6 @@ export default function AdminCashPage() {
   const [dateTo, setDateTo] = useState('');
   const [memberFilter, setMemberFilter] = useState<string>('all');
 
-  const [entries, setEntries] = useState<CashEntry[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -104,11 +102,33 @@ export default function AdminCashPage() {
     selectedMonths: [],
   });
 
-  // Cash settings
-  const [monthlyFee, setMonthlyFee] = useState<number>(15000);
+  // Cash settings modal
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [tempMonthlyFee, setTempMonthlyFee] = useState<number>(15000);
   const currentYear = new Date().getFullYear();
+
+  // SWR hooks for cached data
+  const { users, isLoading: usersLoading } = useUsers();
+  const {
+    cashEntries: rawCashEntries,
+    isLoading: cashLoading,
+    mutate: mutateCash,
+  } = useCash();
+  const {
+    settings: cashSettings,
+    isLoading: settingsLoading,
+    mutate: mutateSettings,
+  } = useCashSettings();
+
+  const isLoading = usersLoading || cashLoading || settingsLoading;
+
+  // Process data with useMemo
+  const members = users as Member[];
+  const entries = rawCashEntries as CashEntry[];
+
+  const monthlyFee = useMemo(() => {
+    return parseInt(cashSettings['monthly_fee'] || '15000', 10);
+  }, [cashSettings]);
 
   const MONTHS = [
     { value: '01', label: 'Januari' },
@@ -124,28 +144,6 @@ export default function AdminCashPage() {
     { value: '11', label: 'November' },
     { value: '12', label: 'Desember' },
   ];
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setIsLoading(true);
-    const [cashResult, usersResult, settingsResult] = await Promise.all([
-      cashAPI.getAll(),
-      usersAPI.getAll(),
-      cashSettingsAPI.getAll(),
-    ]);
-
-    if (cashResult.success) setEntries(cashResult.data as CashEntry[]);
-    if (usersResult.success) setMembers(usersResult.data as Member[]);
-    if (settingsResult.success && settingsResult.data) {
-      const fee = parseInt(settingsResult.data['monthly_fee'] || '15000', 10);
-      setMonthlyFee(fee);
-      setTempMonthlyFee(fee);
-    }
-    setIsLoading(false);
-  };
 
   const filteredEntries = entries.filter((entry) => {
     const matchesSearch = entry.description
@@ -197,7 +195,7 @@ export default function AdminCashPage() {
 
       if (result.success) {
         toast.success('Transaksi berhasil ditambahkan!');
-        loadData();
+        mutateCash();
         setShowAddModal(false);
         resetForm();
       } else {
@@ -221,7 +219,7 @@ export default function AdminCashPage() {
 
       if (result.success) {
         toast.success('Transaksi berhasil diubah!');
-        loadData();
+        mutateCash();
         setShowEditModal(false);
         setSelectedEntry(null);
         resetForm();
@@ -239,7 +237,7 @@ export default function AdminCashPage() {
 
       if (result.success) {
         toast.success('Transaksi berhasil dihapus!');
-        loadData();
+        mutateCash();
         setShowDeleteModal(false);
         setSelectedEntry(null);
       } else {
@@ -310,7 +308,7 @@ export default function AdminCashPage() {
         'Tarif kas bulanan per orang'
       );
       if (result.success) {
-        setMonthlyFee(tempMonthlyFee);
+        mutateSettings();
         toast.success('Pengaturan kas berhasil disimpan!');
         setShowSettingsModal(false);
       } else {

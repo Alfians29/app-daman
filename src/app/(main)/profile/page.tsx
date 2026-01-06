@@ -12,16 +12,17 @@ import {
 } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Form';
 import { SkeletonProfile } from '@/components/ui/Skeleton';
-import {
-  usersAPI,
-  attendanceAPI,
-  scheduleAPI,
-  activitiesAPI,
-  shiftsAPI,
-} from '@/lib/api';
+import { usersAPI } from '@/lib/api';
 import { useCurrentUser } from '@/components/AuthGuard';
 import { getLocalDateString, getShiftColorClasses } from '@/lib/utils';
 import { compressImage } from '@/lib/imageUtils';
+import {
+  useUsers,
+  useShifts,
+  useSchedule,
+  useAttendance,
+  useActivities,
+} from '@/lib/swr-hooks';
 import {
   Mail,
   Phone,
@@ -85,16 +86,6 @@ type ActivityLog = {
 
 export default function ProfilePage() {
   const { user: authUser, isLoading: authLoading } = useCurrentUser();
-  const [currentUser, setCurrentUser] = useState<UserData | null>(null);
-  const [attendanceRecords, setAttendanceRecords] = useState<
-    AttendanceRecord[]
-  >([]);
-  const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([]);
-  const [recentActivities, setRecentActivities] = useState<ActivityLog[]>([]);
-  const [shiftSettings, setShiftSettings] = useState<
-    { shiftType: string; name: string; color: string | null }[]
-  >([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -125,58 +116,58 @@ export default function ProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
+  // SWR hooks for cached data
+  const { users, isLoading: usersLoading, mutate: mutateUsers } = useUsers();
+  const { shifts, isLoading: shiftsLoading } = useShifts();
+  const { schedules, isLoading: schedLoading } = useSchedule();
+  const { attendance, isLoading: attLoading } = useAttendance();
+  const { activities, isLoading: activitiesLoading } = useActivities({
+    limit: 10,
+  });
+
+  const isLoading =
+    authLoading ||
+    usersLoading ||
+    shiftsLoading ||
+    schedLoading ||
+    attLoading ||
+    activitiesLoading;
+
+  // Process data with useMemo
+  const currentUser = useMemo(() => {
+    if (!authUser?.id) return null;
+    return (
+      (users as UserData[]).find((u: UserData) => u.id === authUser.id) || null
+    );
+  }, [users, authUser]);
+
+  const attendanceRecords = attendance as AttendanceRecord[];
+  const scheduleEntries = schedules as ScheduleEntry[];
+  const recentActivities = activities as ActivityLog[];
+
+  const shiftSettings = useMemo(() => {
+    return (
+      shifts as {
+        shiftType: string;
+        name: string;
+        color: string | null;
+        isActive: boolean;
+      }[]
+    ).filter((s) => s.isActive);
+  }, [shifts]);
+
+  // Update form when currentUser changes
   useEffect(() => {
-    if (!authLoading && authUser?.id) {
-      loadData();
+    if (currentUser) {
+      setEditForm({
+        name: currentUser.name || '',
+        nickname: currentUser.nickname || '',
+        email: currentUser.email || '',
+        phone: currentUser.phone || '',
+        usernameTelegram: currentUser.usernameTelegram || '',
+      });
     }
-  }, [authLoading, authUser]);
-
-  const loadData = async () => {
-    setIsLoading(true);
-    const [usersRes, attRes, schedRes, activitiesRes, shiftRes] =
-      await Promise.all([
-        usersAPI.getAll(),
-        attendanceAPI.getAll(),
-        scheduleAPI.getAll(),
-        activitiesAPI.getAll(),
-        shiftsAPI.getAll(),
-      ]);
-
-    if (usersRes.success && usersRes.data && authUser?.id) {
-      const userData = (usersRes.data as UserData[]).find(
-        (u: UserData) => u.id === authUser.id
-      );
-      if (userData) {
-        setCurrentUser(userData);
-        setEditForm({
-          name: userData.name || '',
-          nickname: userData.nickname || '',
-          email: userData.email || '',
-          phone: userData.phone || '',
-          usernameTelegram: userData.usernameTelegram || '',
-        });
-      }
-    }
-    if (attRes.success && attRes.data) {
-      setAttendanceRecords(attRes.data as AttendanceRecord[]);
-    }
-    if (schedRes.success && schedRes.data) {
-      setScheduleEntries(schedRes.data as ScheduleEntry[]);
-    }
-    if (activitiesRes.success && activitiesRes.data) {
-      setRecentActivities(activitiesRes.data as ActivityLog[]);
-    }
-    if (shiftRes.success && shiftRes.data) {
-      setShiftSettings(
-        shiftRes.data as {
-          shiftType: string;
-          name: string;
-          color: string | null;
-        }[]
-      );
-    }
-    setIsLoading(false);
-  };
+  }, [currentUser]);
 
   // Calculate user stats
   const userAttendance = useMemo(
@@ -238,7 +229,7 @@ export default function ProfilePage() {
       if (result.success) {
         toast.success('Profil berhasil diperbarui!');
         setShowEditModal(false);
-        loadData();
+        mutateUsers();
       } else {
         toast.error(result.error || 'Gagal memperbarui profil');
       }
@@ -323,7 +314,7 @@ export default function ProfilePage() {
           setShowAvatarModal(false);
           setAvatarPreview(null);
           setSelectedFile(null);
-          loadData();
+          mutateUsers();
         } else {
           toast.error(result.error || 'Gagal mengupload foto');
         }

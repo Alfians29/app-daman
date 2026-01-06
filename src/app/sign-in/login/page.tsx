@@ -33,8 +33,14 @@ export default function LoginPage() {
       const result = await authAPI.login(username, password);
 
       if (result.success && result.data) {
-        // Store user data in localStorage
-        localStorage.setItem('user', JSON.stringify(result.data));
+        // Store user data with login timestamp for session expiry
+        localStorage.setItem(
+          'user',
+          JSON.stringify({
+            ...result.data,
+            loginAt: Date.now(),
+          })
+        );
         toast.success('Login berhasil!');
         window.location.href = '/';
       } else {

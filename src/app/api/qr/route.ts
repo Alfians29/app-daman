@@ -3,7 +3,7 @@ import prisma from '@/lib/prisma';
 import { logActivity, getUserIdFromRequest } from '@/lib/activity-logger';
 import * as XLSX from 'xlsx';
 
-// GET all QR data with optional pagination
+// GET all QR data with optional pagination by QR ID groups
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -11,41 +11,88 @@ export async function GET(request: NextRequest) {
     const pageParam = searchParams.get('page');
     const limitParam = searchParams.get('limit');
 
+    // Build where clause for search
     const where: Record<string, unknown> = {};
-    if (qrId) where.qrId = qrId;
+    if (qrId) {
+      where.qrId = { contains: qrId };
+    }
 
-    // If no limit is specified, fetch all data without pagination
     const usePagination = limitParam !== null;
     const page = parseInt(pageParam || '1');
-    const limit = usePagination ? parseInt(limitParam || '50') : undefined;
+    const limit = usePagination ? parseInt(limitParam || '10') : undefined;
 
-    const [entries, total] = await Promise.all([
-      prisma.qRData.findMany({
+    if (usePagination && limit) {
+      // Get distinct QR IDs with pagination
+      const distinctQrIds = await prisma.qRData.findMany({
         where,
-        include: {
-          uploadedBy: { select: { id: true, name: true, nickname: true } },
-        },
-        orderBy: [{ qrId: 'asc' }, { nomorUrut: 'asc' }],
-        ...(usePagination && limit
-          ? { skip: (page - 1) * limit, take: limit }
-          : {}),
-      }),
-      prisma.qRData.count({ where }),
-    ]);
+        distinct: ['qrId'],
+        select: { qrId: true },
+        orderBy: { qrId: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      });
 
-    return NextResponse.json({
-      success: true,
-      data: entries,
-      pagination:
-        usePagination && limit
-          ? {
-              page,
-              limit,
-              total,
-              totalPages: Math.ceil(total / limit),
-            }
-          : { total },
-    });
+      const qrIdList = distinctQrIds.map((d) => d.qrId);
+
+      // Get all entries for these QR IDs
+      const entries =
+        qrIdList.length > 0
+          ? await prisma.qRData.findMany({
+              where: { qrId: { in: qrIdList } },
+              include: {
+                uploadedBy: {
+                  select: { id: true, name: true, nickname: true },
+                },
+              },
+              orderBy: [{ qrId: 'asc' }, { nomorUrut: 'asc' }],
+            })
+          : [];
+
+      // Get total counts
+      const [totalQrIds, total] = await Promise.all([
+        prisma.qRData
+          .findMany({
+            where,
+            distinct: ['qrId'],
+            select: { qrId: true },
+          })
+          .then((r) => r.length),
+        prisma.qRData.count({ where }),
+      ]);
+
+      return NextResponse.json({
+        success: true,
+        data: entries,
+        total,
+        totalQrIds,
+        pagination: {
+          page,
+          limit,
+          totalPages: Math.ceil(totalQrIds / limit),
+        },
+      });
+    } else {
+      // No pagination - return all (for backward compatibility)
+      const [entries, total] = await Promise.all([
+        prisma.qRData.findMany({
+          where,
+          include: {
+            uploadedBy: { select: { id: true, name: true, nickname: true } },
+          },
+          orderBy: [{ qrId: 'asc' }, { nomorUrut: 'asc' }],
+        }),
+        prisma.qRData.count({ where }),
+      ]);
+
+      const totalQrIds = new Set(entries.map((e) => e.qrId)).size;
+
+      return NextResponse.json({
+        success: true,
+        data: entries,
+        total,
+        totalQrIds,
+      });
+    }
   } catch (error) {
     console.error('Error fetching QR data:', error);
     return NextResponse.json(

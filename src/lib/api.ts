@@ -1,13 +1,5 @@
 const API_BASE_URL = '/api';
 
-import {
-  getCache,
-  setCache,
-  invalidateCachePrefix,
-  getCacheKey,
-  getTTLForEndpoint,
-} from './cache';
-
 // Helper to get current user ID from localStorage
 function getCurrentUserId(): string | null {
   if (typeof window === 'undefined') return null;
@@ -24,24 +16,12 @@ function getCurrentUserId(): string | null {
 }
 
 // ============================================
-// GENERIC FETCH WRAPPER WITH CACHING
+// GENERIC FETCH WRAPPER (SWR handles caching)
 // ============================================
 async function fetchAPI<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<{ success: boolean; data?: T; error?: string }> {
-  const method = options.method?.toUpperCase() || 'GET';
-  const isGetRequest = method === 'GET';
-  const cacheKey = getCacheKey(endpoint);
-
-  // Check cache for GET requests
-  if (isGetRequest) {
-    const cached = getCache<{ success: boolean; data?: T }>(cacheKey);
-    if (cached) {
-      return cached;
-    }
-  }
-
   try {
     const userId = getCurrentUserId();
     const headers: Record<string, string> = {
@@ -63,23 +43,6 @@ async function fetchAPI<T>(
 
     if (!res.ok) {
       return { success: false, error: json.error || 'Request failed' };
-    }
-
-    // Cache successful GET responses (skip if TTL is 0 = excluded)
-    if (isGetRequest && json.success) {
-      const ttl = getTTLForEndpoint(endpoint);
-      if (ttl > 0) {
-        setCache(cacheKey, json, ttl);
-      }
-    }
-
-    // Invalidate related cache on mutations (POST, PUT, DELETE, PATCH)
-    if (!isGetRequest && json.success) {
-      // Extract base endpoint (e.g., /users/123 -> users)
-      const baseEndpoint = endpoint.split('/')[1];
-      if (baseEndpoint) {
-        invalidateCachePrefix(baseEndpoint);
-      }
     }
 
     return json;
@@ -135,8 +98,23 @@ export const usersAPI = {
 // ACTIVITIES API
 // ============================================
 export const activitiesAPI = {
-  getAll: (limit?: number) =>
-    fetchAPI(`/activities${limit ? `?limit=${limit}` : ''}`),
+  getAll: (params?: {
+    limit?: number;
+    page?: number;
+    type?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    search?: string;
+  }) => {
+    const query = new URLSearchParams();
+    if (params?.limit) query.set('limit', params.limit.toString());
+    if (params?.page) query.set('page', params.page.toString());
+    if (params?.type && params.type !== 'all') query.set('type', params.type);
+    if (params?.dateFrom) query.set('dateFrom', params.dateFrom);
+    if (params?.dateTo) query.set('dateTo', params.dateTo);
+    if (params?.search) query.set('search', params.search);
+    return fetchAPI(`/activities${query.toString() ? `?${query}` : ''}`);
+  },
   log: (data: Record<string, unknown>) =>
     fetchAPI('/activities', { method: 'POST', body: JSON.stringify(data) }),
 };
@@ -152,10 +130,17 @@ export const dashboardAPI = {
 // ATTENDANCE API
 // ============================================
 export const attendanceAPI = {
-  getAll: (params?: { memberId?: string; date?: string }) => {
+  getAll: (params?: {
+    memberId?: string;
+    date?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) => {
     const query = new URLSearchParams();
     if (params?.memberId) query.set('memberId', params.memberId);
     if (params?.date) query.set('date', params.date);
+    if (params?.dateFrom) query.set('dateFrom', params.dateFrom);
+    if (params?.dateTo) query.set('dateTo', params.dateTo);
     return fetchAPI(`/attendance${query.toString() ? `?${query}` : ''}`);
   },
   getOne: (id: string) => fetchAPI(`/attendance/${id}`),
@@ -209,10 +194,17 @@ export const cashAPI = {
 // REPORTS API
 // ============================================
 export const reportsAPI = {
-  getAll: (params?: { memberId?: string; date?: string }) => {
+  getAll: (params?: {
+    memberId?: string;
+    date?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) => {
     const query = new URLSearchParams();
     if (params?.memberId) query.set('memberId', params.memberId);
     if (params?.date) query.set('date', params.date);
+    if (params?.dateFrom) query.set('dateFrom', params.dateFrom);
+    if (params?.dateTo) query.set('dateTo', params.dateTo);
     return fetchAPI(`/reports${query.toString() ? `?${query}` : ''}`);
   },
   getOne: (id: string) => fetchAPI(`/reports/${id}`),

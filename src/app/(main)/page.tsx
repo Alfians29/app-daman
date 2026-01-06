@@ -1,14 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/Card';
-import {
-  usersAPI,
-  attendanceAPI,
-  scheduleAPI,
-  cashAPI,
-  shiftsAPI,
-} from '@/lib/api';
 import { getShiftColorClasses } from '@/lib/utils';
 import Link from 'next/link';
 import { useCurrentUser } from '@/components/AuthGuard';
@@ -29,6 +22,13 @@ import {
 import { AttendanceChart } from '@/components/charts/AttendanceChart';
 import { CashBookChart } from '@/components/charts/CashBookChart';
 import { SkeletonPage } from '@/components/ui/Skeleton';
+import {
+  useUsers,
+  useShifts,
+  useSchedule,
+  useAttendance,
+  useCash,
+} from '@/lib/swr-hooks';
 
 type TeamMember = {
   id: string;
@@ -57,68 +57,69 @@ type Schedule = {
 type CashEntry = { id: string; amount: number; category: string; date: string };
 
 export default function Dashboard() {
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [attendanceRecords, setAttendanceRecords] = useState<
-    AttendanceRecord[]
-  >([]);
-  const [scheduleEntries, setScheduleEntries] = useState<Schedule[]>([]);
-  const [cashEntries, setCashEntries] = useState<CashEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const { user: authUser, isLoading: authLoading } = useCurrentUser();
-  const [currentUser, setCurrentUser] = useState<TeamMember | null>(null);
-  const [shiftSettings, setShiftSettings] = useState<
-    { shiftType: string; name: string; color: string | null }[]
-  >([]);
   const [chartPeriod, setChartPeriod] = useState<
     '1bulan' | '6bulan' | '1tahun'
   >('1tahun');
   const [periodType, setPeriodType] = useState<'monthly' | '16-15'>('16-15');
+  const { user: authUser, isLoading: authLoading } = useCurrentUser();
 
-  useEffect(() => {
-    if (!authLoading && authUser) {
-      loadData();
-    }
-  }, [authLoading, authUser]);
+  // Get current year for data filtering
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const yearStart = `${currentYear}-01-01`;
+  const yearEnd = `${currentYear}-12-31`;
 
-  const loadData = async () => {
-    setIsLoading(true);
-    const [usersRes, attRes, schedRes, cashRes, shiftsRes] = await Promise.all([
-      usersAPI.getAll(),
-      attendanceAPI.getAll(),
-      scheduleAPI.getAll(),
-      cashAPI.getAll(),
-      shiftsAPI.getAll(),
-    ]);
-    if (usersRes.success && usersRes.data) {
-      const activeUsers = (usersRes.data as TeamMember[]).filter(
-        (u) => u.isActive
-      );
-      setTeamMembers(activeUsers);
-      // Find user matching authenticated session
-      if (authUser?.id) {
-        setCurrentUser(
-          activeUsers.find((u) => u.id === authUser.id) || activeUsers[0]
-        );
-      }
-    }
-    if (attRes.success && attRes.data)
-      setAttendanceRecords(attRes.data as AttendanceRecord[]);
-    if (schedRes.success && schedRes.data) {
-      setScheduleEntries(schedRes.data as Schedule[]);
-    }
-    if (cashRes.success && cashRes.data)
-      setCashEntries(cashRes.data as CashEntry[]);
-    if (shiftsRes.success && shiftsRes.data) {
-      const shifts = shiftsRes.data as {
+  // SWR hooks for cached data
+  const { users, isLoading: usersLoading } = useUsers();
+  const { shifts, isLoading: shiftsLoading } = useShifts();
+  const { schedules, isLoading: schedLoading } = useSchedule(
+    undefined,
+    currentYear
+  );
+  const { attendance, isLoading: attLoading } = useAttendance(
+    yearStart,
+    yearEnd
+  );
+  const { cashEntries: rawCashEntries, isLoading: cashLoading } = useCash(
+    undefined,
+    currentYear
+  );
+
+  const isLoading =
+    authLoading ||
+    usersLoading ||
+    shiftsLoading ||
+    schedLoading ||
+    attLoading ||
+    cashLoading;
+
+  // Process data with useMemo
+  const teamMembers = useMemo(() => {
+    return (users as TeamMember[]).filter((u) => u.isActive);
+  }, [users]);
+
+  const currentUser = useMemo(() => {
+    if (!authUser?.id) return null;
+    return (
+      teamMembers.find((u) => u.id === authUser.id) || teamMembers[0] || null
+    );
+  }, [authUser, teamMembers]);
+
+  const attendanceRecords = attendance as AttendanceRecord[];
+  const scheduleEntries = schedules as Schedule[];
+  const cashEntries = rawCashEntries as CashEntry[];
+
+  const shiftSettings = useMemo(() => {
+    return (
+      shifts as {
         shiftType: string;
         name: string;
         color: string | null;
         isActive: boolean;
-      }[];
-      setShiftSettings(shifts.filter((s) => s.isActive));
-    }
-    setIsLoading(false);
-  };
+      }[]
+    ).filter((s) => s.isActive);
+  }, [shifts]);
 
   const today = new Date();
   // Use local date string for comparison (YYYY-MM-DD format)
