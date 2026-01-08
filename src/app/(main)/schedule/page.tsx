@@ -54,7 +54,7 @@ export default function SchedulePage() {
     schedules,
     shiftColors,
     isLoading: schedLoading,
-  } = useSchedule(month, year);
+  } = useSchedule(month, year, true); // slim mode - member data from useUsers
   const { shifts, isLoading: shiftsLoading } = useShifts();
 
   const isLoading =

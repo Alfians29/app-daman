@@ -41,14 +41,38 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const reports = await prisma.dailyReport.findMany({
-      where,
-      include: {
-        member: { select: { id: true, name: true, nickname: true } },
-        tasks: { include: { jobType: true } },
-      },
-      orderBy: [{ tanggal: 'desc' }, { createdAt: 'desc' }],
-    });
+    // Slim mode: return minimal fields without member relation
+    // This reduces payload size significantly
+    const slim = searchParams.get('slim') === 'true';
+
+    const reports = slim
+      ? await prisma.dailyReport.findMany({
+          where,
+          select: {
+            id: true,
+            memberId: true,
+            tanggal: true,
+            createdAt: true,
+            tasks: {
+              select: {
+                id: true,
+                jobTypeId: true,
+                keterangan: true,
+                value: true,
+                jobType: { select: { id: true, name: true } },
+              },
+            },
+          },
+          orderBy: [{ tanggal: 'desc' }, { createdAt: 'desc' }],
+        })
+      : await prisma.dailyReport.findMany({
+          where,
+          include: {
+            member: { select: { id: true, name: true, nickname: true } },
+            tasks: { include: { jobType: true } },
+          },
+          orderBy: [{ tanggal: 'desc' }, { createdAt: 'desc' }],
+        });
 
     return NextResponse.json({
       success: true,

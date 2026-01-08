@@ -37,21 +37,40 @@ export async function GET(request: NextRequest) {
       where.tanggal = { gte: startDate, lte: endDate };
     }
 
+    // Slim mode: return minimal fields without member relation
+    // This reduces payload size significantly (~3.4MB → ~500KB)
+    const slim = searchParams.get('slim') === 'true';
+
     // Fetch schedules and shift settings in parallel
     const [schedules, shiftSettings] = await Promise.all([
-      prisma.schedule.findMany({
-        where,
-        include: {
-          member: {
-            select: { id: true, name: true, nickname: true, image: true },
-          },
-        },
-        orderBy: [
-          { memberId: 'asc' },
-          { tanggal: 'desc' },
-          { createdAt: 'desc' },
-        ],
-      }),
+      slim
+        ? prisma.schedule.findMany({
+            where,
+            select: {
+              id: true,
+              memberId: true,
+              tanggal: true,
+              keterangan: true,
+            },
+            orderBy: [
+              { memberId: 'asc' },
+              { tanggal: 'desc' },
+              { createdAt: 'desc' },
+            ],
+          })
+        : prisma.schedule.findMany({
+            where,
+            include: {
+              member: {
+                select: { id: true, name: true, nickname: true, image: true },
+              },
+            },
+            orderBy: [
+              { memberId: 'asc' },
+              { tanggal: 'desc' },
+              { createdAt: 'desc' },
+            ],
+          }),
       prisma.shiftSetting.findMany({
         where: { isActive: true },
         select: { shiftType: true, name: true, color: true },

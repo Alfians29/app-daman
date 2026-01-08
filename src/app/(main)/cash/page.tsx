@@ -85,8 +85,13 @@ export default function CashBookPage() {
   const { user: authUser, isLoading: authLoading } = useCurrentUser();
 
   // SWR hooks for cached data
+  // Using slim mode for cash to reduce payload size
   const { users, isLoading: usersLoading } = useUsers();
-  const { cashEntries: rawCashEntries, isLoading: cashLoading } = useCash();
+  const { cashEntries: rawCashEntries, isLoading: cashLoading } = useCash(
+    undefined,
+    undefined,
+    true // slim mode
+  );
   const { settings: cashSettings, isLoading: settingsLoading } =
     useCashSettings();
 
@@ -107,7 +112,30 @@ export default function CashBookPage() {
     );
   }, [authUser, teamMembers]);
 
-  const cashEntries = rawCashEntries as CashEntry[];
+  // Join member/createdBy data client-side (since slim mode skips relations)
+  const memberMap = useMemo(() => {
+    const map = new Map<
+      string,
+      { id: string; name: string; nickname?: string; image?: string }
+    >();
+    (users as TeamMember[]).forEach((u) => {
+      map.set(u.id, {
+        id: u.id,
+        name: u.name,
+        nickname: u.nickname || undefined,
+        image: u.image || undefined,
+      });
+    });
+    return map;
+  }, [users]);
+
+  const cashEntries = useMemo(() => {
+    return (rawCashEntries as any[]).map((e) => ({
+      ...e,
+      member: memberMap.get(e.memberId) || { id: e.memberId, name: 'Unknown' },
+      createdBy: memberMap.get(e.createdById) || undefined,
+    })) as CashEntry[];
+  }, [rawCashEntries, memberMap]);
 
   const monthlyFee = useMemo(() => {
     return parseInt(cashSettings['monthly_fee'] || '15000', 10);

@@ -41,6 +41,7 @@ import {
   useJobTypes,
   useReports,
   useUserReports,
+  useUserSchedule,
 } from '@/lib/swr-hooks';
 
 type ReportTask = {
@@ -102,18 +103,20 @@ export default function ReportPage() {
   )}-${String(lastDay).padStart(2, '0')}`;
 
   // SWR hooks for cached data
+  // Using slim mode for schedule and reports to reduce payload size
   const { users, isLoading: usersLoading } = useUsers();
   const { shifts, isLoading: shiftsLoading } = useShifts();
   const { schedules, isLoading: schedLoading } = useSchedule(
     currentMonth,
-    currentYear
+    currentYear,
+    true // slim mode
   );
   const { jobTypes: rawJobTypes, isLoading: jobsLoading } = useJobTypes();
   const {
     reports: rawReports,
     isLoading: reportsLoading,
     mutate: mutateReports,
-  } = useReports(dateFrom, dateTo);
+  } = useReports(dateFrom, dateTo, true); // slim mode
 
   const isLoading =
     authLoading ||
@@ -139,7 +142,29 @@ export default function ReportPage() {
     );
   }, [authUser, teamMembers]);
 
-  const reports = rawReports as DailyReport[];
+  // Join member data client-side (since slim mode skips member relation)
+  const memberMap = useMemo(() => {
+    const map = new Map<
+      string,
+      { id: string; name: string; nickname: string | null }
+    >();
+    (users as TeamMember[]).forEach((u) => {
+      map.set(u.id, { id: u.id, name: u.name, nickname: u.nickname });
+    });
+    return map;
+  }, [users]);
+
+  const reports = useMemo(() => {
+    return (rawReports as any[]).map((r) => ({
+      ...r,
+      member: memberMap.get(r.memberId) || {
+        id: r.memberId,
+        name: 'Unknown',
+        nickname: null,
+      },
+    })) as DailyReport[];
+  }, [rawReports, memberMap]);
+
   const scheduleEntries = schedules as Schedule[];
   const jobTypes = useMemo(() => {
     return (rawJobTypes as JobType[]).filter((j: JobType) => j.isActive);
@@ -160,6 +185,14 @@ export default function ReportPage() {
     scheduleEntries.find(
       (s) => s.memberId === memberId && s.tanggal.split('T')[0] === date
     );
+
+  // Separate SWR for user's all-time schedule (for history view)
+  const { schedules: userSchedules, isLoading: userScheduleLoading } =
+    useUserSchedule(currentUser?.id);
+
+  // Get schedule from user's full history data for Riwayat Saya
+  const getUserScheduleForHistory = (date: string) =>
+    (userSchedules as Schedule[]).find((s) => s.tanggal.split('T')[0] === date);
 
   const canEditReport = (report: DailyReport) => {
     const createdAt = new Date(report.createdAt);
@@ -480,12 +513,10 @@ export default function ReportPage() {
                         historyPage * historyItemsPerPage
                       )
                       .map((report) => {
-                        const schedule = currentUser
-                          ? getMemberSchedule(
-                              currentUser.id,
-                              report.tanggal.split('T')[0]
-                            )
-                          : null;
+                        // Use getUserScheduleForHistory for all-time schedule data
+                        const schedule = getUserScheduleForHistory(
+                          report.tanggal.split('T')[0]
+                        );
                         return (
                           <tr key={report.id} className='hover:bg-gray-50'>
                             <td className='px-4 py-3 text-sm text-gray-700'>

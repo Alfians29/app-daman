@@ -93,6 +93,7 @@ export default function AdminReportPage() {
   );
 
   // SWR hooks for cached data
+  // Using slim mode for reports to reduce payload size
   const { users, isLoading: usersLoading } = useUsers();
   const {
     jobTypes: rawJobTypes,
@@ -103,13 +104,36 @@ export default function AdminReportPage() {
     reports: rawReports,
     isLoading: reportsLoading,
     mutate: mutateReports,
-  } = useReports();
+  } = useReports(undefined, undefined, true); // slim mode
 
   const isLoading = usersLoading || jobsLoading || reportsLoading;
 
   // Process data with useMemo
   const members = users as Member[];
-  const reports = rawReports as DailyReport[];
+
+  // Join member data client-side (since slim mode skips member relation)
+  const memberMap = useMemo(() => {
+    const map = new Map<
+      string,
+      { id: string; name: string; nickname: string | null }
+    >();
+    (users as Member[]).forEach((u) => {
+      map.set(u.id, { id: u.id, name: u.name, nickname: u.nickname });
+    });
+    return map;
+  }, [users]);
+
+  const reports = useMemo(() => {
+    return (rawReports as any[]).map((r) => ({
+      ...r,
+      member: memberMap.get(r.memberId) || {
+        id: r.memberId,
+        name: 'Unknown',
+        nickname: null,
+      },
+    })) as DailyReport[];
+  }, [rawReports, memberMap]);
+
   const jobTypes = rawJobTypes as JobType[];
 
   const activeJobTypes = useMemo(

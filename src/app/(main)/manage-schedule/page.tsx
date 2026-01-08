@@ -127,7 +127,7 @@ export default function AdminSchedulePage() {
     schedules: rawSchedules,
     isLoading: schedLoading,
     mutate: mutateSchedule,
-  } = useSchedule(currentMonth, currentYear);
+  } = useSchedule(currentMonth, currentYear, true); // slim mode - member data from useUsers
 
   const isLoading = usersLoading || shiftsLoading || schedLoading;
 

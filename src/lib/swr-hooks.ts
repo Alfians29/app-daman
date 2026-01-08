@@ -63,10 +63,16 @@ export function useJobTypes() {
 }
 
 // Hook for fetching schedule with month/year filter
-export function useSchedule(month?: number, year?: number) {
+// slim option reduces payload by skipping member relation
+export function useSchedule(
+  month?: number,
+  year?: number,
+  slim: boolean = false
+) {
   const query = new URLSearchParams();
   if (month) query.set('month', month.toString());
   if (year) query.set('year', year.toString());
+  if (slim) query.set('slim', 'true');
   const url = `/api/schedule${query.toString() ? `?${query}` : ''}`;
 
   const { data, error, isLoading, mutate } = useSWR(
@@ -83,11 +89,38 @@ export function useSchedule(month?: number, year?: number) {
   };
 }
 
+// Hook for fetching all schedules for a specific user (no date filter)
+// Separate from monthly schedule for independent loading
+export function useUserSchedule(memberId?: string) {
+  const query = new URLSearchParams();
+  if (memberId) query.set('memberId', memberId);
+  const url = memberId ? `/api/schedule?${query}` : null;
+
+  const { data, error, isLoading, mutate } = useSWR(
+    url,
+    fetcher,
+    defaultOptions
+  );
+  return {
+    schedules: data?.data || [],
+    shiftColors: data?.shiftColors || {},
+    isLoading,
+    error,
+    mutate,
+  };
+}
+
 // Hook for fetching attendance with date range
-export function useAttendance(dateFrom?: string, dateTo?: string) {
+// slim option reduces payload by skipping member relation
+export function useAttendance(
+  dateFrom?: string,
+  dateTo?: string,
+  slim: boolean = false
+) {
   const query = new URLSearchParams();
   if (dateFrom) query.set('dateFrom', dateFrom);
   if (dateTo) query.set('dateTo', dateTo);
+  if (slim) query.set('slim', 'true');
   const url = `/api/attendance${query.toString() ? `?${query}` : ''}`;
 
   const { data, error, isLoading, mutate } = useSWR(
@@ -104,10 +137,16 @@ export function useAttendance(dateFrom?: string, dateTo?: string) {
 }
 
 // Hook for fetching reports with date range
-export function useReports(dateFrom?: string, dateTo?: string) {
+// slim option reduces payload by skipping member relation
+export function useReports(
+  dateFrom?: string,
+  dateTo?: string,
+  slim: boolean = false
+) {
   const query = new URLSearchParams();
   if (dateFrom) query.set('dateFrom', dateFrom);
   if (dateTo) query.set('dateTo', dateTo);
+  if (slim) query.set('slim', 'true');
   const url = `/api/reports${query.toString() ? `?${query}` : ''}`;
 
   const { data, error, isLoading, mutate } = useSWR(
@@ -144,10 +183,12 @@ export function useUserReports(memberId?: string) {
 }
 
 // Hook for fetching cash entries with month/year filter
-export function useCash(month?: number, year?: number) {
+// slim option reduces payload by skipping member/createdBy relation
+export function useCash(month?: number, year?: number, slim: boolean = false) {
   const query = new URLSearchParams();
   if (month) query.set('month', month.toString());
   if (year) query.set('year', year.toString());
+  if (slim) query.set('slim', 'true');
   const url = `/api/cash${query.toString() ? `?${query}` : ''}`;
 
   const { data, error, isLoading, mutate } = useSWR(
@@ -180,10 +221,12 @@ export function useRoles() {
 }
 
 // Hook for fetching QR data with pagination
+// Using slim mode to reduce payload size (~2.6MB → ~200KB per page)
 export function useQR(page: number = 1, limit: number = 10, search?: string) {
   const query = new URLSearchParams();
   query.set('page', page.toString());
   query.set('limit', limit.toString());
+  query.set('slim', 'true'); // Enable slim mode for reduced payload
   if (search) query.set('qrId', search);
   const url = `/api/qr?${query}`;
 

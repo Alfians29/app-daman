@@ -41,11 +41,30 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const records = await prisma.attendance.findMany({
-      where,
-      include: { member: { select: { id: true, name: true, image: true } } },
-      orderBy: [{ tanggal: 'desc' }, { createdAt: 'desc' }],
-    });
+    // Slim mode: return minimal fields without member relation
+    // This reduces payload size significantly (~1.7MB → ~300KB)
+    const slim = searchParams.get('slim') === 'true';
+
+    const records = slim
+      ? await prisma.attendance.findMany({
+          where,
+          select: {
+            id: true,
+            memberId: true,
+            tanggal: true,
+            jamAbsen: true,
+            keterangan: true,
+            status: true,
+          },
+          orderBy: [{ tanggal: 'desc' }, { createdAt: 'desc' }],
+        })
+      : await prisma.attendance.findMany({
+          where,
+          include: {
+            member: { select: { id: true, name: true, image: true } },
+          },
+          orderBy: [{ tanggal: 'desc' }, { createdAt: 'desc' }],
+        });
 
     return NextResponse.json({
       success: true,
