@@ -123,6 +123,26 @@ export function useReports(dateFrom?: string, dateTo?: string) {
   };
 }
 
+// Hook for fetching all reports for a specific user (no date filter)
+// Separate from team reports for independent loading
+export function useUserReports(memberId?: string) {
+  const query = new URLSearchParams();
+  if (memberId) query.set('memberId', memberId);
+  const url = memberId ? `/api/reports?${query}` : null;
+
+  const { data, error, isLoading, mutate } = useSWR(
+    url,
+    fetcher,
+    defaultOptions
+  );
+  return {
+    reports: data?.data || [],
+    isLoading,
+    error,
+    mutate,
+  };
+}
+
 // Hook for fetching cash entries with month/year filter
 export function useCash(month?: number, year?: number) {
   const query = new URLSearchParams();
@@ -227,5 +247,24 @@ export function useCashSettings() {
     isLoading,
     error,
     mutate,
+  };
+}
+
+// Hook for fetching dashboard chart summary (optimized aggregated data)
+export function useDashboardCharts(year: number, userId?: string) {
+  const query = new URLSearchParams();
+  query.set('year', year.toString());
+  if (userId) query.set('userId', userId);
+  const url = `/api/dashboard/chart-summary?${query}`;
+
+  const { data, error, isLoading } = useSWR(url, fetcher, {
+    ...defaultOptions,
+    dedupingInterval: 120000, // 2 minutes - chart data doesn't change often
+  });
+
+  return {
+    chartData: data?.data || null,
+    isLoading,
+    error,
   };
 }

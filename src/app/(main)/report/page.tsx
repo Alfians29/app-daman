@@ -40,6 +40,7 @@ import {
   useSchedule,
   useJobTypes,
   useReports,
+  useUserReports,
 } from '@/lib/swr-hooks';
 
 type ReportTask = {
@@ -87,7 +88,7 @@ export default function ReportPage() {
   const { user: authUser, isLoading: authLoading } = useCurrentUser();
   const [showMyHistory, setShowMyHistory] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
-  const historyItemsPerPage = 15;
+  const historyItemsPerPage = 10;
 
   // Get current month/year for filtering
   const now = new Date();
@@ -191,15 +192,16 @@ export default function ReportPage() {
     });
   }, [teamMembers, selectedDate, reportsForDate, scheduleEntries]);
 
-  // Get current user's report history
+  // Separate SWR hook for user's all-time report history
+  const { reports: userAllReports, isLoading: userReportsLoading } =
+    useUserReports(currentUser?.id);
+
+  // Get current user's report history from dedicated hook (all-time data)
   const userReportsHistory = useMemo(() => {
-    if (!currentUser) return [];
-    return reports
-      .filter((r) => r.memberId === currentUser.id)
-      .sort(
-        (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
-      );
-  }, [reports, currentUser]);
+    return (userAllReports as DailyReport[]).sort(
+      (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
+    );
+  }, [userAllReports]);
 
   const navigateDate = (days: number) => {
     const date = new Date(selectedDate);

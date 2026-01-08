@@ -22,13 +22,7 @@ import {
 import { AttendanceChart } from '@/components/charts/AttendanceChart';
 import { CashBookChart } from '@/components/charts/CashBookChart';
 import { SkeletonPage } from '@/components/ui/Skeleton';
-import {
-  useUsers,
-  useShifts,
-  useSchedule,
-  useAttendance,
-  useCash,
-} from '@/lib/swr-hooks';
+import { useUsers, useDashboardCharts } from '@/lib/swr-hooks';
 
 type TeamMember = {
   id: string;
@@ -54,7 +48,6 @@ type Schedule = {
   tanggal: string;
   keterangan: string;
 };
-type CashEntry = { id: string; amount: number; category: string; date: string };
 
 export default function Dashboard() {
   const [chartPeriod, setChartPeriod] = useState<
@@ -67,32 +60,15 @@ export default function Dashboard() {
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
-  const yearStart = `${currentYear}-01-01`;
-  const yearEnd = `${currentYear}-12-31`;
 
-  // SWR hooks for cached data
+  // SWR hooks for cached data - using optimized aggregated endpoint
   const { users, isLoading: usersLoading } = useUsers();
-  const { shifts, isLoading: shiftsLoading } = useShifts();
-  const { schedules, isLoading: schedLoading } = useSchedule(
-    undefined,
-    currentYear
-  );
-  const { attendance, isLoading: attLoading } = useAttendance(
-    yearStart,
-    yearEnd
-  );
-  const { cashEntries: rawCashEntries, isLoading: cashLoading } = useCash(
-    undefined,
-    currentYear
+  const { chartData, isLoading: chartLoading } = useDashboardCharts(
+    currentYear,
+    authUser?.id
   );
 
-  const isLoading =
-    authLoading ||
-    usersLoading ||
-    shiftsLoading ||
-    schedLoading ||
-    attLoading ||
-    cashLoading;
+  const isLoading = authLoading || usersLoading || chartLoading;
 
   // Process data with useMemo
   const teamMembers = useMemo(() => {
@@ -106,20 +82,52 @@ export default function Dashboard() {
     );
   }, [authUser, teamMembers]);
 
-  const attendanceRecords = attendance as AttendanceRecord[];
-  const scheduleEntries = schedules as Schedule[];
-  const cashEntries = rawCashEntries as CashEntry[];
+  // Extract data from aggregated chartData
+  const todayStats = chartData?.todayStats || {
+    attendance: [],
+    schedules: [],
+    totalIncome: 0,
+    totalExpense: 0,
+  };
+  const userStats = chartData?.userStats || {
+    totalAttendance: 0,
+    ontimeCount: 0,
+    attendanceRecords: [],
+  };
+  const shiftSettings = (chartData?.shiftSettings || []) as {
+    shiftType: string;
+    name: string;
+    color: string | null;
+  }[];
 
-  const shiftSettings = useMemo(() => {
-    return (
-      shifts as {
-        shiftType: string;
-        name: string;
-        color: string | null;
-        isActive: boolean;
-      }[]
-    ).filter((s) => s.isActive);
-  }, [shifts]);
+  // Get different data sets from API for different chart periods
+  const scheduleByMonth = chartData?.scheduleByMonth || [];
+  const scheduleByWeek = chartData?.scheduleByWeek || [];
+  const scheduleby6Month = chartData?.scheduleby6Month || [];
+  const cashChartData = chartData?.cashByMonth || [];
+
+  // Select appropriate chart data based on period
+  const scheduleChartData = useMemo(() => {
+    if (chartPeriod === '1bulan') {
+      // Weekly data for current month (Minggu 1-4)
+      return scheduleByWeek;
+    }
+
+    if (chartPeriod === '6bulan') {
+      // Last 6 months including previous year if needed
+      return scheduleby6Month;
+    }
+
+    // 1tahun - show all 12 months
+    return scheduleByMonth;
+  }, [scheduleByMonth, scheduleByWeek, scheduleby6Month, chartPeriod]);
+
+  // Today's data from aggregated endpoint
+  const attendanceRecords = todayStats.attendance as AttendanceRecord[];
+  const scheduleEntries = todayStats.schedules as Schedule[];
+  const totalCashIn = todayStats.totalIncome;
+  const totalCashOut = todayStats.totalExpense;
+  const totalCash = totalCashIn - totalCashOut;
 
   const today = new Date();
   // Use local date string for comparison (YYYY-MM-DD format)
@@ -154,191 +162,21 @@ export default function Dashboard() {
   const greeting = getGreeting();
   const GreetingIcon = greeting.icon;
 
-  // User stats
-  const userAttendance = attendanceRecords.filter(
-    (r) => currentUser && r.memberId === currentUser.id
-  );
-  const userOntimeCount = userAttendance.filter(
-    (r) => r.status === 'ONTIME'
-  ).length;
+  // User stats from aggregated data
+  const userAttendance = userStats.attendanceRecords || [];
+  const userOntimeCount = userStats.ontimeCount;
   const userOntimeRate =
-    userAttendance.length > 0
-      ? Math.round((userOntimeCount / userAttendance.length) * 100)
+    userStats.totalAttendance > 0
+      ? Math.round((userOntimeCount / userStats.totalAttendance) * 100)
       : 0;
 
-  // Today's schedule
+  // Today's schedule for current user
   const todaySchedule = scheduleEntries.find(
-    (s) =>
+    (s: Schedule) =>
       currentUser &&
       s.memberId === currentUser.id &&
       getDateStr(s.tanggal) === todayStr
   );
-
-  // Cash stats
-  const totalCashIn = cashEntries
-    .filter((e) => e.category.toLowerCase() === 'income')
-    .reduce((sum, e) => sum + Number(e.amount), 0);
-  const totalCashOut = cashEntries
-    .filter((e) => e.category.toLowerCase() === 'expense')
-    .reduce((sum, e) => sum + Number(e.amount), 0);
-  const totalCash = totalCashIn - totalCashOut;
-
-  // Generate chart data from database
-  const monthNames = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'Mei',
-    'Jun',
-    'Jul',
-    'Agu',
-    'Sep',
-    'Okt',
-    'Nov',
-    'Des',
-  ];
-
-  const cashChartData = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    return monthNames.map((name, index) => {
-      const targetMonth = `${currentYear}-${String(index + 1).padStart(
-        2,
-        '0'
-      )}`;
-      const monthIncome = cashEntries
-        .filter(
-          (e) =>
-            e.category.toLowerCase() === 'income' &&
-            e.date.startsWith(targetMonth)
-        )
-        .reduce((sum, e) => sum + Number(e.amount), 0);
-      const monthExpense = cashEntries
-        .filter(
-          (e) =>
-            e.category.toLowerCase() === 'expense' &&
-            e.date.startsWith(targetMonth)
-        )
-        .reduce((sum, e) => sum + Number(e.amount), 0);
-      // Calculate running balance up to this month
-      const runningIncome = cashEntries
-        .filter(
-          (e) =>
-            e.category.toLowerCase() === 'income' &&
-            e.date <= `${targetMonth}-31`
-        )
-        .reduce((sum, e) => sum + Number(e.amount), 0);
-      const runningExpense = cashEntries
-        .filter(
-          (e) =>
-            e.category.toLowerCase() === 'expense' &&
-            e.date <= `${targetMonth}-31`
-        )
-        .reduce((sum, e) => sum + Number(e.amount), 0);
-      return {
-        name,
-        masuk: monthIncome,
-        keluar: monthExpense,
-        saldo: runningIncome - runningExpense,
-      };
-    });
-  }, [cashEntries]);
-
-  const scheduleChartData = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth();
-    // Get all active shift types from settings
-    const activeShiftTypes =
-      shiftSettings.length > 0
-        ? shiftSettings.map((s) => s.shiftType)
-        : ['PAGI', 'MALAM', 'PIKET_PAGI', 'PIKET_MALAM', 'LIBUR'];
-
-    // For 1 month view - generate weekly data
-    if (chartPeriod === '1bulan') {
-      const weekNames = ['Minggu 1', 'Minggu 2', 'Minggu 3', 'Minggu 4'];
-      const targetMonth = `${currentYear}-${String(currentMonth + 1).padStart(
-        2,
-        '0'
-      )}`;
-      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-
-      return weekNames.map((name, weekIndex) => {
-        const weekStart = weekIndex * 7 + 1;
-        const weekEnd = Math.min(weekStart + 6, daysInMonth);
-
-        const weekSchedules = scheduleEntries.filter((s) => {
-          if (!s.tanggal.startsWith(targetMonth)) return false;
-          const day = parseInt(s.tanggal.substring(8, 10));
-          return day >= weekStart && day <= weekEnd;
-        });
-
-        const dataPoint: { name: string; [key: string]: string | number } = {
-          name,
-        };
-        activeShiftTypes.forEach((shiftType) => {
-          dataPoint[shiftType] = weekSchedules.filter(
-            (s) => s.keterangan === shiftType
-          ).length;
-        });
-
-        return dataPoint;
-      });
-    }
-
-    // For 6 months - generate last 6 months data
-    if (chartPeriod === '6bulan') {
-      const last6Months: { name: string; monthStr: string }[] = [];
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date(currentYear, currentMonth - i, 1);
-        const monthIndex = d.getMonth();
-        const year = d.getFullYear();
-        last6Months.push({
-          name: monthNames[monthIndex],
-          monthStr: `${year}-${String(monthIndex + 1).padStart(2, '0')}`,
-        });
-      }
-
-      return last6Months.map(({ name, monthStr }) => {
-        const monthSchedules = scheduleEntries.filter((s) =>
-          s.tanggal.startsWith(monthStr)
-        );
-
-        const dataPoint: { name: string; [key: string]: string | number } = {
-          name,
-        };
-        activeShiftTypes.forEach((shiftType) => {
-          dataPoint[shiftType] = monthSchedules.filter(
-            (s) => s.keterangan === shiftType
-          ).length;
-        });
-
-        return dataPoint;
-      });
-    }
-
-    // For 1 year - generate all 12 months
-    return monthNames.map((name, index) => {
-      const targetMonth = `${currentYear}-${String(index + 1).padStart(
-        2,
-        '0'
-      )}`;
-      const monthSchedules = scheduleEntries.filter((s) =>
-        s.tanggal.startsWith(targetMonth)
-      );
-
-      // Create dynamic object with all shift types as keys
-      const dataPoint: { name: string; [key: string]: string | number } = {
-        name,
-      };
-      activeShiftTypes.forEach((shiftType) => {
-        dataPoint[shiftType] = monthSchedules.filter(
-          (s) => s.keterangan === shiftType
-        ).length;
-      });
-
-      return dataPoint;
-    });
-  }, [scheduleEntries, shiftSettings, chartPeriod]);
 
   // Filter: Only TA members for attendance/schedule stats
   const taTeamMembers = teamMembers.filter(
@@ -400,16 +238,14 @@ export default function Dashboard() {
   const periodEndStr = toDateStr(endDate);
 
   const minWorkingDays = 21;
-  const userPeriodAttendance = attendanceRecords.filter((r) => {
-    // Extract date portion from ISO string (first 10 chars: YYYY-MM-DD)
-    const recordDateStr = r.tanggal.substring(0, 10);
-    return (
-      currentUser &&
-      r.memberId === currentUser.id &&
-      recordDateStr >= periodStartStr &&
-      recordDateStr <= periodEndStr
-    );
-  }).length;
+  // Use userAttendance (user's full attendance data) instead of attendanceRecords (today only)
+  const userPeriodAttendance = (userAttendance as AttendanceRecord[]).filter(
+    (r) => {
+      // Extract date portion from ISO string (first 10 chars: YYYY-MM-DD)
+      const recordDateStr = r.tanggal.substring(0, 10);
+      return recordDateStr >= periodStartStr && recordDateStr <= periodEndStr;
+    }
+  ).length;
   const attendanceProgressPercent = Math.min(
     100,
     Math.round((userPeriodAttendance / minWorkingDays) * 100)
