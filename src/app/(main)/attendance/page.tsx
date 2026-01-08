@@ -102,15 +102,18 @@ export default function AttendancePage() {
   ).padStart(2, '0')}`;
 
   // SWR hooks for cached data
+  // Using slim mode for schedule and attendance to reduce payload size (~5MB → ~800KB)
   const { users, isLoading: usersLoading } = useUsers();
   const { shifts, isLoading: shiftsLoading } = useShifts();
   const { schedules, isLoading: schedLoading } = useSchedule(
     now.getMonth() + 1,
-    now.getFullYear()
+    now.getFullYear(),
+    true // slim mode
   );
-  const { attendance, isLoading: attLoading } = useAttendance(
+  const { attendance: rawAttendance, isLoading: attLoading } = useAttendance(
     loadDateFrom,
-    loadDateTo
+    loadDateTo,
+    true // slim mode
   );
 
   const isLoading =
@@ -132,7 +135,29 @@ export default function AttendancePage() {
     );
   }, [authUser, teamMembers]);
 
-  const attendanceRecords = attendance as AttendanceRecord[];
+  // Join member data client-side (since slim mode skips member relation)
+  const memberMap = useMemo(() => {
+    const map = new Map<
+      string,
+      { id: string; name: string; image: string | null }
+    >();
+    (users as TeamMember[]).forEach((u) => {
+      map.set(u.id, { id: u.id, name: u.name, image: u.image });
+    });
+    return map;
+  }, [users]);
+
+  const attendanceRecords = useMemo(() => {
+    return (rawAttendance as any[]).map((r) => ({
+      ...r,
+      member: memberMap.get(r.memberId) || {
+        id: r.memberId,
+        name: 'Unknown',
+        image: null,
+      },
+    })) as AttendanceRecord[];
+  }, [rawAttendance, memberMap]);
+
   const scheduleEntries = schedules as Schedule[];
 
   const shiftSettings = useMemo(() => {

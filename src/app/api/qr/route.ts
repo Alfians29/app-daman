@@ -11,6 +11,10 @@ export async function GET(request: NextRequest) {
     const pageParam = searchParams.get('page');
     const limitParam = searchParams.get('limit');
 
+    // Slim mode: return minimal fields without uploadedBy relation
+    // This reduces payload size significantly (~2.6MB → ~200KB per page)
+    const slim = searchParams.get('slim') === 'true';
+
     // Build where clause for search
     const where: Record<string, unknown> = {};
     if (qrId) {
@@ -27,7 +31,7 @@ export async function GET(request: NextRequest) {
         where,
         distinct: ['qrId'],
         select: { qrId: true },
-        orderBy: { qrId: 'asc' },
+        orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
       });
@@ -37,15 +41,28 @@ export async function GET(request: NextRequest) {
       // Get all entries for these QR IDs
       const entries =
         qrIdList.length > 0
-          ? await prisma.qRData.findMany({
-              where: { qrId: { in: qrIdList } },
-              include: {
-                uploadedBy: {
-                  select: { id: true, name: true, nickname: true },
+          ? slim
+            ? await prisma.qRData.findMany({
+                where: { qrId: { in: qrIdList } },
+                select: {
+                  id: true,
+                  qrId: true,
+                  nomorUrut: true,
+                  labelQr: true,
+                  uploadedById: true,
+                  createdAt: true,
                 },
-              },
-              orderBy: [{ qrId: 'asc' }, { nomorUrut: 'asc' }],
-            })
+                orderBy: [{ createdAt: 'desc' }, { nomorUrut: 'asc' }],
+              })
+            : await prisma.qRData.findMany({
+                where: { qrId: { in: qrIdList } },
+                include: {
+                  uploadedBy: {
+                    select: { id: true, name: true, nickname: true },
+                  },
+                },
+                orderBy: [{ createdAt: 'desc' }, { nomorUrut: 'asc' }],
+              })
           : [];
 
       // Get total counts
@@ -74,13 +91,28 @@ export async function GET(request: NextRequest) {
     } else {
       // No pagination - return all (for backward compatibility)
       const [entries, total] = await Promise.all([
-        prisma.qRData.findMany({
-          where,
-          include: {
-            uploadedBy: { select: { id: true, name: true, nickname: true } },
-          },
-          orderBy: [{ qrId: 'asc' }, { nomorUrut: 'asc' }],
-        }),
+        slim
+          ? prisma.qRData.findMany({
+              where,
+              select: {
+                id: true,
+                qrId: true,
+                nomorUrut: true,
+                labelQr: true,
+                uploadedById: true,
+                createdAt: true,
+              },
+              orderBy: [{ createdAt: 'desc' }, { nomorUrut: 'asc' }],
+            })
+          : prisma.qRData.findMany({
+              where,
+              include: {
+                uploadedBy: {
+                  select: { id: true, name: true, nickname: true },
+                },
+              },
+              orderBy: [{ createdAt: 'desc' }, { nomorUrut: 'asc' }],
+            }),
         prisma.qRData.count({ where }),
       ]);
 

@@ -108,12 +108,13 @@ export default function AdminCashPage() {
   const currentYear = new Date().getFullYear();
 
   // SWR hooks for cached data
+  // Using slim mode for cash to reduce payload size
   const { users, isLoading: usersLoading } = useUsers();
   const {
     cashEntries: rawCashEntries,
     isLoading: cashLoading,
     mutate: mutateCash,
-  } = useCash();
+  } = useCash(undefined, undefined, true); // slim mode
   const {
     settings: cashSettings,
     isLoading: settingsLoading,
@@ -124,7 +125,30 @@ export default function AdminCashPage() {
 
   // Process data with useMemo
   const members = users as Member[];
-  const entries = rawCashEntries as CashEntry[];
+
+  // Join member/createdBy data client-side (since slim mode skips relations)
+  const memberMap = useMemo(() => {
+    const map = new Map<
+      string,
+      { id: string; name: string; nickname?: string }
+    >();
+    (users as Member[]).forEach((u) => {
+      map.set(u.id, {
+        id: u.id,
+        name: u.name,
+        nickname: u.nickname || undefined,
+      });
+    });
+    return map;
+  }, [users]);
+
+  const entries = useMemo(() => {
+    return (rawCashEntries as any[]).map((e) => ({
+      ...e,
+      member: memberMap.get(e.memberId) || null,
+      createdBy: memberMap.get(e.createdById) || null,
+    })) as CashEntry[];
+  }, [rawCashEntries, memberMap]);
 
   const monthlyFee = useMemo(() => {
     return parseInt(cashSettings['monthly_fee'] || '15000', 10);

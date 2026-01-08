@@ -63,6 +63,7 @@ export async function GET(request: NextRequest) {
       yearCashTotals,
       userYearlyAttendance,
       activeShifts,
+      monthlyReportData,
     ] = await Promise.all([
       // 1. Schedule aggregation by month and shift type
       prisma.schedule
@@ -108,9 +109,14 @@ export async function GET(request: NextRequest) {
           }
 
           schedules.forEach((s) => {
-            const month = new Date(s.tanggal).getMonth();
+            const date = new Date(s.tanggal);
+            const schedYear = date.getFullYear();
+            const month = date.getMonth();
             const shift = s.keterangan;
-            monthlyData[month][shift] = (monthlyData[month][shift] || 0) + 1;
+            // Only include data from the requested year (extra safety for timezone edge cases)
+            if (schedYear === year) {
+              monthlyData[month][shift] = (monthlyData[month][shift] || 0) + 1;
+            }
           });
 
           return MONTH_NAMES.map((name, idx) => ({
@@ -135,12 +141,17 @@ export async function GET(request: NextRequest) {
           );
 
           entries.forEach((e) => {
-            const month = new Date(e.date).getMonth();
-            const amount = Number(e.amount);
-            if (e.category === 'INCOME') {
-              monthlyData[month].masuk += amount;
-            } else {
-              monthlyData[month].keluar += amount;
+            const date = new Date(e.date);
+            const entryYear = date.getFullYear();
+            const month = date.getMonth();
+            // Only include data from the requested year (safety for timezone edge cases)
+            if (entryYear === year) {
+              const amount = Number(e.amount);
+              if (e.category === 'INCOME') {
+                monthlyData[month].masuk += amount;
+              } else {
+                monthlyData[month].keluar += amount;
+              }
             }
           });
 
@@ -235,6 +246,27 @@ export async function GET(request: NextRequest) {
         where: { isActive: true },
         select: { shiftType: true, name: true, color: true },
       }),
+
+      // 8. Job type leaderboard - aggregate task values by job type for current month
+      prisma.dailyReport.findMany({
+        where: {
+          tanggal: {
+            gte: new Date(year, currentMonth, 1),
+            lte: new Date(year, currentMonth + 1, 0, 23, 59, 59, 999),
+          },
+        },
+        select: {
+          tasks: {
+            select: {
+              jobTypeId: true,
+              value: true,
+              jobType: {
+                select: { id: true, name: true },
+              },
+            },
+          },
+        },
+      }),
     ]);
 
     // Get active shift types for initializing data
@@ -325,6 +357,55 @@ export async function GET(request: NextRequest) {
         }
       : null;
 
+    // Aggregate job type leaderboard from monthly report data
+    // First, get all active job types
+    const allJobTypes = await prisma.jobType.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+    });
+
+    // Initialize aggregation with all job types (value 0)
+    const jobTypeAggregated: Record<
+      string,
+      { id: string; name: string; totalValue: number }
+    > = {};
+    allJobTypes.forEach((jt) => {
+      jobTypeAggregated[jt.id] = { id: jt.id, name: jt.name, totalValue: 0 };
+    });
+
+    // Add values from monthly reports
+    monthlyReportData.forEach((report) => {
+      report.tasks.forEach((task) => {
+        if (task.jobType && jobTypeAggregated[task.jobType.id]) {
+          jobTypeAggregated[task.jobType.id].totalValue += task.value;
+        }
+      });
+    });
+
+    // Sort by totalValue descending and create leaderboard with competition ranking
+    // Same value = same rank, value 0 = rank null (displayed as "-")
+    const sortedJobTypes = Object.values(jobTypeAggregated).sort(
+      (a, b) => b.totalValue - a.totalValue
+    );
+
+    let currentRank = 1;
+    let prevValue: number | null = null;
+    const jobTypeLeaderboard = sortedJobTypes.map((item, index) => {
+      // Value 0 gets rank null (displayed as "-")
+      if (item.totalValue === 0) {
+        return { rank: null, ...item };
+      }
+      // Competition ranking: same value = same rank
+      if (prevValue !== null && item.totalValue === prevValue) {
+        // Same rank as previous
+        return { rank: currentRank, ...item };
+      }
+      // New rank based on position
+      currentRank = index + 1;
+      prevValue = item.totalValue;
+      return { rank: currentRank, ...item };
+    });
+
     return NextResponse.json({
       success: true,
       data: {
@@ -339,6 +420,7 @@ export async function GET(request: NextRequest) {
         },
         userStats,
         shiftSettings: activeShifts,
+        jobTypeLeaderboard, // NEW: Job type leaderboard for current month
       },
     });
   } catch (error) {

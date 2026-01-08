@@ -25,7 +25,7 @@ import {
   ModalFooter,
 } from '@/components/ui/Modal';
 import { qrAPI } from '@/lib/api';
-import { useQR } from '@/lib/swr-hooks';
+import { useQR, useUsers } from '@/lib/swr-hooks';
 import toast from 'react-hot-toast';
 import { useCurrentUser } from '@/components/AuthGuard';
 import * as XLSX from 'xlsx';
@@ -51,6 +51,12 @@ type PreviewData = {
   qrId: string;
   nomorUrut: number;
   labelQr: string;
+};
+
+type TeamMember = {
+  id: string;
+  name: string;
+  nickname: string | null;
 };
 
 export default function ManageQRPage() {
@@ -89,16 +95,42 @@ export default function ManageQRPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // SWR hook for cached data with per-page caching
+  // SWR hooks for cached data
+  // Using slim mode for QR - member data joined client-side
+  const { users, isLoading: usersLoading } = useUsers();
   const {
-    qrEntries,
+    qrEntries: rawQrEntries,
     total,
     totalQrIds,
-    isLoading,
+    isLoading: qrLoading,
     mutate: mutateQR,
   } = useQR(currentPage, itemsPerPage, debouncedSearch);
 
-  const entries = qrEntries as QREntry[];
+  const isLoading = usersLoading || qrLoading;
+
+  // Join uploadedBy data client-side (since slim mode skips relation)
+  const memberMap = useMemo(() => {
+    const map = new Map<
+      string,
+      { id: string; name: string; nickname?: string }
+    >();
+    (users as TeamMember[]).forEach((u) => {
+      map.set(u.id, {
+        id: u.id,
+        name: u.name,
+        nickname: u.nickname || undefined,
+      });
+    });
+    return map;
+  }, [users]);
+
+  const entries = useMemo(() => {
+    return (rawQrEntries as any[]).map((e) => ({
+      ...e,
+      uploadedBy: memberMap.get(e.uploadedById) || null,
+    })) as QREntry[];
+  }, [rawQrEntries, memberMap]);
+
   const totalCount = total;
 
   // Group entries by QR ID (for modal detail view only)

@@ -34,16 +34,36 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    const entries = await prisma.cashEntry.findMany({
-      where,
-      include: {
-        member: { select: { id: true, name: true, image: true } },
-        createdBy: {
-          select: { id: true, name: true, nickname: true, image: true },
-        },
-      },
-      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
-    });
+    // Slim mode: return minimal fields without member/createdBy relation
+    // This reduces payload size significantly
+    const slim = searchParams.get('slim') === 'true';
+
+    const entries = slim
+      ? await prisma.cashEntry.findMany({
+          where,
+          select: {
+            id: true,
+            date: true,
+            description: true,
+            transactionCategory: true,
+            category: true,
+            amount: true,
+            memberId: true,
+            createdById: true,
+            createdAt: true,
+          },
+          orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+        })
+      : await prisma.cashEntry.findMany({
+          where,
+          include: {
+            member: { select: { id: true, name: true, image: true } },
+            createdBy: {
+              select: { id: true, name: true, nickname: true, image: true },
+            },
+          },
+          orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+        });
 
     // Calculate totals
     const income = entries

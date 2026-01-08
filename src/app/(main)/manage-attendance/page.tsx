@@ -121,16 +121,38 @@ export default function AdminAttendancePage() {
   const { users, isLoading: usersLoading } = useUsers();
   const { shifts, isLoading: shiftsLoading } = useShifts();
   const {
-    attendance,
+    attendance: rawAttendance,
     isLoading: attLoading,
     mutate: mutateAttendance,
-  } = useAttendance(dateFrom, dateTo);
+  } = useAttendance(dateFrom, dateTo, true); // slim mode
 
   const isLoading = usersLoading || shiftsLoading || attLoading;
 
   // Process data with useMemo
   const members = users as Member[];
-  const records = attendance as AttendanceRecord[];
+
+  // Join member data client-side (since slim mode skips member relation)
+  const memberMap = useMemo(() => {
+    const map = new Map<
+      string,
+      { id: string; name: string; image: string | null }
+    >();
+    (users as Member[]).forEach((u) => {
+      map.set(u.id, { id: u.id, name: u.name, image: u.image });
+    });
+    return map;
+  }, [users]);
+
+  const records = useMemo(() => {
+    return (rawAttendance as any[]).map((r) => ({
+      ...r,
+      member: memberMap.get(r.memberId) || {
+        id: r.memberId,
+        name: 'Unknown',
+        image: null,
+      },
+    })) as AttendanceRecord[];
+  }, [rawAttendance, memberMap]);
 
   const { shiftOptions, keteranganLabels, shiftColors } = useMemo(() => {
     const rawShifts = shifts as {

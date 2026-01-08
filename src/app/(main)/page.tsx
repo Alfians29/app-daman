@@ -18,6 +18,7 @@ import {
   ArrowRight,
   ArrowDownCircle,
   ArrowUpCircle,
+  Trophy,
 } from 'lucide-react';
 import { AttendanceChart } from '@/components/charts/AttendanceChart';
 import { CashBookChart } from '@/components/charts/CashBookChart';
@@ -105,6 +106,12 @@ export default function Dashboard() {
   const scheduleByWeek = chartData?.scheduleByWeek || [];
   const scheduleby6Month = chartData?.scheduleby6Month || [];
   const cashChartData = chartData?.cashByMonth || [];
+  const jobTypeLeaderboard = (chartData?.jobTypeLeaderboard || []) as {
+    rank: number | null;
+    id: string;
+    name: string;
+    totalValue: number;
+  }[];
 
   // Select appropriate chart data based on period
   const scheduleChartData = useMemo(() => {
@@ -760,6 +767,135 @@ export default function Dashboard() {
           <CashBookChart data={cashChartData} />
         </Card>
       </div>
+
+      {/* Job Type Leaderboard */}
+      {jobTypeLeaderboard.length > 0 && (
+        <Card>
+          <div className='flex items-center gap-3 mb-4'>
+            <div className='w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center'>
+              <Trophy className='w-5 h-5 text-amber-600' />
+            </div>
+            <div>
+              <h3 className='font-semibold text-gray-800'>
+                Leaderboard Pekerjaan
+              </h3>
+              <p className='text-xs text-gray-500'>
+                Bulan{' '}
+                {new Date().toLocaleDateString('id-ID', {
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </p>
+            </div>
+          </div>
+
+          <div className='grid grid-cols-2 gap-4'>
+            {/* Left column - first half */}
+            <div className='space-y-2'>
+              {jobTypeLeaderboard
+                .slice(0, Math.floor(jobTypeLeaderboard.length / 2))
+                .map((item) => {
+                  const isTop3 = item.rank !== null && item.rank <= 3;
+                  const isZero = item.rank === null;
+                  return (
+                    <div
+                      key={item.id}
+                      className={`flex items-center gap-3 rounded-xl ${
+                        isTop3 ? 'p-3' : 'p-2'
+                      } ${
+                        item.rank === 1
+                          ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200'
+                          : item.rank === 2
+                          ? 'bg-gradient-to-r from-gray-50 to-slate-50 border border-gray-200'
+                          : item.rank === 3
+                          ? 'bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200'
+                          : 'bg-gray-50 border border-gray-100'
+                      }`}
+                    >
+                      <div
+                        className={`rounded-full flex items-center justify-center font-bold ${
+                          isTop3 ? 'w-10 h-10 text-lg' : 'w-7 h-7 text-sm'
+                        } ${
+                          item.rank === 1
+                            ? 'bg-amber-500 text-white'
+                            : item.rank === 2
+                            ? 'bg-gray-400 text-white'
+                            : item.rank === 3
+                            ? 'bg-orange-400 text-white'
+                            : 'bg-gray-200 text-gray-600'
+                        }`}
+                      >
+                        {isZero ? '-' : item.rank}
+                      </div>
+                      <div className='flex-1 min-w-0'>
+                        <p
+                          className={`font-medium truncate ${
+                            isTop3 ? 'text-gray-800' : 'text-gray-700 text-sm'
+                          }`}
+                        >
+                          {item.name}
+                        </p>
+                        {isTop3 && (
+                          <p
+                            className={`text-lg font-bold ${
+                              item.rank === 1
+                                ? 'text-amber-600'
+                                : item.rank === 2
+                                ? 'text-gray-600'
+                                : 'text-orange-600'
+                            }`}
+                          >
+                            {item.totalValue.toLocaleString('id-ID')}
+                          </p>
+                        )}
+                      </div>
+                      {!isTop3 && (
+                        <p
+                          className={`text-sm font-bold ${
+                            isZero ? 'text-gray-400' : 'text-gray-600'
+                          }`}
+                        >
+                          {item.totalValue.toLocaleString('id-ID')}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+
+            {/* Right column - second half */}
+            <div className='space-y-2'>
+              {jobTypeLeaderboard
+                .slice(Math.floor(jobTypeLeaderboard.length / 2))
+                .map((item) => {
+                  const isZero = item.rank === null;
+                  return (
+                    <div
+                      key={item.id}
+                      className='flex items-center gap-2 p-2 rounded-xl bg-gray-50 border border-gray-100'
+                    >
+                      <div className='w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-600'>
+                        {isZero ? '-' : item.rank}
+                      </div>
+                      <div className='flex-1 min-w-0'>
+                        <p className='text-sm font-medium text-gray-700 truncate'>
+                          {item.name}
+                        </p>
+                      </div>
+                      <p
+                        className={`text-sm font-bold ${
+                          isZero ? 'text-gray-400' : 'text-gray-600'
+                        }`}
+                      >
+                        {item.totalValue.toLocaleString('id-ID')}
+                      </p>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Today's Schedule Overview */}
       <Card>
