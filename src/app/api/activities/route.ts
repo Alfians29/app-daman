@@ -12,9 +12,15 @@ export async function GET(request: NextRequest) {
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
     const search = searchParams.get('search');
+    const userId = searchParams.get('userId');
 
     // Build where clause
     const where: Record<string, unknown> = {};
+
+    // Filter by userId (for profile page optimization)
+    if (userId) {
+      where.userId = userId;
+    }
 
     if (type && type !== 'all') {
       where.type = type;

@@ -19,9 +19,9 @@ import { processImage } from '@/lib/imageUtils';
 import {
   useUsers,
   useShifts,
-  useSchedule,
-  useAttendance,
-  useActivities,
+  useUserSchedule,
+  useUserAttendance,
+  useUserActivities,
 } from '@/lib/swr-hooks';
 import {
   Mail,
@@ -119,11 +119,14 @@ export default function ProfilePage() {
   // SWR hooks for cached data
   const { users, isLoading: usersLoading, mutate: mutateUsers } = useUsers();
   const { shifts, isLoading: shiftsLoading } = useShifts();
-  const { schedules, isLoading: schedLoading } = useSchedule();
-  const { attendance, isLoading: attLoading } = useAttendance();
-  const { activities, isLoading: activitiesLoading } = useActivities({
-    limit: 10,
-  });
+  // Use user-specific hooks with slim mode for optimized payload
+  // This reduces API payload from ~32MB to ~100KB
+  const { schedules, isLoading: schedLoading } = useUserSchedule(authUser?.id);
+  const { attendance, isLoading: attLoading } = useUserAttendance(authUser?.id);
+  const { activities, isLoading: activitiesLoading } = useUserActivities(
+    authUser?.id,
+    10
+  );
 
   const isLoading =
     authLoading ||
