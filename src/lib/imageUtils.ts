@@ -3,6 +3,7 @@
 /**
  * Image compression utility using Canvas API
  * Compresses images before upload to reduce storage and bandwidth
+ * Supports animated GIFs with optimization
  */
 
 export type CompressionOptions = {
@@ -12,12 +13,140 @@ export type CompressionOptions = {
   format?: 'jpeg' | 'png' | 'webp';
 };
 
+export type GifCompressionOptions = {
+  maxWidth?: number;
+  maxHeight?: number;
+  maxSizeBytes?: number; // Max file size in bytes
+};
+
 const DEFAULT_OPTIONS: Required<CompressionOptions> = {
   maxWidth: 400,
   maxHeight: 400,
   quality: 0.75,
   format: 'jpeg',
 };
+
+const DEFAULT_GIF_OPTIONS: Required<GifCompressionOptions> = {
+  maxWidth: 100, // Smaller for animated - max compression
+  maxHeight: 100,
+  maxSizeBytes: 300 * 1024, // 300KB max for GIF
+};
+
+/**
+ * Check if a file is a GIF
+ */
+export function isGifFile(file: File): boolean {
+  return file.type === 'image/gif';
+}
+
+/**
+ * Check if a GIF file is animated by reading its binary data
+ * Animated GIFs have multiple image frames indicated by multiple 0x00 0x21 0xF9 sequences
+ */
+export async function isAnimatedGif(file: File): Promise<boolean> {
+  if (!isGifFile(file)) return false;
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const buffer = e.target?.result as ArrayBuffer;
+      const view = new Uint8Array(buffer);
+
+      // Count graphic control extension blocks (0x21 0xF9)
+      // Multiple blocks indicate animation
+      let count = 0;
+      for (let i = 0; i < view.length - 1; i++) {
+        if (view[i] === 0x21 && view[i + 1] === 0xf9) {
+          count++;
+          if (count > 1) {
+            resolve(true);
+            return;
+          }
+        }
+      }
+      resolve(false);
+    };
+    reader.onerror = () => resolve(false);
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/**
+ * Process animated GIF - validates size and returns as-is or rejects if too large
+ * Note: True GIF compression/resizing requires server-side processing with tools like gifsicle
+ * This function performs client-side validation and basic size check
+ */
+export async function processAnimatedGif(
+  file: File,
+  options: GifCompressionOptions = {}
+): Promise<string> {
+  const opts = { ...DEFAULT_GIF_OPTIONS, ...options };
+
+  // Check file size
+  if (file.size > opts.maxSizeBytes) {
+    throw new Error(
+      `GIF terlalu besar! Maksimal ${formatFileSize(opts.maxSizeBytes)}. ` +
+        `File kamu: ${formatFileSize(file.size)}. ` +
+        `Gunakan tool online seperti ezgif.com untuk kompres GIF.`
+    );
+  }
+
+  // For animated GIF, we need to check dimensions
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      // Check dimensions
+      if (img.width > opts.maxWidth * 2 || img.height > opts.maxHeight * 2) {
+        reject(
+          new Error(
+            `GIF terlalu besar! Maksimal ${opts.maxWidth * 2}x${
+              opts.maxHeight * 2
+            }px. ` + `Gunakan tool online seperti ezgif.com untuk resize GIF.`
+          )
+        );
+        return;
+      }
+
+      // Return original GIF as base64 (preserves animation)
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        resolve(e.target?.result as string);
+      };
+      reader.onerror = () => reject(new Error('Failed to read GIF file'));
+      reader.readAsDataURL(file);
+    };
+
+    img.onerror = () => reject(new Error('Failed to load GIF'));
+
+    // Load image to check dimensions
+    const tempReader = new FileReader();
+    tempReader.onload = (e) => {
+      img.src = e.target?.result as string;
+    };
+    tempReader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Smart image processor - handles both static images and animated GIFs
+ * @param file - The image file to process
+ * @param options - Compression options for static images
+ * @param gifOptions - Options for animated GIFs
+ * @returns Promise<string> - Processed image as base64 data URL
+ */
+export async function processImage(
+  file: File,
+  options: CompressionOptions = {},
+  gifOptions: GifCompressionOptions = {}
+): Promise<string> {
+  // Check if it's an animated GIF
+  if (await isAnimatedGif(file)) {
+    return processAnimatedGif(file, gifOptions);
+  }
+
+  // For static images (including static GIFs), compress normally
+  return compressImage(file, options);
+}
 
 /**
  * Compress an image file using Canvas API

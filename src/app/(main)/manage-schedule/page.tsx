@@ -621,7 +621,7 @@ export default function AdminSchedulePage() {
         </div>
 
         {hasChanges && (
-          <div className='mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700'>
+          <div className='mb-4 p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg text-sm text-amber-700 dark:text-amber-300'>
             <span className='font-medium'>
               {Object.keys(scheduleChanges).length} perubahan
             </span>{' '}

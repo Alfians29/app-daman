@@ -59,6 +59,7 @@ type DailyReport = {
 
 type Member = {
   id: string;
+  nik: string;
   name: string;
   nickname: string | null;
   image: string | null;
@@ -115,10 +116,15 @@ export default function AdminReportPage() {
   const memberMap = useMemo(() => {
     const map = new Map<
       string,
-      { id: string; name: string; nickname: string | null }
+      { id: string; nik: string; name: string; nickname: string | null }
     >();
     (users as Member[]).forEach((u) => {
-      map.set(u.id, { id: u.id, name: u.name, nickname: u.nickname });
+      map.set(u.id, {
+        id: u.id,
+        nik: u.nik,
+        name: u.name,
+        nickname: u.nickname,
+      });
     });
     return map;
   }, [users]);
@@ -144,11 +150,12 @@ export default function AdminReportPage() {
   const filteredReports = useMemo(() => {
     return reports
       .filter((r) => r.tanggal.substring(0, 10) === selectedDate)
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-  }, [reports, selectedDate]);
+      .sort((a, b) => {
+        const nikA = memberMap.get(a.memberId)?.nik || '';
+        const nikB = memberMap.get(b.memberId)?.nik || '';
+        return nikA.localeCompare(nikB);
+      });
+  }, [reports, selectedDate, memberMap]);
 
   const openEditModal = (report: DailyReport) => {
     setEditingReport(report);
@@ -428,8 +435,8 @@ export default function AdminReportPage() {
           onClick={() => setActiveTab('reports')}
           className={`px-4 py-2 rounded-xl font-medium transition-colors ${
             activeTab === 'reports'
-              ? 'bg-[#E57373] text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              ? 'bg-[#E57373] dark:bg-[#7f1d1d] text-white'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
           }`}
         >
           <FileText className='w-4 h-4 inline mr-2' />
@@ -439,8 +446,8 @@ export default function AdminReportPage() {
           onClick={() => setActiveTab('jobTypes')}
           className={`px-4 py-2 rounded-xl font-medium transition-colors ${
             activeTab === 'jobTypes'
-              ? 'bg-[#E57373] text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              ? 'bg-[#E57373] dark:bg-[#7f1d1d] text-white'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
           }`}
         >
           <Settings className='w-4 h-4 inline mr-2' />
@@ -454,12 +461,14 @@ export default function AdminReportPage() {
           <div className='grid grid-cols-2 gap-4'>
             <Card>
               <div className='flex items-center gap-3'>
-                <div className='w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center'>
-                  <FileText className='w-5 h-5 text-blue-600' />
+                <div className='w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
+                  <FileText className='w-5 h-5 text-blue-600 dark:text-blue-400' />
                 </div>
                 <div>
-                  <p className='text-xs text-gray-500'>Total Report</p>
-                  <p className='text-xl font-bold text-gray-800'>
+                  <p className='text-xs text-gray-500 dark:text-gray-400'>
+                    Total Report
+                  </p>
+                  <p className='text-xl font-bold text-gray-800 dark:text-gray-100'>
                     {reports.length}
                   </p>
                 </div>
@@ -467,12 +476,14 @@ export default function AdminReportPage() {
             </Card>
             <Card>
               <div className='flex items-center gap-3'>
-                <div className='w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center'>
-                  <FileText className='w-5 h-5 text-emerald-600' />
+                <div className='w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center'>
+                  <FileText className='w-5 h-5 text-emerald-600 dark:text-emerald-400' />
                 </div>
                 <div>
-                  <p className='text-xs text-gray-500'>Report Hari Ini</p>
-                  <p className='text-xl font-bold text-emerald-600'>
+                  <p className='text-xs text-gray-500 dark:text-gray-400'>
+                    Report Hari Ini
+                  </p>
+                  <p className='text-xl font-bold text-emerald-600 dark:text-emerald-400'>
                     {filteredReports.length}
                   </p>
                 </div>
@@ -490,7 +501,7 @@ export default function AdminReportPage() {
                   onChange={(e) => setSelectedDate(e.target.value)}
                   className='px-4 py-2 border border-gray-200 rounded-xl font-medium'
                 />
-                <span className='text-gray-600 font-medium hidden sm:block'>
+                <span className='text-gray-600 dark:text-gray-300 font-medium hidden sm:block'>
                   {new Date(selectedDate).toLocaleDateString('id-ID', {
                     weekday: 'long',
                     day: 'numeric',
@@ -502,19 +513,19 @@ export default function AdminReportPage() {
               <div className='flex items-center gap-2'>
                 <button
                   onClick={() => setSelectedDate(getLocalDateString())}
-                  className='px-3 py-2 text-sm font-medium text-[#E57373] bg-red-50 hover:bg-red-100 rounded-lg'
+                  className='px-3 py-2 text-sm font-medium text-[#E57373] bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg'
                 >
                   Hari Ini
                 </button>
                 <button
                   onClick={() => navigateDate(-1)}
-                  className='p-2 hover:bg-gray-100 rounded-lg'
+                  className='p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg'
                 >
                   <ChevronLeft className='w-5 h-5 text-gray-600' />
                 </button>
                 <button
                   onClick={() => navigateDate(1)}
-                  className='p-2 hover:bg-gray-100 rounded-lg'
+                  className='p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg'
                 >
                   <ChevronRight className='w-5 h-5 text-gray-600' />
                 </button>
@@ -523,33 +534,35 @@ export default function AdminReportPage() {
           </Card>
 
           <Card>
-            <h3 className='font-semibold text-gray-800 mb-4'>Daftar Report</h3>
+            <h3 className='font-semibold text-gray-800 dark:text-gray-100 mb-4'>
+              Daftar Report
+            </h3>
             <div className='overflow-x-auto'>
               <table className='w-full'>
-                <thead className='bg-gray-50'>
+                <thead className='bg-gray-50 dark:bg-gray-800'>
                   <tr>
-                    <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                    <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                       Tanggal
                     </th>
-                    <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                    <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                       Member
                     </th>
-                    <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                    <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                       Pekerjaan
                     </th>
-                    <th className='text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                    <th className='text-center px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                       Aksi
                     </th>
                   </tr>
                 </thead>
-                <tbody className='divide-y divide-gray-100'>
+                <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
                   {filteredReports.length === 0 ? (
                     <tr>
                       <td
                         colSpan={4}
-                        className='px-4 py-12 text-center text-gray-500'
+                        className='px-4 py-12 text-center text-gray-500 dark:text-gray-400'
                       >
-                        <FileText className='w-12 h-12 text-gray-300 mx-auto mb-2' />
+                        <FileText className='w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-2' />
                         <p>Tidak ada report ditemukan</p>
                       </td>
                     </tr>
@@ -559,8 +572,11 @@ export default function AdminReportPage() {
                         (m) => m.id === report.memberId
                       );
                       return (
-                        <tr key={report.id} className='hover:bg-gray-50'>
-                          <td className='px-4 py-3 text-sm text-gray-600'>
+                        <tr
+                          key={report.id}
+                          className='hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                        >
+                          <td className='px-4 py-3 text-sm text-gray-600 dark:text-gray-300'>
                             {formatDate(report.tanggal)}
                           </td>
                           <td className='px-4 py-3'>
@@ -584,10 +600,10 @@ export default function AdminReportPage() {
                                 </div>
                               )}
                               <div>
-                                <p className='text-sm font-medium text-gray-800'>
+                                <p className='text-sm font-medium text-gray-800 dark:text-gray-200'>
                                   {report.member?.name}
                                 </p>
-                                <p className='text-xs text-gray-500'>
+                                <p className='text-xs text-gray-500 dark:text-gray-400'>
                                   {member?.position}
                                 </p>
                               </div>
@@ -600,13 +616,13 @@ export default function AdminReportPage() {
                                   key={task.id}
                                   className='flex items-center gap-2'
                                 >
-                                  <span className='px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded'>
+                                  <span className='px-2 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded'>
                                     {task.jobType?.name || '-'}
                                   </span>
-                                  <span className='text-xs font-semibold text-emerald-600'>
+                                  <span className='text-xs font-semibold text-emerald-600 dark:text-emerald-400'>
                                     {task.value}
                                   </span>
-                                  <span className='text-xs text-gray-600 truncate max-w-[200px]'>
+                                  <span className='text-xs text-gray-600 dark:text-gray-400 truncate max-w-[200px]'>
                                     {task.keterangan}
                                   </span>
                                 </div>
@@ -623,16 +639,16 @@ export default function AdminReportPage() {
                               <button
                                 onClick={() => openEditModal(report)}
                                 disabled={isPending}
-                                className='p-2 hover:bg-gray-100 rounded-lg transition-colors inline-flex disabled:opacity-50'
+                                className='p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-white dark:hover:bg-blue-600/50 rounded-lg transition-colors inline-flex disabled:opacity-50'
                               >
-                                <Edit3 className='w-4 h-4 text-gray-500' />
+                                <Edit3 className='w-4 h-4' />
                               </button>
                               <button
                                 onClick={() => openDeleteModal(report)}
                                 disabled={isPending}
-                                className='p-2 hover:bg-red-100 rounded-lg transition-colors inline-flex disabled:opacity-50'
+                                className='p-2 text-gray-500 dark:text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:text-white dark:hover:bg-red-600/50 rounded-lg transition-colors inline-flex disabled:opacity-50'
                               >
-                                <Trash2 className='w-4 h-4 text-red-500' />
+                                <Trash2 className='w-4 h-4' />
                               </button>
                             </div>
                           </td>
@@ -650,7 +666,7 @@ export default function AdminReportPage() {
       {/* Job Types Tab */}
       {activeTab === 'jobTypes' && (
         <Card>
-          <h3 className='font-semibold text-gray-800 mb-4'>
+          <h3 className='font-semibold text-gray-800 dark:text-gray-100 mb-4'>
             Daftar Jenis Pekerjaan ({jobTypes.length})
           </h3>
           <div className='space-y-2'>
@@ -659,8 +675,8 @@ export default function AdminReportPage() {
                 key={jt.id}
                 className={`flex items-center justify-between p-4 rounded-xl border ${
                   jt.isActive
-                    ? 'bg-white border-gray-200'
-                    : 'bg-gray-50 border-gray-100'
+                    ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                    : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700'
                 }`}
               >
                 <div className='flex items-center gap-3'>
@@ -671,7 +687,9 @@ export default function AdminReportPage() {
                   />
                   <span
                     className={`font-medium ${
-                      jt.isActive ? 'text-gray-800' : 'text-gray-400'
+                      jt.isActive
+                        ? 'text-gray-800 dark:text-gray-100'
+                        : 'text-gray-400 dark:text-gray-500'
                     }`}
                   >
                     {jt.name}
@@ -686,8 +704,8 @@ export default function AdminReportPage() {
                     disabled={isPending}
                     className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
                       jt.isActive
-                        ? 'hover:bg-gray-100 text-gray-500'
-                        : 'hover:bg-emerald-100 text-emerald-600'
+                        ? 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500'
+                        : 'hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-600'
                     }`}
                   >
                     <Check className='w-4 h-4' />
@@ -695,7 +713,7 @@ export default function AdminReportPage() {
                   <button
                     onClick={() => openEditJobTypeModal(jt)}
                     disabled={isPending}
-                    className='p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 disabled:opacity-50'
+                    className='p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-500 disabled:opacity-50'
                   >
                     <Edit3 className='w-4 h-4' />
                   </button>

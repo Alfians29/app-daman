@@ -176,19 +176,19 @@ export default function SchedulePage() {
     // Final fallback to default colors matching manage-shift page
     switch (keterangan) {
       case 'PAGI':
-        return 'bg-indigo-100 text-indigo-700';
+        return 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300';
       case 'MALAM':
-        return 'bg-purple-100 text-purple-700';
+        return 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300';
       case 'PAGI_MALAM':
-        return 'bg-amber-100 text-amber-700';
+        return 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300';
       case 'PIKET_PAGI':
-        return 'bg-emerald-100 text-emerald-700';
+        return 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300';
       case 'PIKET_MALAM':
-        return 'bg-cyan-100 text-cyan-700';
+        return 'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300';
       case 'LIBUR':
-        return 'bg-red-100 text-red-700';
+        return 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300';
       default:
-        return 'bg-gray-100 text-gray-500';
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400';
     }
   };
 
@@ -340,7 +340,7 @@ export default function SchedulePage() {
 
       {/* My Schedule Summary */}
       {showMySchedule && currentUser && (
-        <Card className='bg-linear-to-r from-[#E57373] to-[#C62828] text-white'>
+        <Card className='bg-linear-to-r from-[#E57373] to-[#C62828] dark:from-[#7f1d1d] dark:to-[#991b1b] text-white'>
           {/* Row 1: User Info + Switch Buttons */}
           <div className='flex items-center justify-between gap-4 mb-4'>
             {/* User Info */}

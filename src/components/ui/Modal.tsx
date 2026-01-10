@@ -58,7 +58,7 @@ interface ModalHeaderProps {
 
 export function ModalHeader({ title, subtitle, onClose }: ModalHeaderProps) {
   return (
-    <div className='flex items-center justify-between p-5 bg-linear-to-r from-[#E57373] to-[#EF5350]'>
+    <div className='flex items-center justify-between p-5 bg-linear-to-r from-[#E57373] to-[#EF5350] dark:from-[#7f1d1d] dark:to-[#991b1b]'>
       <div>
         <h3 className='text-lg font-bold text-white'>{title}</h3>
         {subtitle && <p className='text-white/80 text-sm'>{subtitle}</p>}
@@ -160,7 +160,7 @@ export function ConfirmModal({
         <button
           onClick={onClose}
           disabled={isLoading}
-          className='flex-1 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-xl transition-colors disabled:opacity-50'
+          className='flex-1 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-xl transition-colors disabled:opacity-50'
         >
           {cancelText}
         </button>

@@ -355,7 +355,7 @@ export default function CashBookPage() {
 
       {/* My Contribution Card */}
       {showMyContribution && currentUser && (
-        <Card className='bg-gradient-to-r from-[#E57373] to-[#C62828] text-white'>
+        <Card className='bg-linear-to-r from-[#E57373] to-[#C62828] dark:from-[#7f1d1d] dark:to-[#991b1b] text-white'>
           <div className='flex flex-col lg:flex-row lg:items-center gap-4'>
             <div className='flex items-center gap-4 flex-1'>
               {currentUser.image ? (
@@ -409,12 +409,14 @@ export default function CashBookPage() {
         <div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
           <Card>
             <div className='flex items-center gap-3'>
-              <div className='w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center'>
-                <Wallet className='w-6 h-6 text-blue-600' />
+              <div className='w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
+                <Wallet className='w-6 h-6 text-blue-600 dark:text-blue-400' />
               </div>
               <div>
-                <p className='text-xs text-gray-500'>Saldo Kas</p>
-                <p className='text-xl font-bold text-blue-600'>
+                <p className='text-xs text-gray-500 dark:text-gray-400'>
+                  Saldo Kas
+                </p>
+                <p className='text-xl font-bold text-blue-600 dark:text-blue-400'>
                   {formatCurrency(totalCash)}
                 </p>
               </div>
@@ -422,12 +424,14 @@ export default function CashBookPage() {
           </Card>
           <Card>
             <div className='flex items-center gap-3'>
-              <div className='w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center'>
-                <ArrowDownCircle className='w-6 h-6 text-emerald-600' />
+              <div className='w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center'>
+                <ArrowDownCircle className='w-6 h-6 text-emerald-600 dark:text-emerald-400' />
               </div>
               <div>
-                <p className='text-xs text-gray-500'>Total Pemasukan</p>
-                <p className='text-xl font-bold text-emerald-600'>
+                <p className='text-xs text-gray-500 dark:text-gray-400'>
+                  Total Pemasukan
+                </p>
+                <p className='text-xl font-bold text-emerald-600 dark:text-emerald-400'>
                   {formatCurrency(totalCashIn)}
                 </p>
               </div>
@@ -435,12 +439,14 @@ export default function CashBookPage() {
           </Card>
           <Card>
             <div className='flex items-center gap-3'>
-              <div className='w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center'>
-                <ArrowUpCircle className='w-6 h-6 text-red-600' />
+              <div className='w-12 h-12 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center'>
+                <ArrowUpCircle className='w-6 h-6 text-red-600 dark:text-red-400' />
               </div>
               <div>
-                <p className='text-xs text-gray-500'>Total Pengeluaran</p>
-                <p className='text-xl font-bold text-red-600'>
+                <p className='text-xs text-gray-500 dark:text-gray-400'>
+                  Total Pengeluaran
+                </p>
+                <p className='text-xl font-bold text-red-600 dark:text-red-400'>
                   {formatCurrency(totalCashOut)}
                 </p>
               </div>
@@ -448,12 +454,14 @@ export default function CashBookPage() {
           </Card>
           <Card>
             <div className='flex items-center gap-3'>
-              <div className='w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center'>
-                <TrendingUp className='w-6 h-6 text-purple-600' />
+              <div className='w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center'>
+                <TrendingUp className='w-6 h-6 text-purple-600 dark:text-purple-400' />
               </div>
               <div>
-                <p className='text-xs text-gray-500'>Progress Kas</p>
-                <p className='text-xl font-bold text-purple-600'>
+                <p className='text-xs text-gray-500 dark:text-gray-400'>
+                  Progress Kas
+                </p>
+                <p className='text-xl font-bold text-purple-600 dark:text-purple-400'>
                   {yearlyStats.percentPaid}%
                 </p>
               </div>
@@ -467,32 +475,34 @@ export default function CashBookPage() {
         <Card>
           <div className='flex items-center justify-between mb-4'>
             <div>
-              <h3 className='font-semibold text-gray-800'>
+              <h3 className='font-semibold text-gray-800 dark:text-gray-100'>
                 Progress Kas Tahunan {new Date().getFullYear()}
               </h3>
-              <p className='text-sm text-gray-500'>
+              <p className='text-sm text-gray-500 dark:text-gray-400'>
                 Klik bulan untuk melihat detail pembayaran
               </p>
             </div>
             <div className='text-right'>
-              <p className='text-sm text-gray-500'>Total Terkumpul</p>
-              <p className='text-lg font-bold text-emerald-600'>
+              <p className='text-sm text-gray-500 dark:text-gray-400'>
+                Total Terkumpul
+              </p>
+              <p className='text-lg font-bold text-emerald-600 dark:text-emerald-400'>
                 {formatCurrency(yearlyStats.totalAmountCollected)}
               </p>
             </div>
           </div>
 
           {/* Yearly Progress Bar */}
-          <div className='mb-6 p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl'>
+          <div className='mb-6 p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 rounded-xl'>
             <div className='flex items-center justify-between mb-2'>
-              <span className='text-sm font-medium text-gray-700'>
+              <span className='text-sm font-medium text-gray-700 dark:text-gray-300'>
                 Progress Tahunan
               </span>
-              <span className='text-sm font-bold text-gray-800'>
+              <span className='text-sm font-bold text-gray-800 dark:text-gray-200'>
                 {yearlyStats.percentPaid}%
               </span>
             </div>
-            <div className='h-4 bg-gray-200 rounded-full overflow-hidden'>
+            <div className='h-4 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden'>
               <div
                 className={`h-full rounded-full transition-all ${
                   yearlyStats.percentPaid >= 100
@@ -506,7 +516,7 @@ export default function CashBookPage() {
                 style={{ width: `${yearlyStats.percentPaid}%` }}
               />
             </div>
-            <div className='flex items-center justify-between mt-2 text-xs text-gray-500'>
+            <div className='flex items-center justify-between mt-2 text-xs text-gray-500 dark:text-gray-400'>
               <span>
                 {yearlyStats.totalPaidPayments} dari{' '}
                 {yearlyStats.totalPossiblePayments} pembayaran
@@ -537,17 +547,19 @@ export default function CashBookPage() {
                   onClick={() => setSelectedMonth(monthData.fullMonth)}
                   className={`p-2 rounded-xl border-2 transition-all hover:scale-105 hover:shadow-lg flex flex-col items-center ${
                     isCurrent
-                      ? 'border-[#E57373] bg-red-50'
+                      ? 'border-[#E57373] bg-red-50 dark:bg-red-900/30'
                       : monthData.percent >= 100
-                      ? 'border-emerald-500 bg-emerald-50'
+                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30'
                       : isPast
-                      ? 'border-amber-400 bg-amber-50'
-                      : 'border-gray-200 bg-gray-50'
+                      ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/30'
+                      : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700'
                   }`}
                 >
                   <p
                     className={`text-xs font-semibold mb-1 ${
-                      isCurrent ? 'text-[#E57373]' : 'text-gray-700'
+                      isCurrent
+                        ? 'text-[#E57373]'
+                        : 'text-gray-700 dark:text-gray-200'
                     }`}
                   >
                     {monthData.month}
@@ -581,10 +593,10 @@ export default function CashBookPage() {
                       <span
                         className={`text-xs font-bold ${
                           monthData.percent >= 100
-                            ? 'text-emerald-600'
+                            ? 'text-emerald-600 dark:text-emerald-400'
                             : isCurrent
                             ? 'text-[#E57373]'
-                            : 'text-gray-700'
+                            : 'text-gray-700 dark:text-gray-200'
                         }`}
                       >
                         {monthData.percent}%
@@ -595,8 +607,8 @@ export default function CashBookPage() {
                   <p
                     className={`text-[10px] font-medium mt-1 ${
                       monthData.percent >= 100
-                        ? 'text-emerald-600'
-                        : 'text-gray-500'
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-gray-500 dark:text-gray-400'
                     }`}
                   >
                     {monthData.paidCount}/{monthData.totalMembers}
@@ -607,22 +619,30 @@ export default function CashBookPage() {
           </div>
 
           {/* Legend */}
-          <div className='mt-4 pt-4 border-t border-gray-200 flex flex-wrap gap-4 text-xs'>
+          <div className='mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex flex-wrap gap-4 text-xs'>
             <div className='flex items-center gap-2'>
               <div className='w-3 h-3 rounded-full bg-emerald-500'></div>
-              <span className='text-gray-600'>Semua lunas</span>
+              <span className='text-gray-600 dark:text-gray-400'>
+                Semua lunas
+              </span>
             </div>
             <div className='flex items-center gap-2'>
               <div className='w-3 h-3 rounded-full bg-[#E57373]'></div>
-              <span className='text-gray-600'>Bulan ini</span>
+              <span className='text-gray-600 dark:text-gray-400'>
+                Bulan ini
+              </span>
             </div>
             <div className='flex items-center gap-2'>
               <div className='w-3 h-3 rounded-full bg-amber-400'></div>
-              <span className='text-gray-600'>Belum lengkap</span>
+              <span className='text-gray-600 dark:text-gray-400'>
+                Belum lengkap
+              </span>
             </div>
             <div className='flex items-center gap-2'>
               <div className='w-3 h-3 rounded-full bg-gray-400'></div>
-              <span className='text-gray-600'>Bulan mendatang</span>
+              <span className='text-gray-600 dark:text-gray-400'>
+                Bulan mendatang
+              </span>
             </div>
           </div>
         </Card>
@@ -668,57 +688,60 @@ export default function CashBookPage() {
       {/* Transactions Table */}
       <Card>
         <div className='flex items-center justify-between mb-4'>
-          <h3 className='font-semibold text-gray-800'>
+          <h3 className='font-semibold text-gray-800 dark:text-gray-100'>
             {showMyContribution ? 'Transaksi Saya' : 'Semua Transaksi'}
           </h3>
-          <span className='text-sm text-gray-500'>
+          <span className='text-sm text-gray-500 dark:text-gray-400'>
             {filteredTransactions.length} transaksi
           </span>
         </div>
         <div className='overflow-x-auto'>
           <table className='w-full'>
-            <thead className='bg-gray-50'>
+            <thead className='bg-gray-50 dark:bg-gray-800'>
               <tr>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Tanggal
                 </th>
                 {!showMyContribution && (
-                  <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                  <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                     Anggota
                   </th>
                 )}
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Kategori
                 </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Deskripsi
                 </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Tipe
                 </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Diinput Oleh
                 </th>
-                <th className='text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Jumlah
                 </th>
               </tr>
             </thead>
-            <tbody className='divide-y divide-gray-100'>
+            <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
               {paginatedTransactions.length === 0 ? (
                 <tr>
                   <td
                     colSpan={showMyContribution ? 6 : 7}
-                    className='px-4 py-12 text-center text-gray-500'
+                    className='px-4 py-12 text-center text-gray-500 dark:text-gray-400'
                   >
-                    <Wallet className='w-12 h-12 mx-auto text-gray-300 mb-2' />
+                    <Wallet className='w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-2' />
                     <p>Tidak ada transaksi</p>
                   </td>
                 </tr>
               ) : (
                 paginatedTransactions.map((tx) => (
-                  <tr key={tx.id} className='hover:bg-gray-50'>
-                    <td className='px-4 py-3 text-sm text-gray-700'>
+                  <tr
+                    key={tx.id}
+                    className='hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                  >
+                    <td className='px-4 py-3 text-sm text-gray-700 dark:text-gray-300'>
                       {new Date(tx.date).toLocaleDateString('id-ID', {
                         day: 'numeric',
                         month: 'short',
@@ -746,26 +769,26 @@ export default function CashBookPage() {
                               </span>
                             </div>
                           )}
-                          <span className='text-sm text-gray-700'>
+                          <span className='text-sm text-gray-700 dark:text-gray-300'>
                             {tx.member?.name || '-'}
                           </span>
                         </div>
                       </td>
                     )}
                     <td className='px-4 py-3'>
-                      <span className='inline-flex px-2 py-1 text-xs font-medium rounded-lg bg-blue-100 text-blue-700'>
+                      <span className='inline-flex px-2 py-1 text-xs font-medium rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'>
                         {tx.transactionCategory || 'Lain-lain'}
                       </span>
                     </td>
-                    <td className='px-4 py-3 text-sm text-gray-800'>
+                    <td className='px-4 py-3 text-sm text-gray-800 dark:text-gray-200'>
                       {tx.description || '-'}
                     </td>
                     <td className='px-4 py-3'>
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-medium rounded-lg ${
                           tx.category.toLowerCase() === 'income'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-red-100 text-red-700'
+                            ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                            : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
                         }`}
                       >
                         {tx.category.toLowerCase() === 'income'
@@ -779,8 +802,8 @@ export default function CashBookPage() {
                     <td
                       className={`px-4 py-3 text-sm font-medium text-right ${
                         tx.category.toLowerCase() === 'income'
-                          ? 'text-emerald-600'
-                          : 'text-red-600'
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-red-600 dark:text-red-400'
                       }`}
                     >
                       {tx.category.toLowerCase() === 'income' ? '+' : '-'}
@@ -820,8 +843,8 @@ export default function CashBookPage() {
                       onClick={() => setCurrentPage(pageNum)}
                       className={`w-8 h-8 rounded-lg text-sm font-medium ${
                         currentPage === pageNum
-                          ? 'bg-[#E57373] text-white'
-                          : 'hover:bg-gray-100 text-gray-700'
+                          ? 'bg-[#E57373] dark:bg-[#991b1b] text-white'
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
                       }`}
                     >
                       {pageNum}
@@ -834,7 +857,7 @@ export default function CashBookPage() {
                   setCurrentPage((p) => Math.min(totalPages, p + 1))
                 }
                 disabled={currentPage === totalPages}
-                className='p-2 rounded-lg border border-gray-200 hover:bg-gray-100 disabled:opacity-50'
+                className='p-2 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50'
               >
                 <ChevronRight className='w-4 h-4' />
               </button>
@@ -862,14 +885,14 @@ export default function CashBookPage() {
               {/* Progress Bar */}
               <div className='mb-4'>
                 <div className='flex items-center justify-between mb-2'>
-                  <span className='text-sm font-medium text-gray-700'>
+                  <span className='text-sm font-medium text-gray-700 dark:text-gray-300'>
                     Progress
                   </span>
-                  <span className='text-sm font-bold text-gray-800'>
+                  <span className='text-sm font-bold text-gray-800 dark:text-white'>
                     {selectedMonthData.percent}%
                   </span>
                 </div>
-                <div className='h-3 bg-gray-200 rounded-full overflow-hidden'>
+                <div className='h-3 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden'>
                   <div
                     className={`h-full rounded-full transition-all ${
                       selectedMonthData.percent >= 100
@@ -889,7 +912,9 @@ export default function CashBookPage() {
                   <div
                     key={member.id}
                     className={`flex items-center gap-2 p-2.5 rounded-xl ${
-                      paid ? 'bg-emerald-50' : 'bg-red-50'
+                      paid
+                        ? 'bg-emerald-50 dark:bg-emerald-900/30'
+                        : 'bg-red-50 dark:bg-red-900/30'
                     }`}
                   >
                     {member.image ? (

@@ -210,14 +210,21 @@ export default function AdminAttendancePage() {
     }
     // Fallback colors
     const defaultColors: Record<string, string> = {
-      PAGI: 'bg-blue-100 text-blue-700',
-      MALAM: 'bg-purple-100 text-purple-700',
-      PIKET_PAGI: 'bg-emerald-100 text-emerald-700',
-      PIKET_MALAM: 'bg-orange-100 text-orange-700',
-      PAGI_MALAM: 'bg-amber-100 text-amber-700',
-      LIBUR: 'bg-red-100 text-red-700',
+      PAGI: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300',
+      MALAM:
+        'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300',
+      PIKET_PAGI:
+        'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300',
+      PIKET_MALAM:
+        'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300',
+      PAGI_MALAM:
+        'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',
+      LIBUR: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',
     };
-    return defaultColors[keterangan] || 'bg-gray-100 text-gray-700';
+    return (
+      defaultColors[keterangan] ||
+      'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+    );
   };
 
   const summary = {
@@ -435,38 +442,44 @@ export default function AdminAttendancePage() {
 
       {/* Summary Cards */}
       <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
-        <div className='bg-white rounded-xl p-4 border border-gray-100'>
+        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center'>
-              <Calendar className='w-5 h-5 text-blue-600' />
+            <div className='w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
+              <Calendar className='w-5 h-5 text-blue-600 dark:text-blue-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Total Anggota</p>
-              <p className='text-lg font-bold text-gray-800'>{summary.total}</p>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>
+                Total Anggota
+              </p>
+              <p className='text-lg font-bold text-gray-800 dark:text-gray-100'>
+                {summary.total}
+              </p>
             </div>
           </div>
         </div>
-        <div className='bg-white rounded-xl p-4 border border-gray-100'>
+        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center'>
-              <Check className='w-5 h-5 text-emerald-600' />
+            <div className='w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center'>
+              <Check className='w-5 h-5 text-emerald-600 dark:text-emerald-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Hadir</p>
-              <p className='text-lg font-bold text-emerald-600'>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>Hadir</p>
+              <p className='text-lg font-bold text-emerald-600 dark:text-emerald-400'>
                 {summary.hadir}
               </p>
             </div>
           </div>
         </div>
-        <div className='bg-white rounded-xl p-4 border border-gray-100'>
+        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center'>
-              <X className='w-5 h-5 text-red-600' />
+            <div className='w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center'>
+              <X className='w-5 h-5 text-red-600 dark:text-red-400' />
             </div>
             <div>
-              <p className='text-xs text-red-500'>Libur</p>
-              <p className='text-lg font-bold text-red-600'>{summary.libur}</p>
+              <p className='text-xs text-red-500 dark:text-red-400'>Libur</p>
+              <p className='text-lg font-bold text-red-600 dark:text-red-400'>
+                {summary.libur}
+              </p>
             </div>
           </div>
         </div>
@@ -481,9 +494,9 @@ export default function AdminAttendancePage() {
               type='date'
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className='px-4 py-2 border border-gray-200 rounded-xl font-medium'
+              className='px-4 py-2 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl font-medium'
             />
-            <span className='text-gray-600 font-medium hidden sm:block'>
+            <span className='text-gray-600 dark:text-gray-300 font-medium hidden sm:block'>
               {new Date(selectedDate).toLocaleDateString('id-ID', {
                 weekday: 'long',
                 day: 'numeric',
@@ -495,21 +508,21 @@ export default function AdminAttendancePage() {
           <div className='flex items-center gap-2'>
             <button
               onClick={() => setSelectedDate(getLocalDateString())}
-              className='px-3 py-2 text-sm font-medium text-[#E57373] bg-red-50 hover:bg-red-100 rounded-lg'
+              className='px-3 py-2 text-sm font-medium text-[#E57373] dark:text-[#EF9A9A] bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-800/60 hover:text-[#C62828] dark:hover:text-white rounded-lg transition-colors'
             >
               Hari Ini
             </button>
             <button
               onClick={() => navigateDate(-1)}
-              className='p-2 hover:bg-gray-100 rounded-lg'
+              className='p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg'
             >
-              <ChevronLeft className='w-5 h-5 text-gray-600' />
+              <ChevronLeft className='w-5 h-5 text-gray-600 dark:text-gray-400' />
             </button>
             <button
               onClick={() => navigateDate(1)}
-              className='p-2 hover:bg-gray-100 rounded-lg'
+              className='p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg'
             >
-              <ChevronRight className='w-5 h-5 text-gray-600' />
+              <ChevronRight className='w-5 h-5 text-gray-600 dark:text-gray-400' />
             </button>
           </div>
         </div>
@@ -521,29 +534,29 @@ export default function AdminAttendancePage() {
           <table className='w-full'>
             <thead className='bg-gray-50 dark:bg-gray-700/50'>
               <tr>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Nama
                 </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Jam Absen
                 </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Keterangan
                 </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Status
                 </th>
-                <th className='text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-center px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Aksi
                 </th>
               </tr>
             </thead>
-            <tbody className='divide-y divide-gray-100'>
+            <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
               {filteredRecords.length === 0 ? (
                 <tr>
                   <td
                     colSpan={5}
-                    className='px-4 py-8 text-center text-gray-500'
+                    className='px-4 py-8 text-center text-gray-500 dark:text-gray-400'
                   >
                     Tidak ada data kehadiran untuk tanggal ini
                   </td>
@@ -571,12 +584,12 @@ export default function AdminAttendancePage() {
                               .slice(0, 2)}
                           </div>
                         )}
-                        <span className='text-sm font-medium text-gray-800'>
+                        <span className='text-sm font-medium text-gray-800 dark:text-gray-200'>
                           {record.member?.name || '-'}
                         </span>
                       </div>
                     </td>
-                    <td className='px-4 py-3 text-sm text-gray-600'>
+                    <td className='px-4 py-3 text-sm text-gray-600 dark:text-gray-300'>
                       {record.jamAbsen}
                     </td>
                     <td className='px-4 py-3'>
@@ -593,8 +606,8 @@ export default function AdminAttendancePage() {
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-medium rounded-lg ${
                           record.status === 'ONTIME'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-amber-100 text-amber-700'
+                            ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                            : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
                         }`}
                       >
                         {record.status === 'ONTIME' ? 'Ontime' : 'Telat'}
@@ -605,14 +618,14 @@ export default function AdminAttendancePage() {
                         <button
                           onClick={() => openEditModal(record)}
                           disabled={isPending}
-                          className='p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50'
+                          className='p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-white dark:hover:bg-blue-600/50 rounded-lg transition-colors disabled:opacity-50'
                         >
                           <Edit2 size={16} />
                         </button>
                         <button
                           onClick={() => openDeleteModal(record)}
                           disabled={isPending}
-                          className='p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50'
+                          className='p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:text-white dark:hover:bg-red-600/50 rounded-lg transition-colors disabled:opacity-50'
                         >
                           <Trash2 size={16} />
                         </button>

@@ -27,6 +27,7 @@ import {
 import { Input, Select, Textarea } from '@/components/ui/Form';
 import { rolesAPI, usersAPI } from '@/lib/api';
 import { useUsers, useRoles } from '@/lib/swr-hooks';
+import { getRoleColorClasses } from '@/lib/utils';
 import useSWR from 'swr';
 
 type Role = {
@@ -311,36 +312,46 @@ export default function ManageRolesPage() {
 
       {/* Summary Cards */}
       <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
-        <div className='bg-white rounded-xl p-4 border border-gray-100'>
+        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center'>
-              <Shield className='w-5 h-5 text-purple-600' />
+            <div className='w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center'>
+              <Shield className='w-5 h-5 text-purple-600 dark:text-purple-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Total Role</p>
-              <p className='text-lg font-bold text-gray-800'>{roles.length}</p>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>
+                Total Role
+              </p>
+              <p className='text-lg font-bold text-gray-800 dark:text-gray-100'>
+                {roles.length}
+              </p>
             </div>
           </div>
         </div>
-        <div className='bg-white rounded-xl p-4 border border-gray-100'>
+        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center'>
-              <Users className='w-5 h-5 text-blue-600' />
+            <div className='w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
+              <Users className='w-5 h-5 text-blue-600 dark:text-blue-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Total Anggota</p>
-              <p className='text-lg font-bold text-gray-800'>{users.length}</p>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>
+                Total Anggota
+              </p>
+              <p className='text-lg font-bold text-gray-800 dark:text-gray-100'>
+                {users.length}
+              </p>
             </div>
           </div>
         </div>
-        <div className='bg-white rounded-xl p-4 border border-gray-100'>
+        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center'>
-              <Settings className='w-5 h-5 text-emerald-600' />
+            <div className='w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center'>
+              <Settings className='w-5 h-5 text-emerald-600 dark:text-emerald-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Total Permission</p>
-              <p className='text-lg font-bold text-gray-800'>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>
+                Total Permission
+              </p>
+              <p className='text-lg font-bold text-gray-800 dark:text-gray-100'>
                 {permissions.length}
               </p>
             </div>
@@ -355,7 +366,9 @@ export default function ManageRolesPage() {
             <div className='flex items-start justify-between mb-3'>
               <div className='flex items-center gap-2'>
                 <span
-                  className={`px-2 py-1 text-xs font-medium rounded-lg ${role.color}`}
+                  className={`px-2 py-1 text-xs font-medium rounded-lg ${getRoleColorClasses(
+                    role.color
+                  )}`}
                 >
                   {role.name}
                 </span>
@@ -380,29 +393,33 @@ export default function ManageRolesPage() {
               </div>
             </div>
 
-            <p className='text-sm text-gray-600 mb-3'>{role.description}</p>
+            <p className='text-sm text-gray-600 dark:text-gray-400 mb-3'>
+              {role.description}
+            </p>
 
             <div className='mb-3'>
-              <p className='text-xs text-gray-500 mb-1'>Permissions:</p>
+              <p className='text-xs text-gray-500 dark:text-gray-400 mb-1'>
+                Permissions:
+              </p>
               <div className='flex flex-wrap gap-1'>
                 {role.permissions.slice(0, 3).map((p) => (
                   <span
                     key={p}
-                    className='px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded'
+                    className='px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded'
                   >
                     {permissions.find((perm) => perm.code === p)?.name || p}
                   </span>
                 ))}
                 {role.permissions.length > 3 && (
-                  <span className='px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded'>
+                  <span className='px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded'>
                     +{role.permissions.length - 3} lainnya
                   </span>
                 )}
               </div>
             </div>
 
-            <div className='pt-3 border-t'>
-              <p className='text-xs text-gray-500'>
+            <div className='pt-3 border-t dark:border-gray-700'>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>
                 {role.memberCount} member dengan role ini
               </p>
             </div>
@@ -412,33 +429,38 @@ export default function ManageRolesPage() {
 
       {/* Member Role Assignments */}
       <Card>
-        <h3 className='text-lg font-semibold text-gray-800 mb-4'>
+        <h3 className='text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4'>
           Penetapan Role Member
         </h3>
         <div className='overflow-x-auto'>
           <table className='w-full'>
-            <thead className='bg-gray-50'>
+            <thead className='bg-gray-50 dark:bg-gray-800'>
               <tr>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Member
                 </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Role
                 </th>
-                <th className='text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-center px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Aksi
                 </th>
               </tr>
             </thead>
-            <tbody className='divide-y divide-gray-100'>
+            <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
               {users.map((user) => (
-                <tr key={user.id} className='hover:bg-gray-50'>
-                  <td className='px-4 py-3 text-sm text-gray-800'>
+                <tr
+                  key={user.id}
+                  className='hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                >
+                  <td className='px-4 py-3 text-sm text-gray-800 dark:text-gray-200'>
                     {user.name}
                   </td>
                   <td className='px-4 py-3'>
                     <span
-                      className={`px-2 py-1 text-xs font-medium rounded-lg ${user.role?.color}`}
+                      className={`px-2 py-1 text-xs font-medium rounded-lg ${getRoleColorClasses(
+                        user.role?.color
+                      )}`}
                     >
                       {user.role?.name}
                     </span>

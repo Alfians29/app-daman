@@ -166,6 +166,55 @@ export default function Dashboard() {
     return { text: 'Selamat Malam', icon: Moon };
   };
 
+  // Fun quotes for dashboard
+  const funQuotes = [
+    'Semangat kerja! 💪',
+    'Jangan lupa ngopi dulu! ☕',
+    'Hari yang produktif menanti! 🚀',
+    'Keep up the good work! ⭐',
+    'Senyum dulu sebelum kerja! 😊',
+    'Stretching dulu biar fresh! 🧘',
+    'You got this! 🔥',
+    'Tetap semangat ya! 💯',
+    'Kerjaan banyak? Santai aja dulu~ 🌴',
+    'Gas terus! 🎯',
+    'Less stress, more success! ✨',
+    'Minum air putih dulu ya! 💧',
+  ];
+
+  // Random nickname variations
+  const nicknameVariations = [
+    '', // Normal nickname
+    'Bos ',
+    'Kawan ',
+    'Master ',
+    'Sahabat ',
+    'Kak ',
+    'Bestie ',
+    'Komandan ',
+  ];
+
+  // Get random quote and nickname prefix (unique per user, regenerates daily)
+  const randomQuote = useMemo(() => {
+    const dayIndex = new Date().getDate();
+    const userId = authUser?.id || 'guest';
+    // Simple hash: combine userId char codes with day
+    const hash = userId
+      .split('')
+      .reduce((acc, char) => acc + char.charCodeAt(0), dayIndex);
+    return funQuotes[hash % funQuotes.length];
+  }, [authUser?.id]);
+
+  const nicknamePrefix = useMemo(() => {
+    const dayIndex = new Date().getDate();
+    const userId = authUser?.id || 'guest';
+    // Different offset for variety
+    const hash = userId
+      .split('')
+      .reduce((acc, char) => acc + char.charCodeAt(0), dayIndex * 7);
+    return nicknameVariations[hash % nicknameVariations.length];
+  }, [authUser?.id]);
+
   const greeting = getGreeting();
   const GreetingIcon = greeting.icon;
 
@@ -373,18 +422,21 @@ export default function Dashboard() {
             <div>
               <div className='flex items-center gap-2'>
                 <GreetingIcon className='w-5 h-5 text-amber-500' />
-                <span className='text-gray-500'>{greeting.text},</span>
+                <span className='text-gray-500 dark:text-gray-400'>
+                  {greeting.text},
+                </span>
               </div>
-              <h1 className='text-2xl font-bold text-gray-800'>
+              <h1 className='text-2xl font-bold text-gray-800 dark:text-white'>
+                {nicknamePrefix}
                 {currentUser.nickname || currentUser.name}!
               </h1>
-              <p className='text-sm text-gray-500'>
-                {currentUser.position} • {currentUser.department}
+              <p className='text-sm text-gray-500 dark:text-gray-400'>
+                {randomQuote}
               </p>
             </div>
           </div>
         )}
-        <div className='text-sm text-gray-500 bg-white px-4 py-2 rounded-xl shadow-sm'>
+        <div className='text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-4 py-2 rounded-xl shadow-sm dark:shadow-black/20'>
           {today.toLocaleDateString('id-ID', {
             weekday: 'long',
             year: 'numeric',
@@ -399,18 +451,20 @@ export default function Dashboard() {
         <Card className='border-l-4 border-l-emerald-500'>
           <div className='flex items-center justify-between'>
             <div>
-              <p className='text-xs text-gray-500 uppercase'>Absen Tercepat</p>
+              <p className='text-xs text-gray-500 dark:text-gray-400 uppercase'>
+                Absen Tercepat
+              </p>
               {earliestMember && earliestAttendance ? (
                 <>
-                  <p className='text-lg font-bold text-gray-800 mt-1'>
+                  <p className='text-lg font-bold text-gray-800 dark:text-white mt-1'>
                     {earliestMember.nickname || earliestMember.name}
                   </p>
-                  <p className='text-2xl font-bold text-emerald-600'>
+                  <p className='text-2xl font-bold text-emerald-600 dark:text-emerald-400'>
                     {earliestAttendance.jamAbsen}
                   </p>
                 </>
               ) : (
-                <p className='text-lg font-medium text-gray-400 mt-1'>
+                <p className='text-lg font-medium text-gray-400 dark:text-gray-500 mt-1'>
                   Belum ada
                 </p>
               )}
@@ -439,18 +493,20 @@ export default function Dashboard() {
         <Card className='border-l-4 border-l-amber-500'>
           <div className='flex items-center justify-between'>
             <div>
-              <p className='text-xs text-gray-500 uppercase'>Absen Terakhir</p>
+              <p className='text-xs text-gray-500 dark:text-gray-400 uppercase'>
+                Absen Terakhir
+              </p>
               {latestMember && latestAttendance ? (
                 <>
-                  <p className='text-lg font-bold text-gray-800 mt-1'>
+                  <p className='text-lg font-bold text-gray-800 dark:text-white mt-1'>
                     {latestMember.nickname || latestMember.name}
                   </p>
-                  <p className='text-2xl font-bold text-amber-600'>
+                  <p className='text-2xl font-bold text-amber-600 dark:text-amber-400'>
                     {latestAttendance.jamAbsen}
                   </p>
                 </>
               ) : (
-                <p className='text-lg font-medium text-gray-400 mt-1'>
+                <p className='text-lg font-medium text-gray-400 dark:text-gray-500 mt-1'>
                   Belum ada
                 </p>
               )}
@@ -593,12 +649,16 @@ export default function Dashboard() {
               })()
             ) : (
               <>
-                <div className='w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center'>
-                  <Calendar className='w-6 h-6 text-gray-400' />
+                <div className='w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center'>
+                  <Calendar className='w-6 h-6 text-gray-400 dark:text-gray-500' />
                 </div>
                 <div>
-                  <p className='text-xs text-gray-500'>Jadwal Hari Ini</p>
-                  <p className='font-medium text-gray-500'>Tidak ada</p>
+                  <p className='text-xs text-gray-500 dark:text-gray-400'>
+                    Jadwal Hari Ini
+                  </p>
+                  <p className='font-medium text-gray-500 dark:text-gray-400'>
+                    Tidak ada
+                  </p>
                 </div>
               </>
             )}
@@ -606,12 +666,14 @@ export default function Dashboard() {
         </Card>
         <Card>
           <div className='flex items-center gap-3'>
-            <div className='w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center'>
-              <CheckCircle className='w-6 h-6 text-emerald-600' />
+            <div className='w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center'>
+              <CheckCircle className='w-6 h-6 text-emerald-600 dark:text-emerald-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Tingkat Ketepatan</p>
-              <p className='text-xl font-bold text-emerald-600'>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>
+                Tingkat Ketepatan
+              </p>
+              <p className='text-xl font-bold text-emerald-600 dark:text-emerald-400'>
                 {userOntimeRate}%
               </p>
             </div>
@@ -619,12 +681,14 @@ export default function Dashboard() {
         </Card>
         <Card>
           <div className='flex items-center gap-3'>
-            <div className='w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center'>
-              <Clock className='w-6 h-6 text-blue-600' />
+            <div className='w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
+              <Clock className='w-6 h-6 text-blue-600 dark:text-blue-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Total Absen</p>
-              <p className='text-xl font-bold text-blue-600'>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>
+                Total Absen
+              </p>
+              <p className='text-xl font-bold text-blue-600 dark:text-blue-400'>
                 {userAttendance.length}
               </p>
             </div>
@@ -632,12 +696,14 @@ export default function Dashboard() {
         </Card>
         <Card>
           <div className='flex items-center gap-3'>
-            <div className='w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center'>
-              <Wallet className='w-6 h-6 text-blue-600' />
+            <div className='w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
+              <Wallet className='w-6 h-6 text-blue-600 dark:text-blue-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Saldo Kas</p>
-              <p className='text-lg font-bold text-blue-600'>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>
+                Saldo Kas
+              </p>
+              <p className='text-lg font-bold text-blue-600 dark:text-blue-400'>
                 {formatCurrency(totalCash)}
               </p>
             </div>
@@ -649,12 +715,14 @@ export default function Dashboard() {
       <div className='grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4'>
         <Card>
           <div className='flex items-center gap-3'>
-            <div className='w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center'>
-              <Users className='w-6 h-6 text-blue-600' />
+            <div className='w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
+              <Users className='w-6 h-6 text-blue-600 dark:text-blue-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Total Anggota</p>
-              <p className='text-xl font-bold text-gray-800'>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>
+                Total Anggota
+              </p>
+              <p className='text-xl font-bold text-gray-800 dark:text-white'>
                 {teamMembers.length}
               </p>
             </div>
@@ -662,12 +730,14 @@ export default function Dashboard() {
         </Card>
         <Card>
           <div className='flex items-center gap-3'>
-            <div className='w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center'>
-              <UserCheck className='w-6 h-6 text-emerald-600' />
+            <div className='w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center'>
+              <UserCheck className='w-6 h-6 text-emerald-600 dark:text-emerald-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Hadir Hari Ini</p>
-              <p className='text-xl font-bold text-emerald-600'>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>
+                Hadir Hari Ini
+              </p>
+              <p className='text-xl font-bold text-emerald-600 dark:text-emerald-400'>
                 {todayAttendance.length}
               </p>
             </div>
@@ -675,12 +745,14 @@ export default function Dashboard() {
         </Card>
         <Card>
           <div className='flex items-center gap-3'>
-            <div className='w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center'>
-              <ArrowDownCircle className='w-6 h-6 text-emerald-600' />
+            <div className='w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center'>
+              <ArrowDownCircle className='w-6 h-6 text-emerald-600 dark:text-emerald-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Total Pemasukan</p>
-              <p className='text-lg font-bold text-emerald-600'>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>
+                Total Pemasukan
+              </p>
+              <p className='text-lg font-bold text-emerald-600 dark:text-emerald-400'>
                 {formatCurrency(totalCashIn)}
               </p>
             </div>
@@ -688,12 +760,14 @@ export default function Dashboard() {
         </Card>
         <Card>
           <div className='flex items-center gap-3'>
-            <div className='w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center'>
-              <ArrowUpCircle className='w-6 h-6 text-red-600' />
+            <div className='w-12 h-12 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center'>
+              <ArrowUpCircle className='w-6 h-6 text-red-600 dark:text-red-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Total Pengeluaran</p>
-              <p className='text-lg font-bold text-red-600'>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>
+                Total Pengeluaran
+              </p>
+              <p className='text-lg font-bold text-red-600 dark:text-red-400'>
                 {formatCurrency(totalCashOut)}
               </p>
             </div>
@@ -721,7 +795,7 @@ export default function Dashboard() {
                     onClick={() => setChartPeriod(period)}
                     className={`px-2 py-1 text-xs font-medium transition-colors ${
                       chartPeriod === period
-                        ? 'bg-[#E57373] text-white'
+                        ? 'bg-[#E57373] dark:bg-[#991b1b] text-white'
                         : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
                     }`}
                   >
@@ -772,14 +846,14 @@ export default function Dashboard() {
       {jobTypeLeaderboard.length > 0 && (
         <Card>
           <div className='flex items-center gap-3 mb-4'>
-            <div className='w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center'>
-              <Trophy className='w-5 h-5 text-amber-600' />
+            <div className='w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center'>
+              <Trophy className='w-5 h-5 text-amber-600 dark:text-amber-400' />
             </div>
             <div>
-              <h3 className='font-semibold text-gray-800'>
+              <h3 className='font-semibold text-gray-800 dark:text-gray-100'>
                 Leaderboard Pekerjaan
               </h3>
-              <p className='text-xs text-gray-500'>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>
                 Bulan{' '}
                 {new Date().toLocaleDateString('id-ID', {
                   month: 'long',
@@ -804,12 +878,12 @@ export default function Dashboard() {
                         isTop3 ? 'p-3' : 'p-2'
                       } ${
                         item.rank === 1
-                          ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200'
+                          ? 'bg-linear-to-r from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-700'
                           : item.rank === 2
-                          ? 'bg-gradient-to-r from-gray-50 to-slate-50 border border-gray-200'
+                          ? 'bg-linear-to-r from-gray-50 to-slate-50 dark:from-gray-800 dark:to-slate-800 border border-gray-200 dark:border-gray-600'
                           : item.rank === 3
-                          ? 'bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200'
-                          : 'bg-gray-50 border border-gray-100'
+                          ? 'bg-linear-to-r from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/20 border border-orange-200 dark:border-orange-700'
+                          : 'bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700'
                       }`}
                     >
                       <div
@@ -830,7 +904,9 @@ export default function Dashboard() {
                       <div className='flex-1 min-w-0'>
                         <p
                           className={`font-medium truncate ${
-                            isTop3 ? 'text-gray-800' : 'text-gray-700 text-sm'
+                            isTop3
+                              ? 'text-gray-800 dark:text-gray-100'
+                              : 'text-gray-700 dark:text-gray-200 text-sm'
                           }`}
                         >
                           {item.name}
@@ -852,7 +928,9 @@ export default function Dashboard() {
                       {!isTop3 && (
                         <p
                           className={`text-sm font-bold ${
-                            isZero ? 'text-gray-400' : 'text-gray-600'
+                            isZero
+                              ? 'text-gray-400 dark:text-gray-500'
+                              : 'text-gray-600 dark:text-gray-300'
                           }`}
                         >
                           {item.totalValue.toLocaleString('id-ID')}
@@ -872,19 +950,21 @@ export default function Dashboard() {
                   return (
                     <div
                       key={item.id}
-                      className='flex items-center gap-2 p-2 rounded-xl bg-gray-50 border border-gray-100'
+                      className='flex items-center gap-2 p-2 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700'
                     >
-                      <div className='w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-600'>
+                      <div className='w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-sm font-medium text-gray-600 dark:text-gray-200'>
                         {isZero ? '-' : item.rank}
                       </div>
                       <div className='flex-1 min-w-0'>
-                        <p className='text-sm font-medium text-gray-700 truncate'>
+                        <p className='text-sm font-medium text-gray-700 dark:text-gray-200 truncate'>
                           {item.name}
                         </p>
                       </div>
                       <p
                         className={`text-sm font-bold ${
-                          isZero ? 'text-gray-400' : 'text-gray-600'
+                          isZero
+                            ? 'text-gray-400 dark:text-gray-500'
+                            : 'text-gray-600 dark:text-gray-300'
                         }`}
                       >
                         {item.totalValue.toLocaleString('id-ID')}
@@ -901,12 +981,14 @@ export default function Dashboard() {
       <Card>
         <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4'>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center'>
-              <Calendar className='w-5 h-5 text-blue-600' />
+            <div className='w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center'>
+              <Calendar className='w-5 h-5 text-blue-600 dark:text-blue-400' />
             </div>
             <div>
-              <h3 className='font-semibold text-gray-800'>Jadwal Hari Ini</h3>
-              <p className='text-sm text-gray-500'>
+              <h3 className='font-semibold text-gray-800 dark:text-gray-100'>
+                Jadwal Hari Ini
+              </h3>
+              <p className='text-sm text-gray-500 dark:text-gray-400'>
                 {today.toLocaleDateString('id-ID', {
                   weekday: 'long',
                   day: 'numeric',
@@ -948,7 +1030,9 @@ export default function Dashboard() {
                     </span>
                   </div>
                   {members.length === 0 ? (
-                    <p className='text-xs text-gray-400'>Tidak ada</p>
+                    <p className='text-xs text-gray-400 dark:text-gray-500'>
+                      Tidak ada
+                    </p>
                   ) : (
                     <div className='space-y-1.5'>
                       {members.slice(0, 6).map((member) => (
@@ -974,7 +1058,7 @@ export default function Dashboard() {
                               </span>
                             </div>
                           )}
-                          <span className='text-gray-700 truncate'>
+                          <span className='text-gray-700 dark:text-gray-200 truncate'>
                             {member!.nickname || member!.name}
                           </span>
                         </div>

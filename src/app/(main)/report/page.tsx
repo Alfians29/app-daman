@@ -64,6 +64,7 @@ type DailyReport = {
 type JobType = { id: string; name: string; isActive: boolean };
 type TeamMember = {
   id: string;
+  nik: string;
   name: string;
   nickname: string | null;
   position: string;
@@ -128,9 +129,11 @@ export default function ReportPage() {
 
   // Process data with useMemo
   const teamMembers = useMemo(() => {
-    return (users as TeamMember[]).filter(
-      (u: TeamMember) => u.isActive && u.department === 'Data Management - TA'
-    );
+    return (users as TeamMember[])
+      .filter(
+        (u: TeamMember) => u.isActive && u.department === 'Data Management - TA'
+      )
+      .sort((a, b) => a.nik.localeCompare(b.nik));
   }, [users]);
 
   const currentUser = useMemo(() => {
@@ -350,15 +353,36 @@ export default function ReportPage() {
 
     // Fallback to default colors
     const defaultStyles: Record<string, { bg: string; text: string }> = {
-      PAGI: { bg: 'bg-blue-100', text: 'text-blue-700' },
-      MALAM: { bg: 'bg-purple-100', text: 'text-purple-700' },
-      PIKET_PAGI: { bg: 'bg-emerald-100', text: 'text-emerald-700' },
-      PIKET_MALAM: { bg: 'bg-indigo-100', text: 'text-indigo-700' },
-      PAGI_MALAM: { bg: 'bg-amber-100', text: 'text-amber-700' },
-      LIBUR: { bg: 'bg-red-100', text: 'text-red-700' },
+      PAGI: {
+        bg: 'bg-blue-100 dark:bg-blue-900/40',
+        text: 'text-blue-700 dark:text-blue-300',
+      },
+      MALAM: {
+        bg: 'bg-purple-100 dark:bg-purple-900/40',
+        text: 'text-purple-700 dark:text-purple-300',
+      },
+      PIKET_PAGI: {
+        bg: 'bg-emerald-100 dark:bg-emerald-900/40',
+        text: 'text-emerald-700 dark:text-emerald-300',
+      },
+      PIKET_MALAM: {
+        bg: 'bg-indigo-100 dark:bg-indigo-900/40',
+        text: 'text-indigo-700 dark:text-indigo-300',
+      },
+      PAGI_MALAM: {
+        bg: 'bg-amber-100 dark:bg-amber-900/40',
+        text: 'text-amber-700 dark:text-amber-300',
+      },
+      LIBUR: {
+        bg: 'bg-red-100 dark:bg-red-900/40',
+        text: 'text-red-700 dark:text-red-300',
+      },
     };
     return (
-      defaultStyles[keterangan] || { bg: 'bg-gray-100', text: 'text-gray-700' }
+      defaultStyles[keterangan] || {
+        bg: 'bg-gray-100 dark:bg-gray-700',
+        text: 'text-gray-700 dark:text-gray-300',
+      }
     );
   };
 
@@ -432,30 +456,30 @@ export default function ReportPage() {
                 type='date'
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className='px-4 py-2 border border-gray-200 rounded-xl font-medium'
+                className='px-4 py-2 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl font-medium'
               />
-              <span className='text-gray-600 font-medium hidden sm:block'>
+              <span className='text-gray-600 dark:text-gray-300 font-medium hidden sm:block'>
                 {formatDate(selectedDate)}
               </span>
             </div>
             <div className='flex items-center gap-2'>
               <button
                 onClick={() => setSelectedDate(getLocalDateString())}
-                className='px-3 py-2 text-sm font-medium text-[#E57373] bg-red-50 hover:bg-red-100 rounded-lg'
+                className='px-3 py-2 text-sm font-medium text-[#E57373] dark:text-[#EF9A9A] bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-800/60 hover:text-[#C62828] dark:hover:text-white rounded-lg transition-colors'
               >
                 Hari Ini
               </button>
               <button
                 onClick={() => navigateDate(-1)}
-                className='p-2 hover:bg-gray-100 rounded-lg'
+                className='p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg'
               >
-                <ChevronLeft className='w-5 h-5 text-gray-600' />
+                <ChevronLeft className='w-5 h-5 text-gray-600 dark:text-gray-400' />
               </button>
               <button
                 onClick={() => navigateDate(1)}
-                className='p-2 hover:bg-gray-100 rounded-lg'
+                className='p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg'
               >
-                <ChevronRight className='w-5 h-5 text-gray-600' />
+                <ChevronRight className='w-5 h-5 text-gray-600 dark:text-gray-400' />
               </button>
             </div>
           </div>
@@ -467,42 +491,42 @@ export default function ReportPage() {
         <>
           <Card>
             <div className='flex items-center justify-between mb-4'>
-              <h3 className='font-semibold text-gray-800'>
+              <h3 className='font-semibold text-gray-800 dark:text-gray-100'>
                 Riwayat Report Saya
               </h3>
-              <span className='text-sm text-gray-500'>
+              <span className='text-sm text-gray-500 dark:text-gray-400'>
                 {userReportsHistory.length} data
               </span>
             </div>
             <div className='overflow-x-auto'>
               <table className='w-full'>
-                <thead className='bg-gray-50'>
+                <thead className='bg-gray-50 dark:bg-gray-800'>
                   <tr>
-                    <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                    <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                       Tanggal
                     </th>
-                    <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                    <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                       Shift
                     </th>
-                    <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                    <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                       Pekerjaan
                     </th>
-                    <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                    <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                       Dibuat
                     </th>
-                    <th className='text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                    <th className='text-center px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                       Aksi
                     </th>
                   </tr>
                 </thead>
-                <tbody className='divide-y divide-gray-100'>
+                <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
                   {userReportsHistory.length === 0 ? (
                     <tr>
                       <td
                         colSpan={5}
-                        className='px-4 py-12 text-center text-gray-500'
+                        className='px-4 py-12 text-center text-gray-500 dark:text-gray-400'
                       >
-                        <FileText className='w-12 h-12 mx-auto text-gray-300 mb-2' />
+                        <FileText className='w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-2' />
                         <p>Belum ada riwayat report</p>
                       </td>
                     </tr>
@@ -518,8 +542,11 @@ export default function ReportPage() {
                           report.tanggal.split('T')[0]
                         );
                         return (
-                          <tr key={report.id} className='hover:bg-gray-50'>
-                            <td className='px-4 py-3 text-sm text-gray-700'>
+                          <tr
+                            key={report.id}
+                            className='hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                          >
+                            <td className='px-4 py-3 text-sm text-gray-700 dark:text-gray-300'>
                               {formatDate(report.tanggal)}
                             </td>
                             <td className='px-4 py-3'>
@@ -538,12 +565,12 @@ export default function ReportPage() {
                               )}
                             </td>
                             <td className='px-4 py-3'>
-                              <span className='inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg bg-blue-100 text-blue-700'>
+                              <span className='inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'>
                                 <FileText className='w-3 h-3' />
                                 {report.tasks.length} pekerjaan
                               </span>
                             </td>
-                            <td className='px-4 py-3 text-sm text-gray-600'>
+                            <td className='px-4 py-3 text-sm text-gray-600 dark:text-gray-400'>
                               {new Date(report.createdAt).toLocaleTimeString(
                                 'en-GB',
                                 {
@@ -558,7 +585,7 @@ export default function ReportPage() {
                                   setViewingReport(report);
                                   setShowDetailModal(true);
                                 }}
-                                className='px-3 py-1.5 text-xs font-medium text-[#E57373] bg-red-50 hover:bg-red-100 rounded-lg transition-colors'
+                                className='px-3 py-1.5 text-xs font-medium text-[#E57373] dark:text-[#EF9A9A] bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-800/60 hover:text-[#C62828] dark:hover:text-white rounded-lg transition-colors'
                               >
                                 Lihat
                               </button>
@@ -573,8 +600,8 @@ export default function ReportPage() {
 
             {/* Pagination */}
             {Math.ceil(userReportsHistory.length / historyItemsPerPage) > 1 && (
-              <div className='flex items-center justify-between mt-4 pt-4 border-t border-gray-200'>
-                <p className='text-sm text-gray-500'>
+              <div className='flex items-center justify-between mt-4 pt-4 border-t border-gray-200 dark:border-gray-700'>
+                <p className='text-sm text-gray-500 dark:text-gray-400'>
                   Halaman {historyPage} dari{' '}
                   {Math.ceil(userReportsHistory.length / historyItemsPerPage)}
                 </p>
@@ -582,7 +609,7 @@ export default function ReportPage() {
                   <button
                     onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
                     disabled={historyPage === 1}
-                    className='p-2 rounded-lg border border-gray-200 hover:bg-gray-100 disabled:opacity-50'
+                    className='p-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50'
                   >
                     <ChevronLeft className='w-4 h-4' />
                   </button>
@@ -601,7 +628,7 @@ export default function ReportPage() {
                       historyPage ===
                       Math.ceil(userReportsHistory.length / historyItemsPerPage)
                     }
-                    className='p-2 rounded-lg border border-gray-200 hover:bg-gray-100 disabled:opacity-50'
+                    className='p-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50'
                   >
                     <ChevronRight className='w-4 h-4' />
                   </button>
@@ -615,12 +642,14 @@ export default function ReportPage() {
           <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
             <Card>
               <div className='flex items-center gap-3'>
-                <div className='w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center'>
-                  <FileText className='w-5 h-5 text-blue-600' />
+                <div className='w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
+                  <FileText className='w-5 h-5 text-blue-600 dark:text-blue-400' />
                 </div>
                 <div>
-                  <p className='text-xs text-gray-500'>Total Report</p>
-                  <p className='text-xl font-bold text-gray-800'>
+                  <p className='text-xs text-gray-500 dark:text-gray-400'>
+                    Total Report
+                  </p>
+                  <p className='text-xl font-bold text-gray-800 dark:text-gray-100'>
                     {reportsForDate.length}
                   </p>
                 </div>
@@ -628,12 +657,14 @@ export default function ReportPage() {
             </Card>
             <Card>
               <div className='flex items-center gap-3'>
-                <div className='w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center'>
-                  <CheckCircle className='w-5 h-5 text-emerald-600' />
+                <div className='w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center'>
+                  <CheckCircle className='w-5 h-5 text-emerald-600 dark:text-emerald-400' />
                 </div>
                 <div>
-                  <p className='text-xs text-gray-500'>Sudah Report</p>
-                  <p className='text-xl font-bold text-emerald-600'>
+                  <p className='text-xs text-gray-500 dark:text-gray-400'>
+                    Sudah Report
+                  </p>
+                  <p className='text-xl font-bold text-emerald-600 dark:text-emerald-400'>
                     {reportsForDate.length}/{teamMembers.length}
                   </p>
                 </div>
@@ -641,12 +672,14 @@ export default function ReportPage() {
             </Card>
             <Card>
               <div className='flex items-center gap-3'>
-                <div className='w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center'>
-                  <Clock className='w-5 h-5 text-amber-600' />
+                <div className='w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center'>
+                  <Clock className='w-5 h-5 text-amber-600 dark:text-amber-400' />
                 </div>
                 <div>
-                  <p className='text-xs text-gray-500'>Belum Report</p>
-                  <p className='text-xl font-bold text-amber-600'>
+                  <p className='text-xs text-gray-500 dark:text-gray-400'>
+                    Belum Report
+                  </p>
+                  <p className='text-xl font-bold text-amber-600 dark:text-amber-400'>
                     {
                       memberReportData.filter((m) => !m.report && !m.isLibur)
                         .length
@@ -657,12 +690,14 @@ export default function ReportPage() {
             </Card>
             <Card>
               <div className='flex items-center gap-3'>
-                <div className='w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center'>
-                  <Coffee className='w-5 h-5 text-red-600' />
+                <div className='w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center'>
+                  <Coffee className='w-5 h-5 text-red-600 dark:text-red-400' />
                 </div>
                 <div>
-                  <p className='text-xs text-gray-500'>Libur</p>
-                  <p className='text-xl font-bold text-red-600'>
+                  <p className='text-xs text-gray-500 dark:text-gray-400'>
+                    Libur
+                  </p>
+                  <p className='text-xl font-bold text-red-600 dark:text-red-400'>
                     {memberReportData.filter((m) => m.isLibur).length}
                   </p>
                 </div>
@@ -671,7 +706,7 @@ export default function ReportPage() {
           </div>
 
           <Card>
-            <h3 className='font-semibold text-gray-800 mb-4'>
+            <h3 className='font-semibold text-gray-800 dark:text-gray-100 mb-4'>
               Report Tim - {formatDate(selectedDate)}
             </h3>
             <div className='space-y-3'>
@@ -680,10 +715,10 @@ export default function ReportPage() {
                   key={member.id}
                   className={`p-4 rounded-xl border ${
                     report
-                      ? 'bg-white border-gray-200'
+                      ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
                       : isLibur
-                      ? 'bg-red-50 border-red-100'
-                      : 'bg-gray-50 border-gray-100'
+                      ? 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-900/40'
+                      : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700'
                   }`}
                 >
                   <div className='flex items-start gap-3'>
@@ -707,7 +742,7 @@ export default function ReportPage() {
                     )}
                     <div className='flex-1 min-w-0'>
                       <div className='flex items-center gap-2 mb-1'>
-                        <p className='font-medium text-gray-800'>
+                        <p className='font-medium text-gray-800 dark:text-gray-100'>
                           {member.name}
                         </p>
                         {schedule && (
@@ -720,7 +755,7 @@ export default function ReportPage() {
                           </span>
                         )}
                       </div>
-                      <p className='text-xs text-gray-500 mb-2'>
+                      <p className='text-xs text-gray-500 dark:text-gray-400 mb-2'>
                         {member.position}
                       </p>
                       {isLibur ? (
@@ -731,7 +766,7 @@ export default function ReportPage() {
                       ) : report ? (
                         <div className='space-y-2'>
                           <div className='flex items-center gap-2 flex-wrap'>
-                            <span className='text-sm text-gray-600'>
+                            <span className='text-sm text-gray-600 dark:text-gray-400'>
                               {report.tasks.length} pekerjaan
                             </span>
                             <button
@@ -744,7 +779,7 @@ export default function ReportPage() {
                               Lihat Detail
                             </button>
                           </div>
-                          <p className='text-xs text-gray-400'>
+                          <p className='text-xs text-gray-400 dark:text-gray-500'>
                             Dibuat:{' '}
                             {new Date(report.createdAt).toLocaleString('en-GB')}
                           </p>
@@ -759,7 +794,7 @@ export default function ReportPage() {
                     {report && canEditReport(report) && (
                       <button
                         onClick={() => openEditModal(report)}
-                        className='p-2 hover:bg-gray-100 rounded-lg'
+                        className='p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg'
                       >
                         <Edit3 className='w-4 h-4 text-gray-500' />
                       </button>
@@ -802,12 +837,12 @@ export default function ReportPage() {
                     <span className='w-6 h-6 shrink-0 rounded-full bg-[#E57373] text-white text-xs flex items-center justify-center font-medium'>
                       {idx + 1}
                     </span>
-                    <span className='px-3 py-1 text-sm font-medium bg-blue-100 text-blue-700 rounded-full'>
+                    <span className='px-3 py-1 text-sm font-medium bg-blue-100 text-blue-600 dark:text-blue-400 rounded-full'>
                       {typeof task.jobType === 'object'
                         ? (task.jobType as any).name
                         : task.jobType}
                     </span>
-                    <span className='px-3 py-1 text-sm font-semibold bg-emerald-100 text-emerald-700 rounded-full'>
+                    <span className='px-3 py-1 text-sm font-semibold bg-emerald-100 text-emerald-600 dark:text-emerald-400 rounded-full'>
                       {task.value} item
                     </span>
                   </div>
