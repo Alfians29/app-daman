@@ -56,7 +56,7 @@ export default function LoginPage() {
   return (
     <div className='min-h-screen flex bg-gray-50 dark:bg-gray-900 transition-colors duration-300'>
       {/* Left Side - Hero/Branding */}
-      <div className='hidden lg:flex lg:w-1/2 bg-linear-to-br from-[#E57373] via-[#EF5350] to-[#C62828] relative overflow-hidden'>
+      <div className='hidden lg:flex lg:w-1/2 bg-linear-to-br from-[#E57373] via-[#EF5350] to-[#C62828] dark:from-[#7f1d1d] dark:via-[#991b1b] dark:to-[#450a0a] relative overflow-hidden'>
         {/* Decorative Elements */}
         <div className='absolute top-0 left-0 w-full h-full'>
           <div className='absolute top-20 left-20 w-64 h-64 bg-white/10 rounded-full blur-3xl' />
@@ -208,7 +208,7 @@ export default function LoginPage() {
               <button
                 type='submit'
                 disabled={isLoading}
-                className='w-full py-4 px-4 bg-linear-to-r from-[#E57373] to-[#EF5350] text-white font-semibold rounded-xl shadow-lg shadow-red-200 dark:shadow-red-900/30 hover:shadow-xl hover:shadow-red-300 dark:hover:shadow-red-900/50 hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0'
+                className='w-full py-4 px-4 bg-linear-to-r from-[#E57373] to-[#EF5350] dark:from-[#991b1b] dark:to-[#7f1d1d] text-white font-semibold rounded-xl shadow-lg shadow-red-200 dark:shadow-red-900/30 hover:shadow-xl hover:shadow-red-300 dark:hover:shadow-red-900/50 hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0'
               >
                 {isLoading ? (
                   <div className='w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin' />

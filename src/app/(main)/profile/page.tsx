@@ -15,7 +15,7 @@ import { SkeletonProfile } from '@/components/ui/Skeleton';
 import { usersAPI } from '@/lib/api';
 import { useCurrentUser } from '@/components/AuthGuard';
 import { getLocalDateString, getShiftColorClasses } from '@/lib/utils';
-import { compressImage } from '@/lib/imageUtils';
+import { processImage } from '@/lib/imageUtils';
 import {
   useUsers,
   useShifts,
@@ -297,16 +297,28 @@ export default function ProfilePage() {
 
     startTransition(async () => {
       try {
-        // Compress image before upload (max 400x400, JPEG 75%)
-        const compressedBase64 = await compressImage(selectedFile, {
-          maxWidth: 400,
-          maxHeight: 400,
-          quality: 0.75,
-          format: 'jpeg',
-        });
+        // Process image - handles both static images and animated GIFs
+        // Static: compress to 400x400 JPEG 75%
+        // Animated GIF: validate size (max 300KB) and dimensions (max 200x200)
+        const processedBase64 = await processImage(
+          selectedFile,
+          // Options for static images
+          {
+            maxWidth: 400,
+            maxHeight: 400,
+            quality: 0.75,
+            format: 'jpeg',
+          },
+          // Options for animated GIFs (stricter for performance)
+          {
+            maxWidth: 100,
+            maxHeight: 100,
+            maxSizeBytes: 300 * 1024, // 300KB max
+          }
+        );
 
         const result = await usersAPI.update(currentUser.id, {
-          image: compressedBase64,
+          image: processedBase64,
         });
 
         if (result.success) {
@@ -319,8 +331,11 @@ export default function ProfilePage() {
           toast.error(result.error || 'Gagal mengupload foto');
         }
       } catch (error) {
-        console.error('Compression error:', error);
-        toast.error('Gagal memproses gambar');
+        console.error('Processing error:', error);
+        // Show the specific error message for GIF validation
+        const errorMessage =
+          error instanceof Error ? error.message : 'Gagal memproses gambar';
+        toast.error(errorMessage);
       }
     });
   };
@@ -360,17 +375,41 @@ export default function ProfilePage() {
       string,
       { bg: string; text: string; icon: typeof Sun }
     > = {
-      PAGI: { bg: 'bg-blue-100', text: 'text-blue-700', icon: Sun },
-      MALAM: { bg: 'bg-gray-200', text: 'text-gray-700', icon: Moon },
-      PIKET_PAGI: { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: Sun },
-      PIKET_MALAM: { bg: 'bg-purple-100', text: 'text-purple-700', icon: Moon },
-      PAGI_MALAM: { bg: 'bg-amber-100', text: 'text-amber-700', icon: Clock },
-      LIBUR: { bg: 'bg-red-100', text: 'text-red-700', icon: Calendar },
+      PAGI: {
+        bg: 'bg-blue-100 dark:bg-blue-900/40',
+        text: 'text-blue-700 dark:text-blue-300',
+        icon: Sun,
+      },
+      MALAM: {
+        bg: 'bg-gray-200 dark:bg-gray-700',
+        text: 'text-gray-700 dark:text-gray-300',
+        icon: Moon,
+      },
+      PIKET_PAGI: {
+        bg: 'bg-emerald-100 dark:bg-emerald-900/40',
+        text: 'text-emerald-700 dark:text-emerald-300',
+        icon: Sun,
+      },
+      PIKET_MALAM: {
+        bg: 'bg-purple-100 dark:bg-purple-900/40',
+        text: 'text-purple-700 dark:text-purple-300',
+        icon: Moon,
+      },
+      PAGI_MALAM: {
+        bg: 'bg-amber-100 dark:bg-amber-900/40',
+        text: 'text-amber-700 dark:text-amber-300',
+        icon: Clock,
+      },
+      LIBUR: {
+        bg: 'bg-red-100 dark:bg-red-900/40',
+        text: 'text-red-700 dark:text-red-300',
+        icon: Calendar,
+      },
     };
     return (
       defaultStyles[keterangan] || {
-        bg: 'bg-gray-100',
-        text: 'text-gray-500',
+        bg: 'bg-gray-100 dark:bg-gray-700',
+        text: 'text-gray-500 dark:text-gray-400',
         icon: Calendar,
       }
     );
@@ -383,7 +422,7 @@ export default function ProfilePage() {
   return (
     <div className='space-y-6'>
       {/* Page Header with Gradient */}
-      <div className='relative overflow-hidden rounded-2xl bg-linear-to-r from-[#E57373] to-[#EF5350] p-6 text-white'>
+      <div className='relative overflow-hidden rounded-2xl bg-linear-to-r from-[#E57373] to-[#EF5350] dark:from-[#7f1d1d] dark:to-[#991b1b] p-6 text-white'>
         <div className='absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2' />
         <div className='absolute bottom-0 left-0 w-32 h-32 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2' />
 
@@ -570,7 +609,7 @@ export default function ProfilePage() {
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               {/* NIK */}
               <div className='flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors'>
-                <div className='w-10 h-10 bg-linear-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-lg shadow-blue-200'>
+                <div className='w-10 h-10 bg-linear-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-lg shadow-blue-200 dark:shadow-none'>
                   NIK
                 </div>
                 <div>
@@ -585,7 +624,7 @@ export default function ProfilePage() {
 
               {/* Email */}
               <div className='flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors'>
-                <div className='w-10 h-10 bg-linear-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-200'>
+                <div className='w-10 h-10 bg-linear-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-200 dark:shadow-none'>
                   <Mail className='w-5 h-5 text-white' />
                 </div>
                 <div className='flex-1 min-w-0'>
@@ -600,7 +639,7 @@ export default function ProfilePage() {
 
               {/* Phone */}
               <div className='flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors'>
-                <div className='w-10 h-10 bg-linear-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center shadow-lg shadow-amber-200'>
+                <div className='w-10 h-10 bg-linear-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center shadow-lg shadow-amber-200 dark:shadow-none'>
                   <Phone className='w-5 h-5 text-white' />
                 </div>
                 <div>
@@ -615,7 +654,7 @@ export default function ProfilePage() {
 
               {/* Telegram */}
               <div className='flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors'>
-                <div className='w-10 h-10 bg-linear-to-br from-sky-500 to-sky-600 rounded-lg flex items-center justify-center shadow-lg shadow-sky-200'>
+                <div className='w-10 h-10 bg-linear-to-br from-sky-500 to-sky-600 rounded-lg flex items-center justify-center shadow-lg shadow-sky-200 dark:shadow-none'>
                   <AtSign className='w-5 h-5 text-white' />
                 </div>
                 <div>
@@ -638,7 +677,7 @@ export default function ProfilePage() {
               className='w-full flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-xl transition-colors group'
             >
               <div className='flex items-center gap-3'>
-                <div className='w-10 h-10 bg-linear-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center shadow-lg shadow-red-200'>
+                <div className='w-10 h-10 bg-linear-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center shadow-lg shadow-red-200 dark:shadow-none'>
                   <Key className='w-5 h-5 text-white' />
                 </div>
                 <div className='text-left'>
@@ -658,7 +697,7 @@ export default function ProfilePage() {
           <Card>
             <div className='flex items-center gap-2 mb-4'>
               <div className='w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center'>
-                <Activity className='w-4 h-4 text-purple-600' />
+                <Activity className='w-4 h-4 text-purple-600 dark:text-purple-400' />
               </div>
               <h3 className='font-semibold text-gray-800 dark:text-white'>
                 Aktivitas Terakhir
@@ -684,11 +723,11 @@ export default function ProfilePage() {
                       }`}
                     >
                       {activity.type === 'create' ? (
-                        <CheckCircle className='w-5 h-5 text-emerald-600' />
+                        <CheckCircle className='w-5 h-5 text-emerald-600 dark:text-emerald-400' />
                       ) : activity.type === 'login' ? (
-                        <Check className='w-5 h-5 text-purple-600' />
+                        <Check className='w-5 h-5 text-purple-600 dark:text-purple-400' />
                       ) : (
-                        <AlertCircle className='w-5 h-5 text-blue-600' />
+                        <AlertCircle className='w-5 h-5 text-blue-600 dark:text-blue-400' />
                       )}
                     </div>
                     <div className='flex-1 min-w-0'>

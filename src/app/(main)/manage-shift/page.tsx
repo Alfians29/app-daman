@@ -252,44 +252,44 @@ export default function ManageShiftPage() {
     const colors: Record<string, { bg: string; text: string; border: string }> =
       {
         emerald: {
-          bg: 'bg-emerald-100',
-          text: 'text-emerald-700',
-          border: 'border-emerald-200',
+          bg: 'bg-emerald-100 dark:bg-emerald-900/40',
+          text: 'text-emerald-700 dark:text-emerald-300',
+          border: 'border-emerald-200 dark:border-emerald-700',
         },
         purple: {
-          bg: 'bg-purple-100',
-          text: 'text-purple-700',
-          border: 'border-purple-200',
+          bg: 'bg-purple-100 dark:bg-purple-900/40',
+          text: 'text-purple-700 dark:text-purple-300',
+          border: 'border-purple-200 dark:border-purple-700',
         },
         amber: {
-          bg: 'bg-amber-100',
-          text: 'text-amber-700',
-          border: 'border-amber-200',
+          bg: 'bg-amber-100 dark:bg-amber-900/40',
+          text: 'text-amber-700 dark:text-amber-300',
+          border: 'border-amber-200 dark:border-amber-700',
         },
         indigo: {
-          bg: 'bg-indigo-100',
-          text: 'text-indigo-700',
-          border: 'border-indigo-200',
+          bg: 'bg-indigo-100 dark:bg-indigo-900/40',
+          text: 'text-indigo-700 dark:text-indigo-300',
+          border: 'border-indigo-200 dark:border-indigo-700',
         },
         red: {
-          bg: 'bg-red-100',
-          text: 'text-red-700',
-          border: 'border-red-200',
+          bg: 'bg-red-100 dark:bg-red-900/40',
+          text: 'text-red-700 dark:text-red-300',
+          border: 'border-red-200 dark:border-red-700',
         },
         pink: {
-          bg: 'bg-pink-100',
-          text: 'text-pink-700',
-          border: 'border-pink-200',
+          bg: 'bg-pink-100 dark:bg-pink-900/40',
+          text: 'text-pink-700 dark:text-pink-300',
+          border: 'border-pink-200 dark:border-pink-700',
         },
         cyan: {
-          bg: 'bg-cyan-100',
-          text: 'text-cyan-700',
-          border: 'border-cyan-200',
+          bg: 'bg-cyan-100 dark:bg-cyan-900/40',
+          text: 'text-cyan-700 dark:text-cyan-300',
+          border: 'border-cyan-200 dark:border-cyan-700',
         },
         orange: {
-          bg: 'bg-orange-100',
-          text: 'text-orange-700',
-          border: 'border-orange-200',
+          bg: 'bg-orange-100 dark:bg-orange-900/40',
+          text: 'text-orange-700 dark:text-orange-300',
+          border: 'border-orange-200 dark:border-orange-700',
         },
       };
     return colors[color || 'emerald'] || colors.emerald;
@@ -321,26 +321,32 @@ export default function ManageShiftPage() {
       {/* Stats */}
       <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
         <Card className='text-center'>
-          <p className='text-2xl font-bold text-gray-800'>{shifts.length}</p>
-          <p className='text-sm text-gray-500'>Total Shift</p>
+          <p className='text-2xl font-bold text-gray-800 dark:text-gray-100'>
+            {shifts.length}
+          </p>
+          <p className='text-sm text-gray-500 dark:text-gray-400'>
+            Total Shift
+          </p>
         </Card>
         <Card className='text-center'>
-          <p className='text-2xl font-bold text-emerald-600'>
+          <p className='text-2xl font-bold text-emerald-600 dark:text-emerald-400'>
             {shifts.filter((s) => s.isActive).length}
           </p>
-          <p className='text-sm text-gray-500'>Aktif</p>
+          <p className='text-sm text-gray-500 dark:text-gray-400'>Aktif</p>
         </Card>
         <Card className='text-center'>
-          <p className='text-2xl font-bold text-gray-400'>
+          <p className='text-2xl font-bold text-gray-400 dark:text-gray-500'>
             {shifts.filter((s) => !s.isActive).length}
           </p>
-          <p className='text-sm text-gray-500'>Nonaktif</p>
+          <p className='text-sm text-gray-500 dark:text-gray-400'>Nonaktif</p>
         </Card>
         <Card className='text-center'>
-          <p className='text-2xl font-bold text-purple-600'>
+          <p className='text-2xl font-bold text-purple-600 dark:text-purple-400'>
             {shifts.filter((s) => s.shiftType !== 'LIBUR').length}
           </p>
-          <p className='text-sm text-gray-500'>Shift Kerja</p>
+          <p className='text-sm text-gray-500 dark:text-gray-400'>
+            Shift Kerja
+          </p>
         </Card>
       </div>
 
@@ -365,7 +371,9 @@ export default function ManageShiftPage() {
                   <Icon className={`w-6 h-6 ${colorClasses.text}`} />
                 </div>
                 <div className='flex-1'>
-                  <h4 className='font-semibold text-gray-800'>{shift.name}</h4>
+                  <h4 className='font-semibold text-gray-800 dark:text-gray-100'>
+                    {shift.name}
+                  </h4>
                   <span
                     className={`text-xs px-2 py-0.5 rounded-full ${colorClasses.bg} ${colorClasses.text}`}
                   >
@@ -392,37 +400,43 @@ export default function ManageShiftPage() {
               {shift.shiftType !== 'LIBUR' ? (
                 <div className='space-y-2 text-sm'>
                   <div className='flex justify-between'>
-                    <span className='text-gray-500'>Jam Mulai</span>
-                    <span className='font-medium text-gray-800'>
+                    <span className='text-gray-500 dark:text-gray-400'>
+                      Jam Mulai
+                    </span>
+                    <span className='font-medium text-gray-800 dark:text-gray-200'>
                       {shift.startTime || '-'}
                     </span>
                   </div>
                   <div className='flex justify-between'>
-                    <span className='text-gray-500'>Jam Selesai</span>
-                    <span className='font-medium text-gray-800'>
+                    <span className='text-gray-500 dark:text-gray-400'>
+                      Jam Selesai
+                    </span>
+                    <span className='font-medium text-gray-800 dark:text-gray-200'>
                       {shift.endTime || '-'}
                     </span>
                   </div>
                   <div className='flex justify-between'>
-                    <span className='text-gray-500'>Batas Telat</span>
-                    <span className='font-medium text-red-600'>
+                    <span className='text-gray-500 dark:text-gray-400'>
+                      Batas Telat
+                    </span>
+                    <span className='font-medium text-red-600 dark:text-red-400'>
                       {shift.lateAfter || '-'}
                     </span>
                   </div>
                   {shift.telegramCommand && (
-                    <div className='flex justify-between items-center pt-2 border-t border-gray-100'>
-                      <span className='text-gray-500 flex items-center gap-1'>
+                    <div className='flex justify-between items-center pt-2 border-t border-gray-100 dark:border-gray-700'>
+                      <span className='text-gray-500 dark:text-gray-400 flex items-center gap-1'>
                         <MessageSquare className='w-3 h-3' />
                         Telegram
                       </span>
-                      <span className='font-mono text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded'>
+                      <span className='font-mono text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded'>
                         {shift.telegramCommand}
                       </span>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className='text-sm text-gray-500 italic'>
+                <div className='text-sm text-gray-500 dark:text-gray-400 italic'>
                   Tidak ada waktu kerja
                 </div>
               )}

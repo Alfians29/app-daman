@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { Search, Calendar, X, Filter, SlidersHorizontal } from 'lucide-react';
 
 type TabOption = {
@@ -50,6 +50,63 @@ type FilterBarProps = {
   rightContent?: ReactNode;
 };
 
+// Internal SearchInput component - searches on Enter or button click
+function SearchInput({
+  searchValue,
+  onSearchChange,
+  searchPlaceholder,
+}: {
+  searchValue?: string;
+  onSearchChange: (value: string) => void;
+  searchPlaceholder: string;
+}) {
+  const [inputValue, setInputValue] = useState(searchValue || '');
+
+  // Sync with external searchValue changes (e.g., when Reset Filter is clicked)
+  useEffect(() => {
+    setInputValue(searchValue || '');
+  }, [searchValue]);
+
+  const handleSearch = () => {
+    onSearchChange(inputValue);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  const handleClear = () => {
+    setInputValue('');
+    onSearchChange('');
+  };
+
+  return (
+    <div className='relative flex-1 group'>
+      <div className='absolute inset-0 bg-linear-to-r from-[#E57373]/20 to-[#EF5350]/20 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition-opacity' />
+      <Search className='absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-300 group-focus-within:text-[#E57373] transition-colors z-10' />
+      <input
+        type='text'
+        placeholder={searchPlaceholder}
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        className='relative w-full pl-12 pr-24 py-3 rounded-xl border-2 border-gray-100 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-700/50 text-gray-800 dark:text-gray-100 focus:bg-white dark:focus:bg-gray-700 focus:border-[#E57373]/30 dark:focus:border-[#E57373]/50 focus:outline-none focus:ring-4 focus:ring-[#E57373]/10 dark:focus:ring-[#E57373]/20 transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500'
+      />
+      <div className='absolute right-3 top-1/2 -translate-y-1/2 z-10'>
+        <button
+          onClick={handleSearch}
+          className='p-1.5 bg-[#E57373] dark:bg-[#991b1b] hover:bg-[#EF5350] dark:hover:bg-[#7f1d1d] text-white rounded-lg transition-all'
+          title='Cari (Enter)'
+        >
+          <Search className='w-3.5 h-3.5' />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function FilterBar({
   searchValue,
   onSearchChange,
@@ -79,7 +136,7 @@ export function FilterBar({
       {/* Header with icon */}
       <div className='flex items-center justify-between'>
         <div className='flex items-center gap-2'>
-          <div className='w-6 h-6 rounded-md bg-linear-to-br from-[#ea9898] to-[#E57373] flex items-center justify-center'>
+          <div className='w-6 h-6 rounded-md bg-linear-to-br from-[#ea9898] to-[#E57373] dark:from-[#7f1d1d] dark:to-[#991b1b] flex items-center justify-center'>
             <SlidersHorizontal className='w-3.5 h-3.5 text-white' />
           </div>
           <span className='font-semibold text-gray-800 dark:text-gray-100'>
@@ -89,7 +146,7 @@ export function FilterBar({
         {showReset && hasActiveFilters && onReset && (
           <button
             onClick={onReset}
-            className='flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-linear-to-r from-[#E57373] to-[#EF5350] hover:from-[#EF5350] hover:to-[#E57373] rounded-lg shadow-md shadow-red-200/50 dark:shadow-red-900/30 transition-all hover:shadow-lg hover:shadow-red-200/70 dark:hover:shadow-red-900/50 hover:-translate-y-0.5'
+            className='flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-linear-to-r from-[#E57373] to-[#EF5350] dark:from-[#7f1d1d] dark:to-[#991b1b] hover:from-[#EF5350] hover:to-[#E57373] dark:hover:from-[#991b1b] dark:hover:to-[#7f1d1d] rounded-lg shadow-md shadow-red-200/50 dark:shadow-red-900/30 transition-all hover:shadow-lg hover:shadow-red-200/70 dark:hover:shadow-red-900/50 hover:-translate-y-0.5'
           >
             <X className='w-3 h-3' />
             Reset Filter
@@ -101,25 +158,11 @@ export function FilterBar({
       <div className='flex flex-col sm:flex-row gap-3'>
         {/* Search Input */}
         {onSearchChange && (
-          <div className='relative flex-1 group'>
-            <div className='absolute inset-0 bg-linear-to-r from-[#E57373]/20 to-[#EF5350]/20 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition-opacity' />
-            <Search className='absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500 group-focus-within:text-[#E57373] transition-colors' />
-            <input
-              type='text'
-              placeholder={searchPlaceholder}
-              value={searchValue || ''}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className='relative w-full pl-12 pr-10 py-3 rounded-xl border-2 border-gray-100 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-700/50 text-gray-800 dark:text-gray-100 focus:bg-white dark:focus:bg-gray-700 focus:border-[#E57373]/30 dark:focus:border-[#E57373]/50 focus:outline-none focus:ring-4 focus:ring-[#E57373]/10 dark:focus:ring-[#E57373]/20 transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500'
-            />
-            {searchValue && searchValue.length > 0 && (
-              <button
-                onClick={() => onSearchChange('')}
-                className='absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-gray-100 dark:bg-gray-600 hover:bg-[#E57373] text-gray-500 dark:text-gray-400 hover:text-white rounded-lg transition-all'
-              >
-                <X className='w-3 h-3' />
-              </button>
-            )}
-          </div>
+          <SearchInput
+            searchValue={searchValue}
+            onSearchChange={onSearchChange}
+            searchPlaceholder={searchPlaceholder}
+          />
         )}
 
         {/* Tab Buttons */}
@@ -136,7 +179,7 @@ export function FilterBar({
                 }`}
               >
                 {activeTab === tab.value && (
-                  <div className='absolute inset-0 bg-linear-to-r from-[#E57373] to-[#EF5350] rounded-lg' />
+                  <div className='absolute inset-0 bg-linear-to-r from-[#E57373] to-[#EF5350] dark:from-[#7f1d1d] dark:to-[#991b1b] rounded-lg' />
                 )}
                 <span className='relative'>{tab.label}</span>
               </button>

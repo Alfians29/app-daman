@@ -385,7 +385,7 @@ export default function AttendancePage() {
       {/* My Progress Stats */}
       {showMyHistory && currentUser && (
         <div className='space-y-4'>
-          <Card className='bg-linear-to-r from-[#E57373] to-[#C62828] text-white'>
+          <Card className='bg-linear-to-r from-[#E57373] to-[#C62828] dark:from-[#7f1d1d] dark:to-[#991b1b] text-white'>
             {/* Row 1: User Info + Switch Buttons */}
             <div className='flex items-center justify-between gap-4 mb-4'>
               {/* User Info */}
@@ -482,28 +482,32 @@ export default function AttendancePage() {
 
           <div className='grid grid-cols-2 lg:grid-cols-4 gap-3'>
             <Card className='text-center py-4'>
-              <p className='text-2xl font-bold text-gray-800'>
+              <p className='text-2xl font-bold text-gray-800 dark:text-gray-100'>
                 {myAllRecords.length}
               </p>
-              <p className='text-xs text-gray-500'>Total Absen</p>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>
+                Total Absen
+              </p>
             </Card>
             <Card className='text-center py-4'>
-              <p className='text-2xl font-bold text-emerald-600'>
+              <p className='text-2xl font-bold text-emerald-600 dark:text-emerald-400'>
                 {ontimePercent}%
               </p>
-              <p className='text-xs text-gray-500'>Tingkat Ketepatan</p>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>
+                Tingkat Ketepatan
+              </p>
             </Card>
             <Card className='text-center py-4'>
-              <p className='text-2xl font-bold text-emerald-600'>
+              <p className='text-2xl font-bold text-emerald-600 dark:text-emerald-400'>
                 {myOntimeCount}
               </p>
-              <p className='text-xs text-gray-500'>Ontime</p>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>Ontime</p>
             </Card>
             <Card className='text-center py-4'>
-              <p className='text-2xl font-bold text-amber-600'>
+              <p className='text-2xl font-bold text-amber-600 dark:text-amber-400'>
                 {myTelatCount}
               </p>
-              <p className='text-xs text-gray-500'>Telat</p>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>Telat</p>
             </Card>
           </div>
         </div>
@@ -514,12 +518,14 @@ export default function AttendancePage() {
         <div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
           <Card>
             <div className='flex items-center gap-3'>
-              <div className='w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center'>
-                <Users className='w-6 h-6 text-blue-600' />
+              <div className='w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
+                <Users className='w-6 h-6 text-blue-600 dark:text-blue-400' />
               </div>
               <div>
-                <p className='text-xs text-blue-500'>Total Anggota</p>
-                <p className='text-2xl font-bold text-blue-800'>
+                <p className='text-xs text-blue-500 dark:text-blue-400'>
+                  Total Anggota
+                </p>
+                <p className='text-2xl font-bold text-blue-800 dark:text-blue-300'>
                   {teamMembers.length}
                 </p>
               </div>
@@ -527,12 +533,14 @@ export default function AttendancePage() {
           </Card>
           <Card>
             <div className='flex items-center gap-3'>
-              <div className='w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center'>
-                <CheckCircle className='w-6 h-6 text-emerald-600' />
+              <div className='w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center'>
+                <CheckCircle className='w-6 h-6 text-emerald-600 dark:text-emerald-400' />
               </div>
               <div>
-                <p className='text-xs text-gray-500'>Hadir Hari Ini</p>
-                <p className='text-2xl font-bold text-emerald-600'>
+                <p className='text-xs text-gray-500 dark:text-gray-400'>
+                  Hadir Hari Ini
+                </p>
+                <p className='text-2xl font-bold text-emerald-600 dark:text-emerald-400'>
                   {todayRecords.length}
                 </p>
               </div>
@@ -540,12 +548,14 @@ export default function AttendancePage() {
           </Card>
           <Card>
             <div className='flex items-center gap-3'>
-              <div className='w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center'>
-                <Clock className='w-6 h-6 text-amber-600' />
+              <div className='w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center'>
+                <Clock className='w-6 h-6 text-amber-600 dark:text-amber-400' />
               </div>
               <div>
-                <p className='text-xs text-gray-500'>Telat Hari Ini</p>
-                <p className='text-2xl font-bold text-amber-600'>
+                <p className='text-xs text-gray-500 dark:text-gray-400'>
+                  Telat Hari Ini
+                </p>
+                <p className='text-2xl font-bold text-amber-600 dark:text-amber-400'>
                   {todayRecords.filter((r) => r.status === 'TELAT').length}
                 </p>
               </div>
@@ -553,12 +563,14 @@ export default function AttendancePage() {
           </Card>
           <Card>
             <div className='flex items-center gap-3'>
-              <div className='w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center'>
-                <XCircle className='w-6 h-6 text-red-600' />
+              <div className='w-12 h-12 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center'>
+                <XCircle className='w-6 h-6 text-red-600 dark:text-red-400' />
               </div>
               <div>
-                <p className='text-xs text-red-500'>Libur Hari Ini</p>
-                <p className='text-2xl font-bold text-red-600'>
+                <p className='text-xs text-red-500 dark:text-red-400'>
+                  Libur Hari Ini
+                </p>
+                <p className='text-2xl font-bold text-red-600 dark:text-red-400'>
                   {
                     scheduleEntries.filter(
                       (s) =>
@@ -622,50 +634,53 @@ export default function AttendancePage() {
       {/* Attendance Table */}
       <Card>
         <div className='flex items-center justify-between mb-4'>
-          <h3 className='font-semibold text-gray-800'>
+          <h3 className='font-semibold text-gray-800 dark:text-gray-100'>
             {showMyHistory ? 'Progress Absensi Saya' : 'Daftar Kehadiran'}
           </h3>
-          <span className='text-sm text-gray-500'>
+          <span className='text-sm text-gray-500 dark:text-gray-400'>
             {filteredRecords.length} data
           </span>
         </div>
         <div className='overflow-x-auto'>
           <table className='w-full'>
-            <thead className='bg-gray-50'>
+            <thead className='bg-gray-50 dark:bg-gray-800'>
               <tr>
                 {!showMyHistory && (
-                  <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                  <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                     Anggota
                   </th>
                 )}
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Tanggal
                 </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Jam Absen
                 </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Keterangan
                 </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Status
                 </th>
               </tr>
             </thead>
-            <tbody className='divide-y divide-gray-100'>
+            <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
               {paginatedRecords.length === 0 ? (
                 <tr>
                   <td
                     colSpan={showMyHistory ? 4 : 5}
-                    className='px-4 py-12 text-center text-gray-500'
+                    className='px-4 py-12 text-center text-gray-500 dark:text-gray-400'
                   >
-                    <Calendar className='w-12 h-12 mx-auto text-gray-300 mb-2' />
+                    <Calendar className='w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-2' />
                     <p>Tidak ada data kehadiran</p>
                   </td>
                 </tr>
               ) : (
                 paginatedRecords.map((record) => (
-                  <tr key={record.id} className='hover:bg-gray-50'>
+                  <tr
+                    key={record.id}
+                    className='hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                  >
                     {!showMyHistory && (
                       <td className='px-4 py-3'>
                         <div className='flex items-center gap-3'>
@@ -687,13 +702,13 @@ export default function AttendancePage() {
                               </span>
                             </div>
                           )}
-                          <p className='font-medium text-gray-800 text-sm'>
+                          <p className='font-medium text-gray-800 dark:text-gray-200 text-sm'>
                             {record.member?.name}
                           </p>
                         </div>
                       </td>
                     )}
-                    <td className='px-4 py-3 text-sm text-gray-700'>
+                    <td className='px-4 py-3 text-sm text-gray-700 dark:text-gray-300'>
                       {new Date(record.tanggal).toLocaleDateString('id-ID', {
                         weekday: 'short',
                         day: 'numeric',
@@ -701,7 +716,7 @@ export default function AttendancePage() {
                         year: 'numeric',
                       })}
                     </td>
-                    <td className='px-4 py-3 text-sm font-medium text-gray-800'>
+                    <td className='px-4 py-3 text-sm font-medium text-gray-800 dark:text-gray-200'>
                       {record.jamAbsen}
                     </td>
                     <td className='px-4 py-3'>
@@ -717,8 +732,8 @@ export default function AttendancePage() {
                       <span
                         className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg ${
                           record.status === 'ONTIME'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-amber-100 text-amber-700'
+                            ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                            : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
                         }`}
                       >
                         {record.status === 'ONTIME' ? (
@@ -763,8 +778,8 @@ export default function AttendancePage() {
                       onClick={() => setCurrentPage(pageNum)}
                       className={`w-8 h-8 rounded-lg text-sm font-medium ${
                         currentPage === pageNum
-                          ? 'bg-[#E57373] text-white'
-                          : 'hover:bg-gray-100 text-gray-700'
+                          ? 'bg-[#E57373] dark:bg-[#991b1b] text-white'
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
                       }`}
                     >
                       {pageNum}
@@ -777,7 +792,7 @@ export default function AttendancePage() {
                   setCurrentPage((p) => Math.min(totalPages, p + 1))
                 }
                 disabled={currentPage === totalPages}
-                className='p-2 rounded-lg border border-gray-200 hover:bg-gray-100 disabled:opacity-50'
+                className='p-2 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50'
               >
                 <ChevronRight className='w-4 h-4' />
               </button>

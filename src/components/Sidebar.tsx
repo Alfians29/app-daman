@@ -267,7 +267,7 @@ export default function Sidebar() {
           transition-all duration-200 group relative
           ${
             active
-              ? 'bg-[#E57373] text-white shadow-lg shadow-red-200/50'
+              ? 'bg-[#E57373] dark:bg-[#991b1b] text-white shadow-lg shadow-red-200/50 dark:shadow-red-900/30'
               : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white'
           }
         `}
@@ -323,7 +323,7 @@ export default function Sidebar() {
         {/* Logo */}
         <div className='h-16 flex items-center px-5 border-b border-gray-100 dark:border-gray-700'>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-lg bg-[#E57373] flex items-center justify-center shadow-lg shadow-red-200/50 overflow-hidden p-1.5'>
+            <div className='w-10 h-10 rounded-lg bg-[#E57373] dark:bg-[#991b1b] flex items-center justify-center shadow-lg shadow-red-200/50 dark:shadow-none overflow-hidden p-1.5'>
               <Image
                 src='/logoputih.png'
                 alt='Logo'

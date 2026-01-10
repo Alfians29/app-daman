@@ -122,15 +122,15 @@ export default function AuditLogPage() {
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'CREATE':
-        return 'bg-emerald-100 text-emerald-700';
+        return 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300';
       case 'UPDATE':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300';
       case 'DELETE':
-        return 'bg-red-100 text-red-700';
+        return 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300';
       case 'LOGIN':
-        return 'bg-purple-100 text-purple-700';
+        return 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300';
       default:
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
     }
   };
 
@@ -207,49 +207,57 @@ export default function AuditLogPage() {
 
       {/* Summary Cards */}
       <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
-        <div className='bg-white rounded-xl p-4 border border-gray-100'>
+        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center'>
-              <FileText className='w-5 h-5 text-gray-600' />
+            <div className='w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center'>
+              <FileText className='w-5 h-5 text-gray-600 dark:text-gray-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Total Log</p>
-              <p className='text-lg font-bold text-gray-800'>{stats.total}</p>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>
+                Total Log
+              </p>
+              <p className='text-lg font-bold text-gray-800 dark:text-gray-100'>
+                {stats.total}
+              </p>
             </div>
           </div>
         </div>
-        <div className='bg-white rounded-xl p-4 border border-gray-100'>
+        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center'>
-              <Plus className='w-5 h-5 text-emerald-600' />
+            <div className='w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center'>
+              <Plus className='w-5 h-5 text-emerald-600 dark:text-emerald-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Tambah</p>
-              <p className='text-lg font-bold text-emerald-600'>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>Tambah</p>
+              <p className='text-lg font-bold text-emerald-600 dark:text-emerald-400'>
                 {stats.create}
               </p>
             </div>
           </div>
         </div>
-        <div className='bg-white rounded-xl p-4 border border-gray-100'>
+        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center'>
-              <Edit className='w-5 h-5 text-blue-600' />
+            <div className='w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
+              <Edit className='w-5 h-5 text-blue-600 dark:text-blue-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Update</p>
-              <p className='text-lg font-bold text-blue-600'>{stats.update}</p>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>Update</p>
+              <p className='text-lg font-bold text-blue-600 dark:text-blue-400'>
+                {stats.update}
+              </p>
             </div>
           </div>
         </div>
-        <div className='bg-white rounded-xl p-4 border border-gray-100'>
+        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center'>
-              <Trash2 className='w-5 h-5 text-red-600' />
+            <div className='w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center'>
+              <Trash2 className='w-5 h-5 text-red-600 dark:text-red-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Hapus</p>
-              <p className='text-lg font-bold text-red-600'>{stats.delete}</p>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>Hapus</p>
+              <p className='text-lg font-bold text-red-600 dark:text-red-400'>
+                {stats.delete}
+              </p>
             </div>
           </div>
         </div>
@@ -283,53 +291,56 @@ export default function AuditLogPage() {
       />
 
       {/* Log Table */}
-      <div className='bg-white rounded-xl border border-gray-100 overflow-hidden'>
+      <div className='bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden'>
         <div className='overflow-x-auto'>
           <table className='w-full'>
-            <thead className='bg-gray-50'>
+            <thead className='bg-gray-50 dark:bg-gray-700/50'>
               <tr>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Waktu
                 </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Aksi
                 </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Tipe
                 </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   User
                 </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Target
                 </th>
-                <th className='text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase'>
+                <th className='text-center px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
                   Detail
                 </th>
               </tr>
             </thead>
-            <tbody className='divide-y divide-gray-100'>
+            <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
               {logs.length === 0 ? (
                 <tr>
                   <td
                     colSpan={6}
-                    className='px-4 py-8 text-center text-gray-500'
+                    className='px-4 py-8 text-center text-gray-500 dark:text-gray-400'
                   >
                     Tidak ada log ditemukan
                   </td>
                 </tr>
               ) : (
                 logs.map((log: AuditLog) => (
-                  <tr key={log.id} className='hover:bg-gray-50'>
-                    <td className='px-4 py-3 text-sm text-gray-600'>
+                  <tr
+                    key={log.id}
+                    className='hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                  >
+                    <td className='px-4 py-3 text-sm text-gray-600 dark:text-gray-300'>
                       {new Date(log.createdAt).toLocaleString('id-ID')}
                     </td>
                     <td className='px-4 py-3'>
                       <div className='flex items-center gap-2'>
-                        <span className='text-gray-500'>
+                        <span className='text-gray-500 dark:text-gray-400'>
                           {getActionIcon(log.type)}
                         </span>
-                        <span className='text-sm font-medium text-gray-800'>
+                        <span className='text-sm font-medium text-gray-800 dark:text-gray-200'>
                           {log.action}
                         </span>
                       </div>
@@ -344,10 +355,10 @@ export default function AuditLogPage() {
                           log.type}
                       </span>
                     </td>
-                    <td className='px-4 py-3 text-sm text-gray-600'>
+                    <td className='px-4 py-3 text-sm text-gray-600 dark:text-gray-300'>
                       {log.user.name}
                     </td>
-                    <td className='px-4 py-3 text-sm text-gray-600 max-w-xs truncate'>
+                    <td className='px-4 py-3 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate'>
                       {log.target}
                     </td>
                     <td className='px-4 py-3 text-center'>
@@ -367,8 +378,8 @@ export default function AuditLogPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className='flex items-center justify-between px-4 py-3 border-t border-gray-100'>
-            <p className='text-sm text-gray-500'>
+          <div className='flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-700'>
+            <p className='text-sm text-gray-500 dark:text-gray-400'>
               Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} -{' '}
               {Math.min(currentPage * ITEMS_PER_PAGE, totalLogs)} dari{' '}
               {totalLogs} log
@@ -399,8 +410,8 @@ export default function AuditLogPage() {
                       onClick={() => setCurrentPage(pageNum)}
                       className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
                         currentPage === pageNum
-                          ? 'bg-[#E57373] text-white'
-                          : 'hover:bg-gray-100 text-gray-600'
+                          ? 'bg-[#E57373] dark:bg-[#991b1b] text-white'
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400'
                       }`}
                     >
                       {pageNum}

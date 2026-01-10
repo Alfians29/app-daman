@@ -28,6 +28,7 @@ import { Input, Select, FormRow } from '@/components/ui/Form';
 import toast from 'react-hot-toast';
 import { usersAPI } from '@/lib/api';
 import { useUsers, useRoles } from '@/lib/swr-hooks';
+import { getRoleColorClasses } from '@/lib/utils';
 
 type User = {
   id: string;
@@ -311,38 +312,44 @@ export default function AdminTeamPage() {
 
       {/* Summary Cards */}
       <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
-        <div className='bg-white rounded-xl p-4 border border-gray-100'>
+        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center'>
-              <Users className='w-5 h-5 text-blue-600' />
+            <div className='w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
+              <Users className='w-5 h-5 text-blue-600 dark:text-blue-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Total Anggota</p>
-              <p className='text-lg font-bold text-gray-800'>{stats.total}</p>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>
+                Total Anggota
+              </p>
+              <p className='text-lg font-bold text-gray-800 dark:text-gray-100'>
+                {stats.total}
+              </p>
             </div>
           </div>
         </div>
-        <div className='bg-white rounded-xl p-4 border border-gray-100'>
+        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center'>
-              <Users className='w-5 h-5 text-purple-600' />
+            <div className='w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center'>
+              <Users className='w-5 h-5 text-purple-600 dark:text-purple-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Team Leader</p>
-              <p className='text-lg font-bold text-purple-600'>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>
+                Team Leader
+              </p>
+              <p className='text-lg font-bold text-purple-600 dark:text-purple-400'>
                 {stats.leader}
               </p>
             </div>
           </div>
         </div>
-        <div className='bg-white rounded-xl p-4 border border-gray-100'>
+        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center'>
-              <Users className='w-5 h-5 text-emerald-600' />
+            <div className='w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center'>
+              <Users className='w-5 h-5 text-emerald-600 dark:text-emerald-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500'>Member</p>
-              <p className='text-lg font-bold text-emerald-600'>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>Member</p>
+              <p className='text-lg font-bold text-emerald-600 dark:text-emerald-400'>
                 {stats.member}
               </p>
             </div>
@@ -353,7 +360,7 @@ export default function AdminTeamPage() {
       {/* Members Grid */}
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
         {filteredMembers.length === 0 ? (
-          <div className='col-span-full text-center py-12 text-gray-500'>
+          <div className='col-span-full text-center py-12 text-gray-500 dark:text-gray-400'>
             Tidak ada member ditemukan
           </div>
         ) : (
@@ -377,63 +384,67 @@ export default function AdminTeamPage() {
                     </div>
                   )}
                   <div>
-                    <p className='font-medium text-gray-800'>{member.name}</p>
-                    <p className='text-xs text-gray-500'>@{member.username}</p>
+                    <p className='font-medium text-gray-800 dark:text-gray-100'>
+                      {member.name}
+                    </p>
+                    <p className='text-xs text-gray-500 dark:text-gray-400'>
+                      @{member.username}
+                    </p>
                   </div>
                 </div>
                 <div className='flex gap-1'>
                   <button
                     onClick={() => openEditModal(member)}
                     disabled={isPending}
-                    className='p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50'
+                    className='p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-white dark:hover:bg-blue-600/50 rounded-lg transition-colors disabled:opacity-50'
                   >
                     <Edit2 size={16} />
                   </button>
                   <button
                     onClick={() => openDeleteModal(member)}
                     disabled={isPending}
-                    className='p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50'
+                    className='p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:text-white dark:hover:bg-red-600/50 rounded-lg transition-colors disabled:opacity-50'
                   >
                     <Trash2 size={16} />
                   </button>
                 </div>
               </div>
 
-              <div className='mt-3 pt-3 border-t space-y-2'>
+              <div className='mt-3 pt-3 border-t dark:border-gray-700 space-y-2'>
                 <div className='flex items-center gap-2 flex-wrap'>
                   <span
                     className={`px-2 py-0.5 text-xs font-medium rounded-lg ${
                       member.position === 'Team Leader'
-                        ? 'bg-purple-100 text-purple-700'
-                        : 'bg-gray-100 text-gray-700'
+                        ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                     }`}
                   >
                     {member.position}
                   </span>
                   <span
-                    className={`px-2 py-0.5 text-xs font-medium rounded-lg ${
-                      member.role?.color || 'bg-gray-100 text-gray-700'
-                    }`}
+                    className={`px-2 py-0.5 text-xs font-medium rounded-lg ${getRoleColorClasses(
+                      member.role?.color
+                    )}`}
                   >
                     <Shield className='w-3 h-3 inline mr-1' />
                     {member.role?.name}
                   </span>
-                  <span className='text-xs text-gray-500'>
+                  <span className='text-xs text-gray-500 dark:text-gray-400'>
                     NIK: {member.nik}
                   </span>
                 </div>
 
-                <div className='flex items-center gap-2 text-sm text-gray-600'>
+                <div className='flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400'>
                   <Phone className='w-3.5 h-3.5' />
                   <span>{member.phone || '-'}</span>
                 </div>
 
-                <div className='flex items-center gap-2 text-sm text-gray-600'>
+                <div className='flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400'>
                   <Mail className='w-3.5 h-3.5' />
                   <span className='truncate'>{member.email || '-'}</span>
                 </div>
 
-                <div className='flex items-center gap-2 text-sm text-gray-600'>
+                <div className='flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400'>
                   <AtSign className='w-3.5 h-3.5' />
                   <span>{member.usernameTelegram || '-'}</span>
                 </div>
