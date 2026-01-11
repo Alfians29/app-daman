@@ -91,9 +91,11 @@ export function useSchedule(
 
 // Hook for fetching all schedules for a specific user (no date filter)
 // Separate from monthly schedule for independent loading
-export function useUserSchedule(memberId?: string) {
+// Uses slim mode by default for reduced payload (~21MB → ~50KB)
+export function useUserSchedule(memberId?: string, slim: boolean = true) {
   const query = new URLSearchParams();
   if (memberId) query.set('memberId', memberId);
+  if (slim) query.set('slim', 'true');
   const url = memberId ? `/api/schedule?${query}` : null;
 
   const { data, error, isLoading, mutate } = useSWR(
@@ -104,6 +106,48 @@ export function useUserSchedule(memberId?: string) {
   return {
     schedules: data?.data || [],
     shiftColors: data?.shiftColors || {},
+    isLoading,
+    error,
+    mutate,
+  };
+}
+
+// Hook for fetching attendance for a specific user
+// Uses slim mode by default for reduced payload (~7.5MB → ~20KB)
+export function useUserAttendance(memberId?: string, slim: boolean = true) {
+  const query = new URLSearchParams();
+  if (memberId) query.set('memberId', memberId);
+  if (slim) query.set('slim', 'true');
+  const url = memberId ? `/api/attendance?${query}` : null;
+
+  const { data, error, isLoading, mutate } = useSWR(
+    url,
+    fetcher,
+    defaultOptions
+  );
+  return {
+    attendance: data?.data || [],
+    isLoading,
+    error,
+    mutate,
+  };
+}
+
+// Hook for fetching activities for a specific user
+// Uses pagination for reduced payload (~3.7MB → ~5KB)
+export function useUserActivities(userId?: string, limit: number = 10) {
+  const query = new URLSearchParams();
+  if (userId) query.set('userId', userId);
+  query.set('limit', limit.toString());
+  const url = userId ? `/api/activities?${query}` : null;
+
+  const { data, error, isLoading, mutate } = useSWR(
+    url,
+    fetcher,
+    defaultOptions
+  );
+  return {
+    activities: data?.data || [],
     isLoading,
     error,
     mutate,
