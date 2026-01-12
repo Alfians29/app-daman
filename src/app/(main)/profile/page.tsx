@@ -17,7 +17,7 @@ import { useCurrentUser } from '@/components/AuthGuard';
 import { getLocalDateString, getShiftColorClasses } from '@/lib/utils';
 import { processImage } from '@/lib/imageUtils';
 import {
-  useUsers,
+  useUser,
   useShifts,
   useUserSchedule,
   useUserAttendance,
@@ -46,6 +46,10 @@ import {
   TrendingUp,
   Upload,
   Loader2,
+  LogIn,
+  LogOut,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 
 type UserData = {
@@ -117,7 +121,12 @@ export default function ProfilePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // SWR hooks for cached data
-  const { users, isLoading: usersLoading, mutate: mutateUsers } = useUsers();
+  // useUser fetches current user WITH image (~5KB per user)
+  const {
+    user: currentUser,
+    isLoading: userLoading,
+    mutate: mutateUser,
+  } = useUser(authUser?.id);
   const { shifts, isLoading: shiftsLoading } = useShifts();
   // Use user-specific hooks with slim mode for optimized payload
   // This reduces API payload from ~32MB to ~100KB
@@ -130,19 +139,11 @@ export default function ProfilePage() {
 
   const isLoading =
     authLoading ||
-    usersLoading ||
+    userLoading ||
     shiftsLoading ||
     schedLoading ||
     attLoading ||
     activitiesLoading;
-
-  // Process data with useMemo
-  const currentUser = useMemo(() => {
-    if (!authUser?.id) return null;
-    return (
-      (users as UserData[]).find((u: UserData) => u.id === authUser.id) || null
-    );
-  }, [users, authUser]);
 
   const attendanceRecords = attendance as AttendanceRecord[];
   const scheduleEntries = schedules as ScheduleEntry[];
@@ -188,20 +189,57 @@ export default function ProfilePage() {
   const ontimeRate =
     totalAttendance > 0 ? Math.round((ontimeCount / totalAttendance) * 100) : 0;
 
-  // Today's schedule
-  const today = getLocalDateString();
-  const todaySchedule = useMemo(
-    () =>
-      currentUser
-        ? scheduleEntries.find(
-            (s) =>
-              s.memberId === currentUser.id && s.tanggal.split('T')[0] === today
-          )
-        : null,
-    [scheduleEntries, currentUser, today]
-  );
+  // Week schedule (Saturday to Friday)
+  const weekSchedules = useMemo(() => {
+    if (!currentUser) return [];
 
-  // User activities - sorted by newest first, max 4
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
+
+    // Calculate Saturday of current week
+    // If today is Saturday (6), start from today
+    // If today is Sunday (0), go back 1 day to Saturday
+    // Otherwise, go back (dayOfWeek + 1) days to reach Saturday
+    const daysToSaturday = dayOfWeek === 6 ? 0 : dayOfWeek + 1;
+    const saturday = new Date(today);
+    saturday.setDate(today.getDate() - daysToSaturday);
+    saturday.setHours(0, 0, 0, 0);
+
+    // Generate 7 days from Saturday to Friday
+    const weekDays: {
+      date: Date;
+      dateStr: string;
+      schedule: ScheduleEntry | null;
+      isToday: boolean;
+    }[] = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(saturday);
+      date.setDate(saturday.getDate() + i);
+      const dateStr = `${date.getFullYear()}-${String(
+        date.getMonth() + 1
+      ).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const todayStr = `${today.getFullYear()}-${String(
+        today.getMonth() + 1
+      ).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+      const schedule =
+        scheduleEntries.find(
+          (s) =>
+            s.memberId === currentUser.id && s.tanggal.split('T')[0] === dateStr
+        ) || null;
+
+      weekDays.push({
+        date,
+        dateStr,
+        schedule,
+        isToday: dateStr === todayStr,
+      });
+    }
+
+    return weekDays;
+  }, [scheduleEntries, currentUser]);
+
+  // User activities - sorted by newest first, max 5
   const userActivities = useMemo(
     () =>
       currentUser
@@ -212,7 +250,7 @@ export default function ProfilePage() {
                 new Date(b.createdAt).getTime() -
                 new Date(a.createdAt).getTime()
             )
-            .slice(0, 4)
+            .slice(0, 5)
         : [],
     [recentActivities, currentUser]
   );
@@ -232,7 +270,7 @@ export default function ProfilePage() {
       if (result.success) {
         toast.success('Profil berhasil diperbarui!');
         setShowEditModal(false);
-        mutateUsers();
+        mutateUser();
       } else {
         toast.error(result.error || 'Gagal memperbarui profil');
       }
@@ -329,7 +367,7 @@ export default function ProfilePage() {
           setShowAvatarModal(false);
           setAvatarPreview(null);
           setSelectedFile(null);
-          mutateUsers();
+          mutateUser();
         } else {
           toast.error(result.error || 'Gagal mengupload foto');
         }
@@ -442,11 +480,11 @@ export default function ProfilePage() {
 
       <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
         {/* Left Column - Profile Card */}
-        <div className='space-y-6'>
+        <div className='flex flex-col justify-between gap-6'>
           {/* Profile Card with Gradient Border */}
-          <div className='relative'>
-            <div className='absolute -inset-0.5 bg-linear-to-r from-[#E57373] to-[#EF5350] rounded-2xl opacity-75 blur' />
-            <Card className='relative'>
+          <div className='relative flex-1'>
+            <div className='absolute -inset-0.5 bg-linear-to-r from-[#E57373] to-[#EF5350] rounded-2xl opacity-75 blur h-full' />
+            <Card className='relative h-full flex flex-col justify-center'>
               <div className='text-center'>
                 {/* Profile Photo with Badge */}
                 <div className='relative inline-block mb-4'>
@@ -462,7 +500,7 @@ export default function ProfilePage() {
                         <span className='text-3xl font-bold text-white'>
                           {currentUser.name
                             .split(' ')
-                            .map((n) => n[0])
+                            .map((n: string) => n[0])
                             .join('')
                             .slice(0, 2)
                             .toUpperCase()}
@@ -496,6 +534,44 @@ export default function ProfilePage() {
                 <p className='text-sm text-gray-500 dark:text-gray-400 mt-2'>
                   {currentUser.department}
                 </p>
+
+                {/* Join Date & Last Active */}
+                <div className='mt-4 pt-4 border-t border-gray-100 dark:border-gray-700'>
+                  <div className='flex justify-center gap-6 text-xs text-gray-500 dark:text-gray-400'>
+                    <div className='flex items-center gap-1.5'>
+                      <Calendar className='w-3.5 h-3.5' />
+                      <span>
+                        Bergabung{' '}
+                        {currentUser.createdAt
+                          ? new Date(currentUser.createdAt).toLocaleDateString(
+                              'id-ID',
+                              {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                              }
+                            )
+                          : '-'}
+                      </span>
+                    </div>
+                    <div className='flex items-center gap-1.5'>
+                      <Activity className='w-3.5 h-3.5' />
+                      <span>
+                        Aktif{' '}
+                        {userActivities[0]?.createdAt
+                          ? new Date(
+                              userActivities[0].createdAt
+                            ).toLocaleDateString('id-ID', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : 'Baru saja'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </Card>
           </div>
@@ -542,48 +618,64 @@ export default function ProfilePage() {
             </Card>
           </div>
 
-          {/* Today's Schedule */}
+          {/* Week's Schedule (Saturday to Friday) */}
           <Card>
-            <div className='flex items-center gap-2 mb-3'>
+            <div className='flex items-center gap-2 mb-4'>
               <Calendar className='w-5 h-5 text-[#E57373]' />
               <h3 className='font-semibold text-gray-800 dark:text-white'>
-                Jadwal Hari Ini
+                Jadwal Minggu Ini
               </h3>
             </div>
-            {todaySchedule ? (
-              <div className='flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800'>
-                {(() => {
-                  const style = getScheduleColor(todaySchedule.keterangan);
-                  const IconComponent = style.icon;
-                  return (
-                    <>
-                      <div
-                        className={`w-12 h-12 rounded-xl ${style.bg} flex items-center justify-center`}
-                      >
-                        <IconComponent className={`w-6 h-6 ${style.text}`} />
-                      </div>
-                      <div>
-                        <p className='font-semibold text-gray-800 dark:text-white'>
-                          {todaySchedule.keterangan}
-                        </p>
-                        <p className='text-sm text-gray-500 dark:text-gray-400'>
-                          {new Date().toLocaleDateString('id-ID', {
-                            weekday: 'long',
-                            day: 'numeric',
-                            month: 'short',
-                          })}
-                        </p>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            ) : (
-              <div className='flex items-center gap-3 p-3 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-xl'>
-                <Calendar className='w-6 h-6' />
-                <p>Tidak ada jadwal</p>
-              </div>
-            )}
+            <div className='flex gap-2 overflow-x-auto p-1'>
+              {weekSchedules.map((day, index) => {
+                const style = day.schedule
+                  ? getScheduleColor(day.schedule.keterangan)
+                  : {
+                      bg: 'bg-gray-50 dark:bg-gray-800',
+                      text: 'text-gray-400 dark:text-gray-500',
+                      icon: Calendar,
+                    };
+                const dayName = day.date.toLocaleDateString('id-ID', {
+                  weekday: 'short',
+                });
+                const dayNum = day.date.getDate();
+
+                return (
+                  <div
+                    key={index}
+                    className={`flex-1 min-w-[45px] flex flex-col items-center py-3 px-2 rounded-xl text-center transition-all ${
+                      day.isToday
+                        ? 'ring-2 ring-[#E57373] shadow-lg shadow-[#E57373]/20'
+                        : ''
+                    } ${style.bg}`}
+                  >
+                    <span
+                      className={`text-xs font-semibold uppercase ${
+                        day.isToday
+                          ? 'text-[#E57373]'
+                          : 'text-gray-500 dark:text-gray-400'
+                      }`}
+                    >
+                      {dayName}
+                    </span>
+                    <span
+                      className={`text-lg font-bold my-1 ${
+                        day.isToday
+                          ? 'text-[#E57373]'
+                          : 'text-gray-700 dark:text-gray-200'
+                      }`}
+                    >
+                      {dayNum}
+                    </span>
+                    <span
+                      className={`text-[10px] font-medium ${style.text} truncate max-w-full`}
+                    >
+                      {day.schedule?.keterangan || '-'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </Card>
         </div>
 
@@ -716,21 +808,27 @@ export default function ProfilePage() {
                   >
                     <div
                       className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                        activity.type === 'create'
+                        activity.type.toUpperCase() === 'CREATE'
                           ? 'bg-emerald-100 dark:bg-emerald-900/30'
-                          : activity.type === 'update'
+                          : activity.type.toUpperCase() === 'UPDATE'
                           ? 'bg-blue-100 dark:bg-blue-900/30'
-                          : activity.type === 'login'
+                          : activity.type.toUpperCase() === 'LOGIN'
                           ? 'bg-purple-100 dark:bg-purple-900/30'
-                          : 'bg-red-100 dark:bg-red-900/30'
+                          : activity.type.toUpperCase() === 'DELETE'
+                          ? 'bg-red-100 dark:bg-red-900/30'
+                          : 'bg-amber-100 dark:bg-amber-900/30'
                       }`}
                     >
-                      {activity.type === 'create' ? (
-                        <CheckCircle className='w-5 h-5 text-emerald-600 dark:text-emerald-400' />
-                      ) : activity.type === 'login' ? (
-                        <Check className='w-5 h-5 text-purple-600 dark:text-purple-400' />
+                      {activity.type.toUpperCase() === 'CREATE' ? (
+                        <Plus className='w-5 h-5 text-emerald-600 dark:text-emerald-400' />
+                      ) : activity.type.toUpperCase() === 'UPDATE' ? (
+                        <Edit className='w-5 h-5 text-blue-600 dark:text-blue-400' />
+                      ) : activity.type.toUpperCase() === 'LOGIN' ? (
+                        <LogIn className='w-5 h-5 text-purple-600 dark:text-purple-400' />
+                      ) : activity.type.toUpperCase() === 'DELETE' ? (
+                        <Trash2 className='w-5 h-5 text-red-600 dark:text-red-400' />
                       ) : (
-                        <AlertCircle className='w-5 h-5 text-blue-600 dark:text-blue-400' />
+                        <LogOut className='w-5 h-5 text-amber-600 dark:text-amber-400' />
                       )}
                     </div>
                     <div className='flex-1 min-w-0'>
