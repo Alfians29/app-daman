@@ -54,6 +54,9 @@ export default function Dashboard() {
   const [chartPeriod, setChartPeriod] = useState<
     '1bulan' | '6bulan' | '1tahun'
   >('1tahun');
+  const [cashChartPeriod, setCashChartPeriod] = useState<
+    '1bulan' | '6bulan' | '1tahun'
+  >('1tahun');
   const [periodType, setPeriodType] = useState<'monthly' | '16-15'>('16-15');
   const { user: authUser, isLoading: authLoading } = useCurrentUser();
 
@@ -105,7 +108,9 @@ export default function Dashboard() {
   const scheduleByMonth = chartData?.scheduleByMonth || [];
   const scheduleByWeek = chartData?.scheduleByWeek || [];
   const scheduleby6Month = chartData?.scheduleby6Month || [];
-  const cashChartData = chartData?.cashByMonth || [];
+  const cashByMonth = chartData?.cashByMonth || [];
+  const cashByWeek = chartData?.cashByWeek || [];
+  const cashBy6Month = chartData?.cashBy6Month || [];
   const jobTypeLeaderboard = (chartData?.jobTypeLeaderboard || []) as {
     rank: number | null;
     id: string;
@@ -128,6 +133,22 @@ export default function Dashboard() {
     // 1tahun - show all 12 months
     return scheduleByMonth;
   }, [scheduleByMonth, scheduleByWeek, scheduleby6Month, chartPeriod]);
+
+  // Select appropriate cash chart data based on period
+  const filteredCashChartData = useMemo(() => {
+    if (cashChartPeriod === '1bulan') {
+      // Weekly data for current month (Minggu 1-4)
+      return cashByWeek;
+    }
+
+    if (cashChartPeriod === '6bulan') {
+      // Last 6 months
+      return cashBy6Month;
+    }
+
+    // 1tahun - all 12 months
+    return cashByMonth;
+  }, [cashByMonth, cashByWeek, cashBy6Month, cashChartPeriod]);
 
   // Today's data from aggregated endpoint
   const attendanceRecords = todayStats.attendance as AttendanceRecord[];
@@ -625,7 +646,8 @@ export default function Dashboard() {
 
       {/* Personal Stats Row */}
       <div className='grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4'>
-        <Card className='col-span-2 lg:col-span-1'>
+        <Card className='col-span-2 lg:col-span-1 relative'>
+          <span className='absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full animate-pulse' />
           <div className='flex items-center gap-3'>
             {todaySchedule ? (
               (() => {
@@ -664,7 +686,8 @@ export default function Dashboard() {
             )}
           </div>
         </Card>
-        <Card>
+        <Card className='relative'>
+          <span className='absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full animate-pulse' />
           <div className='flex items-center gap-3'>
             <div className='w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center'>
               <CheckCircle className='w-6 h-6 text-emerald-600 dark:text-emerald-400' />
@@ -679,7 +702,8 @@ export default function Dashboard() {
             </div>
           </div>
         </Card>
-        <Card>
+        <Card className='relative'>
+          <span className='absolute top-2 right-2 w-2 h-2 bg-blue-500 rounded-full animate-pulse' />
           <div className='flex items-center gap-3'>
             <div className='w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
               <Clock className='w-6 h-6 text-blue-600 dark:text-blue-400' />
@@ -831,14 +855,35 @@ export default function Dashboard() {
                 Pemasukan & pengeluaran
               </p>
             </div>
-            <Link
-              href='/cash'
-              className='text-sm text-[#E57373] hover:underline flex items-center gap-1'
-            >
-              Lihat Semua <ArrowRight className='w-3 h-3' />
-            </Link>
+            <div className='flex items-center gap-2'>
+              <div className='flex rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden'>
+                {(['1bulan', '6bulan', '1tahun'] as const).map((period) => (
+                  <button
+                    key={period}
+                    onClick={() => setCashChartPeriod(period)}
+                    className={`px-2 py-1 text-xs font-medium transition-colors ${
+                      cashChartPeriod === period
+                        ? 'bg-[#E57373] dark:bg-[#991b1b] text-white'
+                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {period === '1bulan'
+                      ? '1 Bln'
+                      : period === '6bulan'
+                      ? '6 Bln'
+                      : '1 Thn'}
+                  </button>
+                ))}
+              </div>
+              <Link
+                href='/cash'
+                className='text-sm text-[#E57373] hover:underline flex items-center gap-1'
+              >
+                <ArrowRight className='w-3 h-3' />
+              </Link>
+            </div>
           </div>
-          <CashBookChart data={cashChartData} />
+          <CashBookChart data={filteredCashChartData} />
         </Card>
       </div>
 

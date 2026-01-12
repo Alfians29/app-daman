@@ -3,8 +3,36 @@ import prisma from '@/lib/prisma';
 import { logActivity, getUserIdFromRequest } from '@/lib/activity-logger';
 
 // GET all users with role
-export async function GET() {
+// slim=true excludes large fields like image for optimized payload (~2MB → ~50KB)
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const slim = searchParams.get('slim') === 'true';
+
+    if (slim) {
+      // Slim mode: exclude image field for smaller payload
+      const users = await prisma.user.findMany({
+        select: {
+          id: true,
+          name: true,
+          nickname: true,
+          username: true,
+          email: true,
+          phone: true,
+          nik: true,
+          position: true,
+          department: true,
+          usernameTelegram: true,
+          isActive: true,
+          role: { select: { id: true, name: true } },
+          // image excluded in slim mode
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      return NextResponse.json({ success: true, data: users });
+    }
+
+    // Full mode: include all fields
     const users = await prisma.user.findMany({
       include: { role: true },
       orderBy: { createdAt: 'desc' },

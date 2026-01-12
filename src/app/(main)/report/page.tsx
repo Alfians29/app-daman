@@ -12,6 +12,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Trash2,
+  Trophy,
+  BarChart3,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -90,6 +92,9 @@ export default function ReportPage() {
   const { user: authUser, isLoading: authLoading } = useCurrentUser();
   const [showMyHistory, setShowMyHistory] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
+  const [summaryPeriod, setSummaryPeriod] = useState<
+    '1bulan' | '6bulan' | 'semua'
+  >('semua');
   const historyItemsPerPage = 10;
 
   // Get current month/year for filtering
@@ -238,6 +243,81 @@ export default function ReportPage() {
       (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
     );
   }, [userAllReports]);
+
+  // Personal summary stats
+  const personalSummary = useMemo(() => {
+    // Filter reports based on selected period
+    const now = new Date();
+    let filteredReports = userReportsHistory;
+
+    if (summaryPeriod === '1bulan') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      filteredReports = userReportsHistory.filter(
+        (r) => new Date(r.tanggal) >= startOfMonth
+      );
+    } else if (summaryPeriod === '6bulan') {
+      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      filteredReports = userReportsHistory.filter(
+        (r) => new Date(r.tanggal) >= sixMonthsAgo
+      );
+    }
+
+    const totalReports = filteredReports.length;
+    let totalValue = 0;
+    const jobTypeMap: Record<string, { name: string; value: number }> = {};
+
+    filteredReports.forEach((report) => {
+      report.tasks.forEach((task) => {
+        totalValue += task.value;
+        const jobTypeName =
+          typeof task.jobType === 'object'
+            ? (task.jobType as any).name
+            : task.jobType;
+        const jobTypeId =
+          typeof task.jobType === 'object'
+            ? (task.jobType as any).id || (task as any).jobTypeId
+            : (task as any).jobTypeId || task.jobType;
+
+        if (jobTypeId) {
+          if (!jobTypeMap[jobTypeId]) {
+            jobTypeMap[jobTypeId] = {
+              name: jobTypeName || 'Unknown',
+              value: 0,
+            };
+          }
+          jobTypeMap[jobTypeId].value += task.value;
+        }
+      });
+    });
+
+    // Create leaderboard with ranking
+    const sortedJobTypes = Object.entries(jobTypeMap)
+      .map(([id, data]) => ({ id, ...data }))
+      .sort((a, b) => b.value - a.value);
+
+    let currentRank = 1;
+    let prevValue: number | null = null;
+    const leaderboard = sortedJobTypes.map((item, index) => {
+      if (item.value === 0) {
+        return { rank: null, ...item };
+      }
+      if (prevValue !== null && item.value === prevValue) {
+        return { rank: currentRank, ...item };
+      }
+      currentRank = index + 1;
+      prevValue = item.value;
+      return { rank: currentRank, ...item };
+    });
+
+    const topJob = leaderboard[0] || null;
+
+    return {
+      totalReports,
+      totalValue,
+      topJob,
+      leaderboard,
+    };
+  }, [userReportsHistory, summaryPeriod]);
 
   const navigateDate = (days: number) => {
     const date = new Date(selectedDate);
@@ -489,6 +569,227 @@ export default function ReportPage() {
       {/* My History View */}
       {showMyHistory ? (
         <>
+          {/* Personal Summary Stats */}
+          <div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
+            <Card>
+              <div className='flex items-center gap-3 h-full'>
+                <div className='w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
+                  <FileText className='w-6 h-6 text-blue-600 dark:text-blue-400' />
+                </div>
+                <div>
+                  <p className='text-xs text-gray-500 dark:text-gray-400'>
+                    Total Report
+                  </p>
+                  <p className='text-2xl font-bold text-blue-600 dark:text-blue-400'>
+                    {personalSummary.totalReports}
+                  </p>
+                </div>
+              </div>
+            </Card>
+            <Card>
+              <div className='flex items-center gap-3 h-full'>
+                <div className='w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center'>
+                  <BarChart3 className='w-6 h-6 text-emerald-600 dark:text-emerald-400' />
+                </div>
+                <div>
+                  <p className='text-xs text-gray-500 dark:text-gray-400'>
+                    Total Nilai
+                  </p>
+                  <p className='text-2xl font-bold text-emerald-600 dark:text-emerald-400'>
+                    {personalSummary.totalValue.toLocaleString('id-ID')}
+                  </p>
+                </div>
+              </div>
+            </Card>
+            <Card>
+              <div className='flex items-center gap-3'>
+                <div className='w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center'>
+                  <Trophy className='w-6 h-6 text-amber-600 dark:text-amber-400' />
+                </div>
+                <div className='flex-1 min-w-0'>
+                  <p className='text-xs text-gray-500 dark:text-gray-400'>
+                    Top Pekerjaan
+                  </p>
+                  {personalSummary.topJob ? (
+                    <>
+                      <p className='font-bold text-gray-800 dark:text-gray-100 truncate'>
+                        {personalSummary.topJob.name}
+                      </p>
+                      <p className='text-sm text-amber-600 dark:text-amber-400 font-medium'>
+                        {personalSummary.topJob.value.toLocaleString('id-ID')}{' '}
+                        nilai
+                      </p>
+                    </>
+                  ) : (
+                    <p className='text-gray-400 dark:text-gray-500'>-</p>
+                  )}
+                </div>
+              </div>
+            </Card>
+            <Card>
+              <div className='flex items-center gap-3 h-full'>
+                <div className='w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center'>
+                  <Calendar className='w-6 h-6 text-purple-600 dark:text-purple-400' />
+                </div>
+                <div className='flex-1 min-w-0'>
+                  <p className='text-xs text-gray-500 dark:text-gray-400'>
+                    Filter Periode
+                  </p>
+                  <div className='flex gap-1 mt-1'>
+                    {(['1bulan', '6bulan', 'semua'] as const).map((period) => (
+                      <button
+                        key={period}
+                        onClick={() => setSummaryPeriod(period)}
+                        className={`px-3 py-1.5 text-sm font-semibold rounded-lg transition-all ${
+                          summaryPeriod === period
+                            ? 'bg-[#E57373] dark:bg-[#7f1d1d] text-white hover:bg-[#EF5350] dark:hover:bg-[#991b1b]'
+                            : 'bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-500'
+                        }`}
+                      >
+                        {period === '1bulan'
+                          ? '1 Bln'
+                          : period === '6bulan'
+                          ? '6 Bln'
+                          : 'Semua'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Personal Job Type Leaderboard */}
+          {personalSummary.leaderboard.length > 0 && (
+            <Card>
+              <div className='flex items-center gap-3 mb-4'>
+                <div className='w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center'>
+                  <Trophy className='w-5 h-5 text-amber-600 dark:text-amber-400' />
+                </div>
+                <div>
+                  <h3 className='font-semibold text-gray-800 dark:text-gray-100'>
+                    Leaderboard Pekerjaan Saya
+                  </h3>
+                  <p className='text-xs text-gray-500 dark:text-gray-400'>
+                    Ranking berdasarkan total nilai
+                  </p>
+                </div>
+              </div>
+
+              <div className='grid grid-cols-2 gap-4'>
+                {/* Left column */}
+                <div className='space-y-2'>
+                  {personalSummary.leaderboard
+                    .slice(0, Math.ceil(personalSummary.leaderboard.length / 2))
+                    .map((item) => {
+                      const isTop3 = item.rank !== null && item.rank <= 3;
+                      const isZero = item.rank === null;
+                      return (
+                        <div
+                          key={item.id}
+                          className={`flex items-center gap-3 rounded-xl ${
+                            isTop3 ? 'p-3' : 'p-2'
+                          } ${
+                            item.rank === 1
+                              ? 'bg-linear-to-r from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-700'
+                              : item.rank === 2
+                              ? 'bg-linear-to-r from-gray-50 to-slate-50 dark:from-gray-800 dark:to-slate-800 border border-gray-200 dark:border-gray-600'
+                              : item.rank === 3
+                              ? 'bg-linear-to-r from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/20 border border-orange-200 dark:border-orange-700'
+                              : 'bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700'
+                          }`}
+                        >
+                          <div
+                            className={`rounded-full flex items-center justify-center font-bold ${
+                              isTop3 ? 'w-10 h-10 text-lg' : 'w-7 h-7 text-sm'
+                            } ${
+                              item.rank === 1
+                                ? 'bg-amber-500 text-white'
+                                : item.rank === 2
+                                ? 'bg-gray-400 text-white'
+                                : item.rank === 3
+                                ? 'bg-orange-400 text-white'
+                                : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-200'
+                            }`}
+                          >
+                            {isZero ? '-' : item.rank}
+                          </div>
+                          <div className='flex-1 min-w-0'>
+                            <p
+                              className={`font-medium truncate ${
+                                isTop3
+                                  ? 'text-gray-800 dark:text-gray-100'
+                                  : 'text-gray-700 dark:text-gray-200 text-sm'
+                              }`}
+                            >
+                              {item.name}
+                            </p>
+                            {isTop3 && (
+                              <p
+                                className={`text-lg font-bold ${
+                                  item.rank === 1
+                                    ? 'text-amber-600'
+                                    : item.rank === 2
+                                    ? 'text-gray-600'
+                                    : 'text-orange-600'
+                                }`}
+                              >
+                                {item.value.toLocaleString('id-ID')}
+                              </p>
+                            )}
+                          </div>
+                          {!isTop3 && (
+                            <p
+                              className={`text-sm font-bold ${
+                                isZero
+                                  ? 'text-gray-400 dark:text-gray-500'
+                                  : 'text-gray-600 dark:text-gray-300'
+                              }`}
+                            >
+                              {item.value.toLocaleString('id-ID')}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+
+                {/* Right column */}
+                <div className='space-y-2'>
+                  {personalSummary.leaderboard
+                    .slice(Math.ceil(personalSummary.leaderboard.length / 2))
+                    .map((item) => {
+                      const isZero = item.rank === null;
+                      return (
+                        <div
+                          key={item.id}
+                          className='flex items-center gap-2 p-2 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700'
+                        >
+                          <div className='w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-sm font-medium text-gray-600 dark:text-gray-200'>
+                            {isZero ? '-' : item.rank}
+                          </div>
+                          <div className='flex-1 min-w-0'>
+                            <p className='text-sm font-medium text-gray-700 dark:text-gray-200 truncate'>
+                              {item.name}
+                            </p>
+                          </div>
+                          <p
+                            className={`text-sm font-bold ${
+                              isZero
+                                ? 'text-gray-400 dark:text-gray-500'
+                                : 'text-gray-600 dark:text-gray-300'
+                            }`}
+                          >
+                            {item.value.toLocaleString('id-ID')}
+                          </p>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </Card>
+          )}
+
           <Card>
             <div className='flex items-center justify-between mb-4'>
               <h3 className='font-semibold text-gray-800 dark:text-gray-100'>

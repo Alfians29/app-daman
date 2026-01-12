@@ -18,14 +18,31 @@ const defaultOptions: SWRConfiguration = {
 };
 
 // Hook for fetching users
-export function useUsers() {
+// slim mode (default) excludes image field for reduced payload (~2MB → ~50KB)
+export function useUsers(slim: boolean = true) {
+  const query = slim ? '?slim=true' : '';
   const { data, error, isLoading, mutate } = useSWR(
-    '/api/users',
+    `/api/users${query}`,
     fetcher,
     defaultOptions
   );
   return {
     users: data?.data || [],
+    isLoading,
+    error,
+    mutate,
+  };
+}
+
+// Hook for fetching a single user by ID (includes image)
+export function useUser(userId?: string) {
+  const { data, error, isLoading, mutate } = useSWR(
+    userId ? `/api/users/${userId}` : null,
+    fetcher,
+    defaultOptions
+  );
+  return {
+    user: data?.data || null,
     isLoading,
     error,
     mutate,

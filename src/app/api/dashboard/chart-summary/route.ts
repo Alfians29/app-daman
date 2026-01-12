@@ -176,7 +176,6 @@ export async function GET(request: NextRequest) {
               id: true,
               name: true,
               nickname: true,
-              image: true,
               department: true,
             },
           },
@@ -193,7 +192,6 @@ export async function GET(request: NextRequest) {
               id: true,
               name: true,
               nickname: true,
-              image: true,
               department: true,
             },
           },
@@ -347,6 +345,61 @@ export async function GET(request: NextRequest) {
       return monthData;
     });
 
+    // Generate weekly cash data for current month (for 1bulan view)
+    const weeklyCashEntries = await prisma.cashEntry.findMany({
+      where: { date: { gte: monthStart, lte: monthEnd } },
+      select: { date: true, category: true, amount: true },
+    });
+
+    const cashByWeek = weekNames.map((name, weekIndex) => {
+      const weekStart = weekIndex * 7 + 1;
+      const weekEnd = Math.min(weekStart + 6, daysInMonth);
+
+      let masuk = 0;
+      let keluar = 0;
+
+      weeklyCashEntries.forEach((e) => {
+        const day = new Date(e.date).getDate();
+        if (day >= weekStart && day <= weekEnd) {
+          const amount = Number(e.amount);
+          if (e.category === 'INCOME') {
+            masuk += amount;
+          } else {
+            keluar += amount;
+          }
+        }
+      });
+
+      return { name, masuk, keluar, saldo: masuk - keluar };
+    });
+
+    // Generate last 6 months cash data (for 6bulan view)
+    const sixMonthCashEntries = await prisma.cashEntry.findMany({
+      where: { date: { gte: sixMonthStart, lte: sixMonthEnd } },
+      select: { date: true, category: true, amount: true },
+    });
+
+    let runningCashSaldo = 0;
+    const cashBy6Month = last6Months.map(({ name, year: y, month: m }) => {
+      let masuk = 0;
+      let keluar = 0;
+
+      sixMonthCashEntries.forEach((e) => {
+        const eDate = new Date(e.date);
+        if (eDate.getFullYear() === y && eDate.getMonth() === m) {
+          const amount = Number(e.amount);
+          if (e.category === 'INCOME') {
+            masuk += amount;
+          } else {
+            keluar += amount;
+          }
+        }
+      });
+
+      runningCashSaldo += masuk - keluar;
+      return { name, masuk, keluar, saldo: runningCashSaldo };
+    });
+
     // Calculate user stats
     const userStats = userId
       ? {
@@ -413,6 +466,8 @@ export async function GET(request: NextRequest) {
         scheduleByWeek: scheduleByWeek, // NEW: Weekly data for 1bulan
         scheduleby6Month: scheduleBy6Month, // NEW: Last 6 months for 6bulan
         cashByMonth: cashByMonth,
+        cashByWeek: cashByWeek, // NEW: Weekly cash data for 1bulan
+        cashBy6Month: cashBy6Month, // NEW: Last 6 months cash data for 6bulan
         todayStats: {
           attendance: todayAttendance,
           schedules: todaySchedules,

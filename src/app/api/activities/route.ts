@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         prisma.activity.findMany({
           where,
           include: {
-            user: { select: { id: true, name: true, image: true } },
+            user: { select: { id: true, name: true } },
           },
           orderBy: { createdAt: 'desc' },
           skip: (page - 1) * limit,
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
       const activities = await prisma.activity.findMany({
         where,
         include: {
-          user: { select: { id: true, name: true, image: true } },
+          user: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: 'desc' },
         take: limit,
