@@ -118,7 +118,7 @@ export default function AdminAttendancePage() {
   ).padStart(2, '0')}`;
 
   // SWR hooks for cached data
-  const { users, isLoading: usersLoading } = useUsers();
+  const { users, isLoading: usersLoading } = useUsers(false);
   const { shifts, isLoading: shiftsLoading } = useShifts();
   const {
     attendance: rawAttendance,

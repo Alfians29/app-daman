@@ -103,7 +103,7 @@ export default function AttendancePage() {
 
   // SWR hooks for cached data
   // Using slim mode for schedule and attendance to reduce payload size (~5MB → ~800KB)
-  const { users, isLoading: usersLoading } = useUsers();
+  const { users, isLoading: usersLoading } = useUsers(false);
   const { shifts, isLoading: shiftsLoading } = useShifts();
   const { schedules, isLoading: schedLoading } = useSchedule(
     now.getMonth() + 1,

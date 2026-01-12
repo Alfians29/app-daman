@@ -47,7 +47,7 @@ export default function AboutPage() {
   const [showPhotoModal, setShowPhotoModal] = useState(false);
 
   // SWR hook for cached users data
-  const { users, isLoading } = useUsers();
+  const { users, isLoading } = useUsers(false);
 
   // Filter active members
   const teamMembers = useMemo(() => {

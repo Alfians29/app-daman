@@ -110,7 +110,7 @@ export default function ReportPage() {
 
   // SWR hooks for cached data
   // Using slim mode for schedule and reports to reduce payload size
-  const { users, isLoading: usersLoading } = useUsers();
+  const { users, isLoading: usersLoading } = useUsers(false);
   const { shifts, isLoading: shiftsLoading } = useShifts();
   const { schedules, isLoading: schedLoading } = useSchedule(
     currentMonth,

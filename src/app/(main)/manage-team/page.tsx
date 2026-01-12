@@ -83,7 +83,11 @@ export default function AdminTeamPage() {
   const [isPending, startTransition] = useTransition();
 
   // SWR hooks for cached data
-  const { users, isLoading: usersLoading, mutate: mutateUsers } = useUsers();
+  const {
+    users,
+    isLoading: usersLoading,
+    mutate: mutateUsers,
+  } = useUsers(false);
   const { roles: rawRoles, isLoading: rolesLoading } = useRoles();
   const members = users as User[];
   const roles = rawRoles as Role[];

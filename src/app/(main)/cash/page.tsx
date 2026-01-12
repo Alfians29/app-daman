@@ -86,7 +86,7 @@ export default function CashBookPage() {
 
   // SWR hooks for cached data
   // Using slim mode for cash to reduce payload size
-  const { users, isLoading: usersLoading } = useUsers();
+  const { users, isLoading: usersLoading } = useUsers(false);
   const { cashEntries: rawCashEntries, isLoading: cashLoading } = useCash(
     undefined,
     undefined,

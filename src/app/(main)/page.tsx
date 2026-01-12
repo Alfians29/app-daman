@@ -66,7 +66,7 @@ export default function Dashboard() {
   const currentMonth = now.getMonth() + 1;
 
   // SWR hooks for cached data - using optimized aggregated endpoint
-  const { users, isLoading: usersLoading } = useUsers();
+  const { users, isLoading: usersLoading } = useUsers(false);
   const { chartData, isLoading: chartLoading } = useDashboardCharts(
     currentYear,
     authUser?.id

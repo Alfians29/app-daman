@@ -121,7 +121,7 @@ export default function AdminSchedulePage() {
   const currentMonth = currentStartDate.getMonth() + 1;
   const currentYear = currentStartDate.getFullYear();
 
-  const { users, isLoading: usersLoading } = useUsers();
+  const { users, isLoading: usersLoading } = useUsers(false);
   const { shifts, isLoading: shiftsLoading } = useShifts();
   const {
     schedules: rawSchedules,

@@ -49,7 +49,7 @@ export default function SchedulePage() {
   const month = currentStartDate.getMonth() + 1;
   const year = currentStartDate.getFullYear();
 
-  const { users, isLoading: usersLoading } = useUsers();
+  const { users, isLoading: usersLoading } = useUsers(false);
   const {
     schedules,
     shiftColors,
