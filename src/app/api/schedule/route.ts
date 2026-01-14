@@ -183,16 +183,28 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      const summary = `${results.length} data ${
+        updatedCount > 0 && createdCount > 0
+          ? 'diubah dan ditambahkan'
+          : updatedCount > 0
+          ? 'diubah'
+          : 'ditambahkan'
+      }`;
+
+      // Determine type based on what actually happened
+      const activityType =
+        createdCount > 0 && updatedCount === 0 ? 'CREATE' : 'UPDATE';
+
       await logActivity({
-        action: `Schedule sync: ${createdCount} created, ${updatedCount} updated`,
+        action: 'Memperbarui jadwal',
         target: 'Schedule',
         userId: getUserIdFromRequest(request),
-        type: 'UPDATE',
-        metadata: {
-          total: results.length,
-          created: createdCount,
-          updated: updatedCount,
-        },
+        type: activityType,
+        metadata:
+          activityType === 'CREATE'
+            ? { createdData: { summary } }
+            : { batchSummary: summary },
+        request,
       });
 
       return NextResponse.json(
@@ -217,11 +229,12 @@ export async function POST(request: NextRequest) {
     });
 
     await logActivity({
-      action: `Created schedule entry`,
+      action: 'Menambahkan jadwal',
       target: 'Schedule',
       userId: getUserIdFromRequest(request),
       type: 'CREATE',
       metadata: { scheduleId: schedule.id, memberId: body.memberId },
+      request,
     });
 
     return NextResponse.json(

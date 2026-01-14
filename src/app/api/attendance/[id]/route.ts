@@ -64,10 +64,18 @@ export async function PUT(
       include: { member: true },
     });
 
+    // Check if user is updating their own attendance or another user's
+    const loggedInUserId = getUserIdFromRequest(request);
+    const targetMemberId = record.memberId;
+    const isSelfUpdate = loggedInUserId === targetMemberId;
+    const actionMessage = isSelfUpdate
+      ? 'Memperbarui absensi'
+      : `Memperbarui absensi "${before?.member?.name}"`;
+
     await logActivity({
-      action: `Updated attendance for "${before?.member?.name}"`,
+      action: actionMessage,
       target: 'Attendance',
-      userId: getUserIdFromRequest(request),
+      userId: loggedInUserId,
       type: 'UPDATE',
       metadata: {
         before: {
@@ -81,6 +89,7 @@ export async function PUT(
           status: record.status,
         },
       },
+      request,
     });
 
     return NextResponse.json({ success: true, data: record });
@@ -106,18 +115,27 @@ export async function DELETE(
     });
     await prisma.attendance.delete({ where: { id } });
 
+    // Check if user is deleting their own attendance or another user's
+    const loggedInUserId = getUserIdFromRequest(request);
+    const targetMemberId = record?.memberId;
+    const isSelfDelete = loggedInUserId === targetMemberId;
+    const actionMessage = isSelfDelete
+      ? 'Menghapus absensi'
+      : `Menghapus absensi "${record?.member?.name}"`;
+
     await logActivity({
-      action: `Deleted attendance for "${record?.member?.name}"`,
+      action: actionMessage,
       target: 'Attendance',
-      userId: getUserIdFromRequest(request),
+      userId: loggedInUserId,
       type: 'DELETE',
       metadata: {
         deletedData: {
           id,
           memberId: record?.memberId,
-          memberName: record?.member?.name,
+          memberName: isSelfDelete ? undefined : record?.member?.name,
         },
       },
+      request,
     });
 
     return NextResponse.json({ success: true });

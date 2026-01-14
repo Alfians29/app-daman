@@ -47,29 +47,64 @@ export async function PUT(
 
     const user = await prisma.user.update({ where: { id }, data: body });
 
+    // Build list of changed fields for summary
+    const changedFields: string[] = [];
+
+    if (body.password !== undefined) {
+      changedFields.push('Password');
+    }
+    if (body.image !== undefined && body.image !== before?.image) {
+      changedFields.push('Foto Profil');
+    }
+    if (body.name !== undefined && before?.name !== user.name) {
+      changedFields.push('Nama');
+    }
+    if (body.nickname !== undefined && before?.nickname !== user.nickname) {
+      changedFields.push('Panggilan');
+    }
+    if (body.position !== undefined && before?.position !== user.position) {
+      changedFields.push('Jabatan');
+    }
+    if (body.phone !== undefined && before?.phone !== user.phone) {
+      changedFields.push('No. Telepon');
+    }
+    if (
+      body.usernameTelegram !== undefined &&
+      before?.usernameTelegram !== user.usernameTelegram
+    ) {
+      changedFields.push('Username Telegram');
+    }
+    if (body.roleId !== undefined && before?.roleId !== user.roleId) {
+      changedFields.push('Role');
+    }
+    if (body.isActive !== undefined && before?.isActive !== user.isActive) {
+      changedFields.push(
+        user.isActive ? 'Mengaktifkan akun' : 'Menonaktifkan akun'
+      );
+    }
+
+    // Build summary text
+    const summary =
+      changedFields.length > 0
+        ? `Mengubah ${changedFields.join(', ')}`
+        : 'Memperbarui data profil';
+
+    // Check if user is updating their own profile or another user's
+    const loggedInUserId = getUserIdFromRequest(request);
+    const isSelfUpdate = loggedInUserId === id;
+    const actionMessage = isSelfUpdate
+      ? 'Memperbarui profil'
+      : `Memperbarui user "${user.name}"`;
+
     await logActivity({
-      action: `Updated user "${user.name}"`,
+      action: actionMessage,
       target: 'User',
-      userId: getUserIdFromRequest(request),
+      userId: loggedInUserId,
       type: 'UPDATE',
       metadata: {
-        before: {
-          name: before?.name,
-          nik: before?.nik,
-          nickname: before?.nickname,
-          position: before?.position,
-          roleId: before?.roleId,
-          isActive: before?.isActive,
-        },
-        after: {
-          name: user.name,
-          nik: user.nik,
-          nickname: user.nickname,
-          position: user.position,
-          roleId: user.roleId,
-          isActive: user.isActive,
-        },
+        batchSummary: summary,
       },
+      request,
     });
 
     return NextResponse.json({ success: true, data: user });
@@ -132,7 +167,7 @@ export async function DELETE(
     await prisma.user.delete({ where: { id } });
 
     await logActivity({
-      action: `Deleted user "${user?.name || id}"`,
+      action: `Menghapus user "${user?.name || id}"`,
       target: 'User',
       userId: getUserIdFromRequest(request),
       type: 'DELETE',
@@ -144,6 +179,7 @@ export async function DELETE(
           nickname: user?.nickname,
         },
       },
+      request,
     });
 
     return NextResponse.json({ success: true });
@@ -188,6 +224,7 @@ export async function PATCH(
         before: { isActive: user.isActive },
         after: { isActive: updated.isActive },
       },
+      request,
     });
 
     return NextResponse.json({ success: true, data: updated });

@@ -67,11 +67,19 @@ export async function POST(request: NextRequest) {
     }
 
     await logActivity({
-      action: `Created role "${name}"`,
+      action: `Menambahkan role "${name}"`,
       target: 'Role',
       userId: getUserIdFromRequest(request),
       type: 'CREATE',
-      metadata: { roleId: newId },
+      metadata: {
+        createdData: {
+          name,
+          description,
+          color,
+          permissions,
+        },
+      },
+      request,
     });
 
     return NextResponse.json({ success: true, data: role }, { status: 201 });

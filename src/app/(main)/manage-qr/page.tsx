@@ -290,26 +290,25 @@ export default function ManageQRPage() {
   const handleDeleteGroup = async () => {
     if (!selectedGroupId) return;
 
-    const group = groupedData.find((g) => g.qrId === selectedGroupId);
-    if (!group) return;
-
     startTransition(async () => {
-      let success = true;
-      for (const entry of group.entries) {
-        const result = await qrAPI.delete(entry.id);
-        if (!result.success) {
-          success = false;
-          break;
-        }
-      }
+      // Use batch delete API instead of loop
+      const result = (await qrAPI.deleteByQrId(selectedGroupId)) as {
+        success: boolean;
+        deletedCount?: number;
+        error?: string;
+      };
 
-      if (success) {
-        toast.success(`Semua data QR ID ${selectedGroupId} berhasil dihapus`);
+      if (result.success) {
+        toast.success(
+          `Semua data QR ID ${selectedGroupId} berhasil dihapus (${
+            result.deletedCount || 0
+          } data)`
+        );
         mutateQR();
         setShowDetailModal(false);
         setSelectedGroup(null);
       } else {
-        toast.error('Gagal menghapus beberapa data');
+        toast.error(result.error || 'Gagal menghapus data QR');
       }
       setShowDeleteModal(false);
       setSelectedGroupId(null);

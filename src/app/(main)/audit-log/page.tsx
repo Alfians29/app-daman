@@ -11,6 +11,9 @@ import {
   ScrollText,
   ChevronLeft,
   ChevronRight,
+  Globe,
+  Monitor,
+  MapPin,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -446,12 +449,12 @@ export default function AuditLogPage() {
         <ModalBody>
           {selectedLog && (
             <div className='space-y-4'>
-              <div className='flex items-center gap-3 p-3 bg-gray-50 rounded-lg'>
-                <span className='text-gray-500'>
+              <div className='flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg'>
+                <span className='text-gray-500 dark:text-gray-400'>
                   {getActionIcon(selectedLog.type)}
                 </span>
                 <div>
-                  <p className='font-medium text-gray-800'>
+                  <p className='font-medium text-gray-800 dark:text-white'>
                     {selectedLog.action}
                   </p>
                   <span
@@ -464,35 +467,385 @@ export default function AuditLogPage() {
                 </div>
               </div>
 
-              <div>
-                <p className='text-xs text-gray-500 mb-1'>Waktu</p>
-                <p className='text-sm font-medium text-gray-800'>
-                  {new Date(selectedLog.createdAt).toLocaleString('id-ID')}
-                </p>
+              <div className='grid grid-cols-2 gap-4'>
+                <div>
+                  <p className='text-xs text-gray-500 dark:text-gray-400 mb-1'>
+                    Waktu
+                  </p>
+                  <p className='text-sm font-medium text-gray-800 dark:text-white'>
+                    {new Date(selectedLog.createdAt).toLocaleString('id-ID')}
+                  </p>
+                </div>
+                <div>
+                  <p className='text-xs text-gray-500 dark:text-gray-400 mb-1'>
+                    User
+                  </p>
+                  <p className='text-sm font-medium text-gray-800 dark:text-white'>
+                    {selectedLog.user.name}
+                  </p>
+                </div>
               </div>
 
               <div>
-                <p className='text-xs text-gray-500 mb-1'>User</p>
-                <p className='text-sm font-medium text-gray-800'>
-                  {selectedLog.user.name}
+                <p className='text-xs text-gray-500 dark:text-gray-400 mb-1'>
+                  Target
                 </p>
-              </div>
-
-              <div>
-                <p className='text-xs text-gray-500 mb-1'>Target</p>
-                <p className='text-sm text-gray-700 p-3 bg-gray-50 rounded-lg'>
+                <p className='text-sm text-gray-700 dark:text-gray-300 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg'>
                   {selectedLog.target}
                 </p>
               </div>
 
-              {selectedLog.metadata && (
-                <div>
-                  <p className='text-xs text-gray-500 mb-1'>Metadata</p>
-                  <pre className='text-xs text-gray-700 p-3 bg-gray-50 rounded-lg overflow-auto max-h-64'>
-                    {JSON.stringify(selectedLog.metadata, null, 2)}
-                  </pre>
+              {/* Device & Location Info */}
+              {(selectedLog.ipAddress || selectedLog.userAgent) && (
+                <div className='p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg space-y-2'>
+                  <p className='text-xs font-medium text-blue-700 dark:text-blue-300 mb-2'>
+                    📍 Info Perangkat
+                  </p>
+                  {selectedLog.ipAddress && (
+                    <div className='flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200'>
+                      <Globe className='w-4 h-4' />
+                      <span>IP: {selectedLog.ipAddress}</span>
+                    </div>
+                  )}
+                  {selectedLog.userAgent && (
+                    <div className='flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200'>
+                      <Monitor className='w-4 h-4' />
+                      <span className='truncate'>
+                        {(() => {
+                          const ua = selectedLog.userAgent;
+                          if (ua.includes('Windows')) return '🖥️ Windows';
+                          if (ua.includes('Mac')) return '🍎 macOS';
+                          if (ua.includes('Android')) return '📱 Android';
+                          if (ua.includes('iPhone') || ua.includes('iPad'))
+                            return '📱 iOS';
+                          if (ua.includes('Linux')) return '🐧 Linux';
+                          return '💻 Unknown Device';
+                        })()}
+                        {selectedLog.userAgent.includes('Chrome') &&
+                          ' • Chrome'}
+                        {selectedLog.userAgent.includes('Firefox') &&
+                          ' • Firefox'}
+                        {selectedLog.userAgent.includes('Safari') &&
+                          !selectedLog.userAgent.includes('Chrome') &&
+                          ' • Safari'}
+                        {selectedLog.userAgent.includes('Edge') && ' • Edge'}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
+
+              {/* Metadata - Only for CREATE, UPDATE, DELETE */}
+              {selectedLog.metadata &&
+                ['CREATE', 'UPDATE', 'DELETE'].includes(selectedLog.type) && (
+                  <div>
+                    <p className='text-xs text-gray-500 dark:text-gray-400 mb-2'>
+                      {selectedLog.type === 'UPDATE' && 'Perubahan'}
+                      {selectedLog.type === 'CREATE' && 'Data Ditambahkan'}
+                      {selectedLog.type === 'DELETE' && 'Data Dihapus'}
+                    </p>
+                    {(() => {
+                      const meta = selectedLog.metadata as Record<
+                        string,
+                        unknown
+                      >;
+
+                      // UPDATE: Show diff table with only changed fields
+                      if (selectedLog.type === 'UPDATE') {
+                        // Handle batch summary (e.g., schedule sync)
+                        if (meta.batchSummary) {
+                          return (
+                            <p className='text-sm font-medium text-amber-700 dark:text-amber-300 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg'>
+                              📝 {String(meta.batchSummary)}
+                            </p>
+                          );
+                        }
+
+                        const before = meta.before as
+                          | Record<string, unknown>
+                          | undefined;
+                        const after = meta.after as
+                          | Record<string, unknown>
+                          | undefined;
+
+                        if (before && after) {
+                          const allKeys = [
+                            ...new Set([
+                              ...Object.keys(before),
+                              ...Object.keys(after),
+                            ]),
+                          ];
+                          // Filter only changed fields
+                          const changedKeys = allKeys.filter((key) => {
+                            const prevVal = String(before[key] ?? '');
+                            const nextVal = String(after[key] ?? '');
+                            return prevVal !== nextVal;
+                          });
+
+                          if (changedKeys.length === 0) {
+                            return (
+                              <div className='space-y-2'>
+                                {(meta as Record<string, unknown>).pembayar ? (
+                                  <p className='text-sm text-gray-700 dark:text-gray-300'>
+                                    <span className='font-medium'>
+                                      Pembayar:
+                                    </span>{' '}
+                                    {String(
+                                      (meta as Record<string, unknown>).pembayar
+                                    )}
+                                  </p>
+                                ) : null}
+                                <p className='text-sm text-gray-500 dark:text-gray-400 italic'>
+                                  Tidak ada perubahan data
+                                </p>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div className='space-y-3'>
+                              {(meta as Record<string, unknown>).pembayar ? (
+                                <p className='text-sm text-gray-700 dark:text-gray-300 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg'>
+                                  <span className='font-medium'>
+                                    👤 Pembayar:
+                                  </span>{' '}
+                                  {String(
+                                    (meta as Record<string, unknown>).pembayar
+                                  )}
+                                </p>
+                              ) : null}
+                              <div className='overflow-x-auto'>
+                                <table className='w-full text-sm'>
+                                  <thead className='bg-gray-100 dark:bg-gray-700'>
+                                    <tr>
+                                      <th className='text-left px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400'>
+                                        Field
+                                      </th>
+                                      <th className='text-left px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400'>
+                                        Sebelum
+                                      </th>
+                                      <th className='text-left px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400'>
+                                        Sesudah
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
+                                    {changedKeys.map((key) => {
+                                      // Helper to format values, especially for tasks array
+                                      const formatValue = (
+                                        val: unknown
+                                      ): string => {
+                                        if (val === null || val === undefined)
+                                          return '-';
+                                        if (Array.isArray(val)) {
+                                          // Format tasks array: [{jobType: 'PSB', value: 5}] => 'PSB: 5, ...'
+                                          if (val.length === 0) return '-';
+                                          return val
+                                            .map((item) => {
+                                              if (
+                                                typeof item === 'object' &&
+                                                item !== null
+                                              ) {
+                                                const obj = item as Record<
+                                                  string,
+                                                  unknown
+                                                >;
+                                                // For tasks: show jobType: value
+                                                if (
+                                                  'jobType' in obj &&
+                                                  'value' in obj
+                                                ) {
+                                                  return `${obj.jobType}: ${obj.value}`;
+                                                }
+                                                // For other objects
+                                                return JSON.stringify(obj);
+                                              }
+                                              return String(item);
+                                            })
+                                            .join(', ');
+                                        }
+                                        if (typeof val === 'object') {
+                                          return JSON.stringify(val);
+                                        }
+                                        return String(val);
+                                      };
+
+                                      const prevVal = formatValue(before[key]);
+                                      const nextVal = formatValue(after[key]);
+                                      // Field label mapping for better readability
+                                      const fieldLabels: Record<
+                                        string,
+                                        string
+                                      > = {
+                                        name: 'Nama',
+                                        nickname: 'Nama Panggilan',
+                                        nik: 'NIK',
+                                        position: 'Posisi',
+                                        roleId: 'Role ID',
+                                        isActive: 'Status Aktif',
+                                        image: 'Foto Profil',
+                                        email: 'Email',
+                                        phone: 'Telepon',
+                                        usernameTelegram: 'Username Telegram',
+                                        tasks: 'Pekerjaan',
+                                      };
+                                      const label = fieldLabels[key] || key;
+                                      return (
+                                        <tr
+                                          key={key}
+                                          className='bg-amber-50 dark:bg-amber-900/20'
+                                        >
+                                          <td className='px-3 py-2 font-medium text-gray-700 dark:text-gray-300'>
+                                            {label}
+                                          </td>
+                                          <td className='px-3 py-2 text-red-600 dark:text-red-400 line-through'>
+                                            {prevVal}
+                                          </td>
+                                          <td className='px-3 py-2 font-medium text-green-700 dark:text-green-400'>
+                                            {nextVal} ✏️
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          );
+                        }
+                      }
+
+                      // CREATE: Show added data
+                      if (selectedLog.type === 'CREATE') {
+                        const displayData =
+                          meta.createdData || meta.newData || meta;
+                        const entries = Object.entries(
+                          displayData as Record<string, unknown>
+                        ).filter(
+                          ([key]) =>
+                            ![
+                              'before',
+                              'after',
+                              'password',
+                              'reportId',
+                            ].includes(key)
+                        );
+
+                        if (entries.length === 0) {
+                          return (
+                            <p className='text-sm text-gray-500 dark:text-gray-400 italic'>
+                              Tidak ada data
+                            </p>
+                          );
+                        }
+
+                        // Helper to format values for CREATE
+                        const formatCreateValue = (val: unknown): string => {
+                          if (val === null || val === undefined) return '-';
+                          if (Array.isArray(val)) {
+                            if (val.length === 0) return '-';
+                            return val
+                              .map((item) => {
+                                if (typeof item === 'object' && item !== null) {
+                                  const obj = item as Record<string, unknown>;
+                                  if ('jobType' in obj && 'value' in obj) {
+                                    return `${obj.jobType}: ${obj.value}`;
+                                  }
+                                  return JSON.stringify(obj);
+                                }
+                                return String(item);
+                              })
+                              .join(', ');
+                          }
+                          if (typeof val === 'object') {
+                            return JSON.stringify(val);
+                          }
+                          return String(val);
+                        };
+
+                        const fieldLabels: Record<string, string> = {
+                          memberName: 'Member',
+                          tasks: 'Pekerjaan',
+                          name: 'Nama',
+                          userId: 'User ID',
+                          summary: '',
+                          total: 'Total',
+                        };
+
+                        // If only summary exists, show it as simple text
+                        if (
+                          entries.length === 1 &&
+                          entries[0][0] === 'summary'
+                        ) {
+                          return (
+                            <p className='text-sm font-medium text-emerald-700 dark:text-emerald-300 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg'>
+                              📝 {formatCreateValue(entries[0][1])}
+                            </p>
+                          );
+                        }
+
+                        return (
+                          <div className='space-y-1 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg'>
+                            {entries
+                              .filter(
+                                ([key]) =>
+                                  key !== 'summary' || entries.length === 1
+                              )
+                              .map(([key, value]) => (
+                                <div key={key} className='flex gap-2 text-sm'>
+                                  {fieldLabels[key] !== '' && (
+                                    <span className='text-gray-600 dark:text-gray-400 min-w-[100px]'>
+                                      {fieldLabels[key] || key}:
+                                    </span>
+                                  )}
+                                  <span className='font-medium text-emerald-700 dark:text-emerald-300'>
+                                    {formatCreateValue(value)}
+                                  </span>
+                                </div>
+                              ))}
+                          </div>
+                        );
+                      }
+
+                      // DELETE: Show deleted data
+                      if (selectedLog.type === 'DELETE') {
+                        const displayData =
+                          meta.deletedData || meta.removed || meta;
+                        const entries = Object.entries(
+                          displayData as Record<string, unknown>
+                        ).filter(
+                          ([key]) =>
+                            !['before', 'after', 'password'].includes(key)
+                        );
+
+                        if (entries.length === 0) {
+                          return (
+                            <p className='text-sm text-gray-500 dark:text-gray-400 italic'>
+                              Tidak ada data
+                            </p>
+                          );
+                        }
+
+                        return (
+                          <div className='space-y-1 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg'>
+                            {entries.map(([key, value]) => (
+                              <div key={key} className='flex gap-2 text-sm'>
+                                <span className='text-gray-600 dark:text-gray-400 min-w-[100px]'>
+                                  {key}:
+                                </span>
+                                <span className='font-medium text-red-700 dark:text-red-300 line-through'>
+                                  {String(value ?? '-')}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      }
+
+                      return null;
+                    })()}
+                  </div>
+                )}
             </div>
           )}
         </ModalBody>

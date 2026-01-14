@@ -75,15 +75,28 @@ export async function PUT(
         value: t.value,
       })) || [];
 
+    // Check if user is updating their own report or another user's
+    const loggedInUserId = getUserIdFromRequest(request);
+    const targetMemberId = report?.memberId;
+    const isSelfUpdate = loggedInUserId === targetMemberId;
+    const actionMessage = isSelfUpdate
+      ? 'Memperbarui laporan harian'
+      : `Memperbarui laporan harian "${before?.member?.name}"`;
+
+    // Format tasks as readable strings for diff display
+    const formatTasks = (tasks: { jobType?: string; value: number }[]) =>
+      tasks.map((t) => `${t.jobType}: ${t.value}`).join(', ') || '-';
+
     await logActivity({
-      action: `Updated daily report for "${before?.member?.name}"`,
+      action: actionMessage,
       target: 'DailyReport',
-      userId: getUserIdFromRequest(request),
+      userId: loggedInUserId,
       type: 'UPDATE',
       metadata: {
-        before: { tasks: beforeTasks },
-        after: { tasks: afterTasks },
+        before: { pekerjaan: formatTasks(beforeTasks) },
+        after: { pekerjaan: formatTasks(afterTasks) },
       },
+      request,
     });
 
     return NextResponse.json({ success: true, data: report });
@@ -109,18 +122,27 @@ export async function DELETE(
     });
     await prisma.dailyReport.delete({ where: { id } });
 
+    // Check if user is deleting their own report or another user's
+    const loggedInUserId = getUserIdFromRequest(request);
+    const targetMemberId = report?.memberId;
+    const isSelfDelete = loggedInUserId === targetMemberId;
+    const actionMessage = isSelfDelete
+      ? 'Menghapus laporan harian'
+      : `Menghapus laporan harian "${report?.member?.name}"`;
+
     await logActivity({
-      action: `Deleted daily report for "${report?.member?.name}"`,
+      action: actionMessage,
       target: 'DailyReport',
-      userId: getUserIdFromRequest(request),
+      userId: loggedInUserId,
       type: 'DELETE',
       metadata: {
         deletedData: {
           id,
-          memberName: report?.member?.name,
+          memberName: isSelfDelete ? undefined : report?.member?.name,
           taskCount: report?.tasks.length,
         },
       },
+      request,
     });
 
     return NextResponse.json({ success: true });

@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-interface SearchQuery {
+interface QrIdQuery {
+  type: 'byQrId';
   qrId: string;
   start: number;
   end: number;
 }
+
+interface LabelQuery {
+  type: 'byLabel';
+  label: string;
+}
+
+type SearchQuery = QrIdQuery | LabelQuery;
 
 // POST search QR data with multiple queries
 export async function POST(request: NextRequest) {
@@ -23,27 +31,49 @@ export async function POST(request: NextRequest) {
     const notFound: string[] = [];
 
     for (const query of queries) {
-      const { qrId, start, end } = query;
+      if (query.type === 'byLabel') {
+        // Search by Label QR
+        const { label } = query;
+        if (!label) continue;
 
-      if (!qrId || !start || !end) continue;
-
-      const entries = await prisma.qRData.findMany({
-        where: {
-          qrId: qrId,
-          nomorUrut: {
-            gte: start,
-            lte: end,
+        const entries = await prisma.qRData.findMany({
+          where: {
+            labelQr: {
+              equals: label,
+              mode: 'insensitive',
+            },
           },
-        },
-        orderBy: { nomorUrut: 'asc' },
-      });
+          orderBy: { nomorUrut: 'asc' },
+        });
 
-      const key = `${qrId} ${start}-${end}`;
-
-      if (entries.length === 0) {
-        notFound.push(key);
+        if (entries.length === 0) {
+          notFound.push(label);
+        } else {
+          results[label] = entries;
+        }
       } else {
-        results[key] = entries;
+        // Search by QR ID + Port range (existing logic)
+        const { qrId, start, end } = query;
+        if (!qrId || !start || !end) continue;
+
+        const entries = await prisma.qRData.findMany({
+          where: {
+            qrId: qrId,
+            nomorUrut: {
+              gte: start,
+              lte: end,
+            },
+          },
+          orderBy: { nomorUrut: 'asc' },
+        });
+
+        const key = `${qrId} ${start}-${end}`;
+
+        if (entries.length === 0) {
+          notFound.push(key);
+        } else {
+          results[key] = entries;
+        }
       }
     }
 

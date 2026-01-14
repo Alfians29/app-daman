@@ -88,13 +88,41 @@ export async function logActivity({
   userId,
   type,
   metadata,
+  request,
 }: {
   action: string;
   target: string;
   userId: string;
   type: ActivityType;
   metadata?: Prisma.InputJsonValue;
+  request?: NextRequest;
 }) {
+  // Extract Cloudflare headers if request is provided
+  let ipAddress: string | null = null;
+  let userAgent: string | null = null;
+  let location: string | null = null;
+
+  if (request) {
+    // Cloudflare provides real IP via CF-Connecting-IP
+    ipAddress =
+      request.headers.get('CF-Connecting-IP') ||
+      request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() ||
+      request.headers.get('X-Real-IP') ||
+      null;
+
+    userAgent = request.headers.get('User-Agent') || null;
+
+    // Cloudflare provides country code and city (if available)
+    const country = request.headers.get('CF-IPCountry') || null;
+    const city = request.headers.get('CF-IPCity') || null;
+
+    if (city && country) {
+      location = `${city}, ${country}`;
+    } else if (country) {
+      location = country;
+    }
+  }
+
   // Get user name for logging
   let userName = 'System';
   try {
@@ -124,6 +152,8 @@ export async function logActivity({
         userId,
         type,
         metadata: metadata || undefined,
+        ipAddress,
+        userAgent,
       },
     });
 
@@ -132,6 +162,9 @@ export async function logActivity({
     serverError('ActivityLog', 'Failed to save activity to database', error);
     // Don't throw - logging should not break the main operation
   }
+
+  // Return location for potential use in metadata
+  return { ipAddress, userAgent, location };
 }
 
 // Default system user ID for operations without auth (fallback)

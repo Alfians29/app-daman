@@ -95,7 +95,7 @@ export async function PUT(
     }
 
     await logActivity({
-      action: `Updated shift "${shift.name}"`,
+      action: `Memperbarui shift "${shift.name}"`,
       target: 'ShiftSetting',
       userId: getUserIdFromRequest(request),
       type: 'UPDATE',
@@ -115,6 +115,7 @@ export async function PUT(
           isActive: shift.isActive,
         },
       },
+      request,
     });
 
     return NextResponse.json({ success: true, data: shift });
@@ -149,13 +150,14 @@ export async function DELETE(
     await prisma.shiftSetting.delete({ where: { id } });
 
     await logActivity({
-      action: `Deleted shift "${shift?.name || id}"`,
+      action: `Menghapus shift "${shift?.name || id}"`,
       target: 'ShiftSetting',
       userId: getUserIdFromRequest(request),
       type: 'DELETE',
       metadata: {
         deletedData: { id, name: shift?.name, shiftType: shift?.shiftType },
       },
+      request,
     });
 
     return NextResponse.json({ success: true });
@@ -190,7 +192,7 @@ export async function PATCH(
     });
 
     await logActivity({
-      action: `${updated.isActive ? 'Activated' : 'Deactivated'} shift "${
+      action: `${updated.isActive ? 'Mengaktifkan' : 'Menonaktifkan'} shift "${
         shift.name
       }"`,
       target: 'ShiftSetting',
@@ -200,6 +202,7 @@ export async function PATCH(
         before: { isActive: shift.isActive },
         after: { isActive: updated.isActive },
       },
+      request,
     });
 
     return NextResponse.json({ success: true, data: updated });

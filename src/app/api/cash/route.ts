@@ -121,12 +121,24 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Get payer name for metadata
+    const payerName = entry.member?.name;
+
     await logActivity({
-      action: `Created cash entry: ${description}`,
+      action: 'Menambahkan Kas',
       target: 'CashEntry',
       userId: createdById,
       type: 'CREATE',
-      metadata: { entryId: newId, category, amount },
+      metadata: {
+        createdData: {
+          keterangan: description,
+          kategori: category,
+          jumlah: amount,
+          jenis: transactionCategory,
+          pembayar: payerName || '-',
+        },
+      },
+      request,
     });
 
     return NextResponse.json({ success: true, data: entry }, { status: 201 });

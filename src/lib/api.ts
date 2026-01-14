@@ -92,6 +92,11 @@ export const usersAPI = {
     fetchAPI(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id: string) => fetchAPI(`/users/${id}`, { method: 'DELETE' }),
   toggle: (id: string) => fetchAPI(`/users/${id}`, { method: 'PATCH' }),
+  resetPassword: (id: string) =>
+    fetchAPI<{ newPassword: string; message: string }>(
+      `/users/${id}/reset-password`,
+      { method: 'POST' }
+    ),
 };
 
 // ============================================
@@ -267,7 +272,12 @@ export const qrAPI = {
     if (params?.limit) query.set('limit', params.limit.toString());
     return fetchAPI(`/qr${query.toString() ? `?${query}` : ''}`);
   },
-  search: (queries: Array<{ qrId: string; start: number; end: number }>) =>
+  search: (
+    queries: Array<
+      | { type: 'byQrId'; qrId: string; start: number; end: number }
+      | { type: 'byLabel'; label: string }
+    >
+  ) =>
     fetchAPI('/qr/search', {
       method: 'POST',
       body: JSON.stringify({ queries }),
@@ -287,4 +297,6 @@ export const qrAPI = {
     return res.json();
   },
   delete: (id: string) => fetchAPI(`/qr/${id}`, { method: 'DELETE' }),
+  deleteByQrId: (qrId: string) =>
+    fetchAPI('/qr', { method: 'DELETE', body: JSON.stringify({ qrId }) }),
 };

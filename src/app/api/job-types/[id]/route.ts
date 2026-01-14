@@ -17,7 +17,7 @@ export async function PUT(
     const jobType = await prisma.jobType.update({ where: { id }, data: body });
 
     await logActivity({
-      action: `Updated job type "${jobType.name}"`,
+      action: `Memperbarui jenis pekerjaan "${jobType.name}"`,
       target: 'JobType',
       userId: getUserIdFromRequest(request),
       type: 'UPDATE',
@@ -25,6 +25,7 @@ export async function PUT(
         before: { name: before?.name, isActive: before?.isActive },
         after: { name: jobType.name, isActive: jobType.isActive },
       },
+      request,
     });
 
     return NextResponse.json({ success: true, data: jobType });
@@ -48,11 +49,12 @@ export async function DELETE(
     await prisma.jobType.delete({ where: { id } });
 
     await logActivity({
-      action: `Deleted job type "${jobType?.name || id}"`,
+      action: `Menghapus jenis pekerjaan "${jobType?.name || id}"`,
       target: 'JobType',
       userId: getUserIdFromRequest(request),
       type: 'DELETE',
       metadata: { deletedData: { id, name: jobType?.name } },
+      request,
     });
 
     return NextResponse.json({ success: true });
@@ -87,9 +89,9 @@ export async function PATCH(
     });
 
     await logActivity({
-      action: `${updated.isActive ? 'Activated' : 'Deactivated'} job type "${
-        jobType.name
-      }"`,
+      action: `${
+        updated.isActive ? 'Mengaktifkan' : 'Menonaktifkan'
+      } jenis pekerjaan "${jobType.name}"`,
       target: 'JobType',
       userId: getUserIdFromRequest(request),
       type: 'UPDATE',
@@ -97,6 +99,7 @@ export async function PATCH(
         before: { isActive: jobType.isActive },
         after: { isActive: updated.isActive },
       },
+      request,
     });
 
     return NextResponse.json({ success: true, data: updated });

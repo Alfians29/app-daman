@@ -27,15 +27,18 @@ export async function DELETE(
     });
 
     await logActivity({
-      action: `Deleted QR data: ${entry.qrId} - ${entry.nomorUrut}`,
+      action: `Menghapus data QR: ${entry.qrId} - ${entry.nomorUrut}`,
       target: 'QRData',
       userId: userId,
       type: 'DELETE',
       metadata: {
-        qrId: entry.qrId,
-        nomorUrut: entry.nomorUrut,
-        labelQr: entry.labelQr,
+        deletedData: {
+          qrId: entry.qrId,
+          nomorUrut: entry.nomorUrut,
+          labelQr: entry.labelQr,
+        },
       },
+      request,
     });
 
     return NextResponse.json({

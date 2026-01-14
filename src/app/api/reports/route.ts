@@ -124,12 +124,35 @@ export async function POST(request: NextRequest) {
       include: { tasks: { include: { jobType: true } } },
     });
 
+    // Get member name for better log message
+    const member = await prisma.user.findUnique({
+      where: { id: memberId },
+      select: { name: true },
+    });
+
+    // Check if user is creating their own report or another user's
+    const loggedInUserId = getUserIdFromRequest(request);
+    const isSelfCreate = loggedInUserId === memberId;
+    const actionMessage = isSelfCreate
+      ? 'Membuat laporan harian'
+      : `Membuat laporan harian "${member?.name || memberId}"`;
+
     await logActivity({
-      action: `Created daily report`,
+      action: actionMessage,
       target: 'DailyReport',
-      userId: getUserIdFromRequest(request),
+      userId: loggedInUserId,
       type: 'CREATE',
-      metadata: { reportId: newId, memberId },
+      metadata: {
+        createdData: {
+          reportId: newId,
+          memberName: isSelfCreate ? undefined : member?.name,
+          tasks: report.tasks.map((t) => ({
+            jobType: t.jobType?.name,
+            value: t.value,
+          })),
+        },
+      },
+      request,
     });
 
     return NextResponse.json({ success: true, data: report }, { status: 201 });

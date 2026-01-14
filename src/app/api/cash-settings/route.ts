@@ -37,6 +37,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get before state for logging
+    const before = await prisma.cashSetting.findUnique({ where: { key } });
+
     const setting = await prisma.cashSetting.upsert({
       where: { key },
       create: {
@@ -51,11 +54,15 @@ export async function POST(request: NextRequest) {
     });
 
     await logActivity({
-      action: `Updated cash setting: ${key} = ${value}`,
+      action: 'Memperbarui pengaturan kas',
       target: 'CashSetting',
       userId: getUserIdFromRequest(request),
       type: 'UPDATE',
-      metadata: { key, value },
+      metadata: {
+        before: { [key]: before?.value || '-' },
+        after: { [key]: String(value) },
+      },
+      request,
     });
 
     return NextResponse.json({ success: true, data: setting });

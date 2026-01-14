@@ -27,8 +27,10 @@ export async function PUT(
       memberId,
     } = await request.json();
 
-    // Get before state
-    const before = await prisma.cashEntry.findUnique({ where: { id } });
+    const before = await prisma.cashEntry.findUnique({
+      where: { id },
+      include: { member: { select: { name: true } } },
+    });
 
     const entry = await prisma.cashEntry.update({
       where: { id },
@@ -42,25 +44,28 @@ export async function PUT(
         amount,
         memberId: memberId || null,
       },
+      include: { member: { select: { name: true } } },
     });
 
     await logActivity({
-      action: `Updated cash entry: ${entry.description}`,
+      action: 'Memperbarui Kas',
       target: 'CashEntry',
       userId: getUserIdFromRequest(request),
       type: 'UPDATE',
       metadata: {
+        pembayar: entry.member?.name || '-',
         before: {
-          description: before?.description,
-          amount: Number(before?.amount),
-          category: before?.category,
+          keterangan: before?.description,
+          jumlah: Number(before?.amount),
+          kategori: before?.category,
         },
         after: {
-          description: entry.description,
-          amount: Number(entry.amount),
-          category: entry.category,
+          keterangan: entry.description,
+          jumlah: Number(entry.amount),
+          kategori: entry.category,
         },
       },
+      request,
     });
 
     return NextResponse.json({ success: true, data: entry });
@@ -80,21 +85,25 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const entry = await prisma.cashEntry.findUnique({ where: { id } });
+    const entry = await prisma.cashEntry.findUnique({
+      where: { id },
+      include: { member: { select: { name: true } } },
+    });
     await prisma.cashEntry.delete({ where: { id } });
 
     await logActivity({
-      action: `Deleted cash entry: ${entry?.description || id}`,
+      action: 'Menghapus Kas',
       target: 'CashEntry',
       userId: getUserIdFromRequest(request),
       type: 'DELETE',
       metadata: {
         deletedData: {
-          id,
-          description: entry?.description,
-          amount: Number(entry?.amount),
+          keterangan: entry?.description,
+          jumlah: Number(entry?.amount),
+          pembayar: entry?.member?.name || '-',
         },
       },
+      request,
     });
 
     return NextResponse.json({ success: true });
