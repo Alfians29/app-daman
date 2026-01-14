@@ -442,7 +442,10 @@ export default function AdminCashPage() {
         actions={
           <>
             <button
-              onClick={() => setShowSettingsModal(true)}
+              onClick={() => {
+                setTempMonthlyFee(monthlyFee);
+                setShowSettingsModal(true);
+              }}
               className='flex items-center gap-2 px-4 py-2 bg-white/20 text-white border border-white/30 rounded-xl font-medium hover:bg-white/30 transition-colors'
             >
               <WalletCards className='w-4 h-4' />

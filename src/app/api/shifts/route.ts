@@ -68,11 +68,20 @@ export async function POST(request: NextRequest) {
     }
 
     await logActivity({
-      action: `Created shift "${name}"`,
+      action: `Menambahkan shift "${name}"`,
       target: 'ShiftSetting',
       userId: getUserIdFromRequest(request),
       type: 'CREATE',
-      metadata: { shiftId: newId, shiftType, telegramCommand },
+      metadata: {
+        createdData: {
+          name,
+          shiftType,
+          telegramCommand,
+          startTime,
+          endTime,
+        },
+      },
+      request,
     });
 
     return NextResponse.json({ success: true, data: shift }, { status: 201 });

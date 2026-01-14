@@ -65,11 +65,19 @@ export async function POST(request: NextRequest) {
     });
 
     await logActivity({
-      action: `Created new user "${user.name}"`,
+      action: `Menambahkan user "${user.name}"`,
       target: 'User',
       userId: getUserIdFromRequest(request),
       type: 'CREATE',
-      metadata: { userId: newId },
+      metadata: {
+        createdData: {
+          name: user.name,
+          nik: user.nik,
+          nickname: user.nickname,
+          position: user.position,
+        },
+      },
+      request,
     });
 
     return NextResponse.json({ success: true, data: user }, { status: 201 });

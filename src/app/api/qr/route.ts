@@ -223,15 +223,18 @@ export async function POST(request: NextRequest) {
     });
 
     await logActivity({
-      action: `Uploaded ${created.count} QR data from Excel`,
+      action: `Mengunggah ${created.count} data QR`,
       target: 'QRData',
       userId: userId,
       type: 'CREATE',
       metadata: {
-        fileName: file.name,
-        count: created.count,
-        skipped: duplicateCount,
+        createdData: {
+          fileName: file.name,
+          count: created.count,
+          skipped: duplicateCount,
+        },
       },
+      request,
     });
 
     return NextResponse.json({
@@ -249,6 +252,95 @@ export async function POST(request: NextRequest) {
     console.error('Error uploading QR data:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to upload QR data' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE batch QR data by QR ID
+export async function DELETE(request: NextRequest) {
+  try {
+    const { qrId, ids } = await request.json();
+    const userId = getUserIdFromRequest(request);
+
+    let deletedCount = 0;
+
+    if (qrId) {
+      // Delete all entries with this qrId
+      const entries = await prisma.qRData.findMany({
+        where: { qrId },
+        select: { id: true },
+      });
+
+      deletedCount = entries.length;
+
+      if (deletedCount === 0) {
+        return NextResponse.json(
+          { success: false, error: 'No QR data found for this QR ID' },
+          { status: 404 }
+        );
+      }
+
+      await prisma.qRData.deleteMany({
+        where: { qrId },
+      });
+
+      await logActivity({
+        action: `Menghapus data QR: ${qrId}`,
+        target: 'QRData',
+        userId: userId,
+        type: 'DELETE',
+        metadata: {
+          deletedData: {
+            qrId,
+            count: deletedCount,
+          },
+        },
+        request,
+      });
+    } else if (ids && Array.isArray(ids) && ids.length > 0) {
+      // Delete specific entries by IDs
+      const entries = await prisma.qRData.findMany({
+        where: { id: { in: ids } },
+        select: { qrId: true },
+      });
+
+      const qrIds = [...new Set(entries.map((e) => e.qrId))];
+      deletedCount = entries.length;
+
+      await prisma.qRData.deleteMany({
+        where: { id: { in: ids } },
+      });
+
+      await logActivity({
+        action: `Menghapus ${deletedCount} data QR`,
+        target: 'QRData',
+        userId: userId,
+        type: 'DELETE',
+        metadata: {
+          deletedData: {
+            qrIds,
+            count: deletedCount,
+          },
+        },
+        request,
+      });
+    } else {
+      return NextResponse.json(
+        { success: false, error: 'qrId or ids array is required' },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `${deletedCount} data QR berhasil dihapus`,
+      deletedCount,
+    });
+  } catch (error) {
+    console.error('Error deleting QR data:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to delete QR data' },
       { status: 500 }
     );
   }

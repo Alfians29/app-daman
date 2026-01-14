@@ -61,15 +61,14 @@ export async function POST(request: NextRequest) {
 
     // Log login activity
     await logActivity({
-      action: 'melakukan login',
+      action: 'Login',
       target: 'Auth',
       userId: user.id,
       type: 'LOGIN',
       metadata: {
         loginTime: new Date().toISOString(),
-        username: user.username,
-        roleName: user.role?.name,
       },
+      request,
     });
 
     // Prepare user data with permissions

@@ -12,9 +12,9 @@ export async function POST(request: NextRequest) {
 
       if (user) {
         // Determine logout message based on reason
-        let actionMessage = `User "${user.name}" telah logout`;
+        let actionMessage = 'Logout';
         if (reason === 'session_expired') {
-          actionMessage = `User "${user.name}" logout otomatis karena session habis`;
+          actionMessage = 'Logout otomatis (session habis)';
         }
 
         await logActivity({
@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
           userId: user.id,
           type: 'LOGOUT',
           metadata: reason ? { reason } : undefined,
+          request,
         });
       }
     }

@@ -35,9 +35,15 @@ export default function QRSearchPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
-  // Parse search input like "100192 1-10" or "100192 12" (single number)
-  const parseSearchInput = (input: string) => {
-    const queries: Array<{ qrId: string; start: number; end: number }> = [];
+  // Parse search input - supports:
+  // 1. "100192 1-10" or "100192 12" (QR ID + Port range/single)
+  // 2. "T7D02KY4C3P6" (Label QR - alphanumeric without space)
+  type SearchQuery =
+    | { type: 'byQrId'; qrId: string; start: number; end: number }
+    | { type: 'byLabel'; label: string };
+
+  const parseSearchInput = (input: string): SearchQuery[] => {
+    const queries: SearchQuery[] = [];
 
     const parts = input
       .split(/[,\n]/)
@@ -45,9 +51,11 @@ export default function QRSearchPage() {
       .filter(Boolean);
 
     for (const part of parts) {
+      // Check for QR ID + range format: "100192 1-10"
       const rangeMatch = part.match(/^(\S+)\s+(\d+)-(\d+)$/);
       if (rangeMatch) {
         queries.push({
+          type: 'byQrId',
           qrId: rangeMatch[1],
           start: parseInt(rangeMatch[2]),
           end: parseInt(rangeMatch[3]),
@@ -55,15 +63,26 @@ export default function QRSearchPage() {
         continue;
       }
 
+      // Check for QR ID + single number format: "100192 12"
       const singleMatch = part.match(/^(\S+)\s+(\d+)$/);
       if (singleMatch) {
         const num = parseInt(singleMatch[2]);
         queries.push({
+          type: 'byQrId',
           qrId: singleMatch[1],
           start: num,
           end: num,
         });
         continue;
+      }
+
+      // Otherwise treat as Label QR (alphanumeric string without spaces)
+      // Label format example: T7D02KY4C3P6
+      if (part.length > 0 && !part.includes(' ')) {
+        queries.push({
+          type: 'byLabel',
+          label: part,
+        });
       }
     }
 
@@ -74,7 +93,9 @@ export default function QRSearchPage() {
     const queries = parseSearchInput(searchInput);
 
     if (queries.length === 0) {
-      toast.error('Format tidak valid. Contoh: 100192 12 atau 100192 1-10');
+      toast.error(
+        'Format tidak valid. Contoh: 100192 12, 100192 1-10, atau T7D02KY4C3P6'
+      );
       return;
     }
 
@@ -136,7 +157,7 @@ export default function QRSearchPage() {
     <div className='space-y-6'>
       <PageHeader
         title='QR Search'
-        description='Cari data QR berdasarkan QR ID dan Port ID'
+        description='Cari data QR berdasarkan QR ID + Port ID atau Label QR'
         icon={Search}
       />
 
@@ -156,8 +177,9 @@ export default function QRSearchPage() {
               rows={3}
             />
             <p className='mt-2 text-xs text-gray-500 dark:text-gray-400'>
-              Contoh: <span className='font-medium'>100192 12</span> atau{' '}
-              <span className='font-medium'>100192 1-10</span> (pisahkan dengan
+              Contoh: <span className='font-medium'>100192 12</span>,{' '}
+              <span className='font-medium'>100192 1-10</span>, atau{' '}
+              <span className='font-medium'>T7D02KY4C3P6</span> (pisahkan dengan
               koma atau enter)
             </p>
           </div>

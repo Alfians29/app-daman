@@ -30,11 +30,14 @@ export async function POST(request: NextRequest) {
     });
 
     await logActivity({
-      action: `Created job type "${name}"`,
+      action: `Menambahkan jenis pekerjaan "${name}"`,
       target: 'JobType',
       userId: getUserIdFromRequest(request),
       type: 'CREATE',
-      metadata: { jobTypeId: newId },
+      metadata: {
+        createdData: { name },
+      },
+      request,
     });
 
     return NextResponse.json({ success: true, data: jobType }, { status: 201 });

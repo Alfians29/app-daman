@@ -71,7 +71,7 @@ export async function PUT(
     }
 
     await logActivity({
-      action: `Updated role "${role.name}"`,
+      action: `Memperbarui role "${role.name}"`,
       target: 'Role',
       userId: getUserIdFromRequest(request),
       type: 'UPDATE',
@@ -87,6 +87,7 @@ export async function PUT(
           permissions: permissions || beforePermissions,
         },
       },
+      request,
     });
 
     return NextResponse.json({ success: true, data: role });
@@ -121,13 +122,14 @@ export async function DELETE(
     await prisma.role.delete({ where: { id } });
 
     await logActivity({
-      action: `Deleted role "${role?.name || id}"`,
+      action: `Menghapus role "${role?.name || id}"`,
       target: 'Role',
       userId: getUserIdFromRequest(request),
       type: 'DELETE',
       metadata: {
         deletedData: { id, name: role?.name, description: role?.description },
       },
+      request,
     });
 
     return NextResponse.json({ success: true });

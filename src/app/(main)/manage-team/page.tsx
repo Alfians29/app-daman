@@ -12,6 +12,9 @@ import {
   UsersRound,
   Loader2,
   Shield,
+  Key,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -98,6 +101,10 @@ export default function AdminTeamPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [showNewPasswordModal, setShowNewPasswordModal] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [copied, setCopied] = useState(false);
   const [selectedMember, setSelectedMember] = useState<User | null>(null);
 
   // Form state
@@ -228,6 +235,43 @@ export default function AdminTeamPage() {
         toast.error(result.error || 'Gagal menghapus member');
       }
     });
+  };
+
+  // Reset password
+  const handleResetPassword = async () => {
+    if (!selectedMember) return;
+
+    startTransition(async () => {
+      const result = await usersAPI.resetPassword(selectedMember.id);
+
+      if (result.success && result.data) {
+        setNewPassword(result.data.newPassword);
+        setShowResetPasswordModal(false);
+        setShowNewPasswordModal(true);
+        toast.success('Password berhasil direset!');
+      } else {
+        toast.error(result.error || 'Gagal reset password');
+      }
+    });
+  };
+
+  const openResetPasswordModal = (member: User) => {
+    setSelectedMember(member);
+    setShowResetPasswordModal(true);
+  };
+
+  const copyToClipboard = async () => {
+    await navigator.clipboard.writeText(newPassword);
+    setCopied(true);
+    toast.success('Password berhasil dicopy!');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const closeNewPasswordModal = () => {
+    setShowNewPasswordModal(false);
+    setNewPassword('');
+    setSelectedMember(null);
+    setCopied(false);
   };
 
   const resetForm = () => {
@@ -401,13 +445,23 @@ export default function AdminTeamPage() {
                     onClick={() => openEditModal(member)}
                     disabled={isPending}
                     className='p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-white dark:hover:bg-blue-600/50 rounded-lg transition-colors disabled:opacity-50'
+                    title='Edit'
                   >
                     <Edit2 size={16} />
+                  </button>
+                  <button
+                    onClick={() => openResetPasswordModal(member)}
+                    disabled={isPending}
+                    className='p-1.5 text-gray-400 dark:text-gray-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:text-white dark:hover:bg-amber-600/50 rounded-lg transition-colors disabled:opacity-50'
+                    title='Reset Password'
+                  >
+                    <Key size={16} />
                   </button>
                   <button
                     onClick={() => openDeleteModal(member)}
                     disabled={isPending}
                     className='p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:text-white dark:hover:bg-red-600/50 rounded-lg transition-colors disabled:opacity-50'
+                    title='Hapus'
                   >
                     <Trash2 size={16} />
                   </button>
@@ -619,6 +673,62 @@ export default function AdminTeamPage() {
         cancelText='Batal'
         variant='danger'
       />
+
+      {/* Reset Password Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showResetPasswordModal && !!selectedMember}
+        onClose={() => setShowResetPasswordModal(false)}
+        onConfirm={handleResetPassword}
+        title='Reset Password?'
+        message={`Password untuk "${selectedMember?.name}" akan direset. Password baru akan digenerate secara random.`}
+        confirmText='Reset'
+        cancelText='Batal'
+        variant='warning'
+      />
+
+      {/* New Password Result Modal */}
+      <Modal
+        isOpen={showNewPasswordModal}
+        onClose={closeNewPasswordModal}
+        size='sm'
+      >
+        <ModalHeader
+          title='Password Baru'
+          subtitle={selectedMember?.name}
+          onClose={closeNewPasswordModal}
+        />
+        <ModalBody>
+          <div className='space-y-4'>
+            <p className='text-sm text-gray-600 dark:text-gray-400'>
+              Password baru telah digenerate. Salin dan berikan ke user.
+            </p>
+            <div className='flex items-center gap-2'>
+              <div className='flex-1 px-4 py-3 bg-gray-100 dark:bg-gray-700 rounded-xl font-mono text-lg text-gray-800 dark:text-white select-all'>
+                {newPassword}
+              </div>
+              <button
+                onClick={copyToClipboard}
+                className={`p-3 rounded-xl transition-colors ${
+                  copied
+                    ? 'bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+                title='Copy password'
+              >
+                {copied ? <Check size={20} /> : <Copy size={20} />}
+              </button>
+            </div>
+            <p className='text-xs text-amber-600 dark:text-amber-400'>
+              ⚠️ Pastikan password ini disampaikan ke user dengan aman!
+            </p>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button onClick={closeNewPasswordModal} className='w-full'>
+            Selesai
+          </Button>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 }

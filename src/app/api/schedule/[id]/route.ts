@@ -36,7 +36,7 @@ export async function PUT(
     });
 
     await logActivity({
-      action: `Updated schedule for "${before?.member?.name}"`,
+      action: 'Memperbarui jadwal',
       target: 'Schedule',
       userId: getUserIdFromRequest(request),
       type: 'UPDATE',
@@ -44,6 +44,7 @@ export async function PUT(
         before: { keterangan: before?.keterangan },
         after: { keterangan: schedule.keterangan },
       },
+      request,
     });
 
     return NextResponse.json({ success: true, data: schedule });
@@ -70,7 +71,7 @@ export async function DELETE(
     await prisma.schedule.delete({ where: { id } });
 
     await logActivity({
-      action: `Deleted schedule for "${schedule?.member?.name}"`,
+      action: 'Menghapus jadwal',
       target: 'Schedule',
       userId: getUserIdFromRequest(request),
       type: 'DELETE',
@@ -81,6 +82,7 @@ export async function DELETE(
           memberName: schedule?.member?.name,
         },
       },
+      request,
     });
 
     return NextResponse.json({ success: true });
