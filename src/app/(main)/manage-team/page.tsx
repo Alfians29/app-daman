@@ -359,50 +359,50 @@ export default function AdminTeamPage() {
       />
 
       {/* Summary Cards */}
-      <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
-        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
+      <div className='grid grid-cols-1 sm:grid-cols-3 gap-4 animate-fadeIn'>
+        <Card>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
-              <Users className='w-5 h-5 text-blue-600 dark:text-blue-400' />
+            <div className='w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
+              <Users className='w-6 h-6 text-blue-600 dark:text-blue-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500 dark:text-gray-400'>
+              <p className='text-xs text-blue-500 dark:text-blue-400'>
                 Total Anggota
               </p>
-              <p className='text-lg font-bold text-gray-800 dark:text-gray-100'>
+              <p className='text-2xl font-bold text-blue-800 dark:text-blue-300'>
                 {stats.total}
               </p>
             </div>
           </div>
-        </div>
-        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
+        </Card>
+        <Card>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center'>
-              <Users className='w-5 h-5 text-purple-600 dark:text-purple-400' />
+            <div className='w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center'>
+              <Users className='w-6 h-6 text-purple-600 dark:text-purple-400' />
             </div>
             <div>
               <p className='text-xs text-gray-500 dark:text-gray-400'>
                 Team Leader
               </p>
-              <p className='text-lg font-bold text-purple-600 dark:text-purple-400'>
+              <p className='text-2xl font-bold text-purple-600 dark:text-purple-400'>
                 {stats.leader}
               </p>
             </div>
           </div>
-        </div>
-        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
+        </Card>
+        <Card>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center'>
-              <Users className='w-5 h-5 text-emerald-600 dark:text-emerald-400' />
+            <div className='w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center'>
+              <Users className='w-6 h-6 text-emerald-600 dark:text-emerald-400' />
             </div>
             <div>
               <p className='text-xs text-gray-500 dark:text-gray-400'>Member</p>
-              <p className='text-lg font-bold text-emerald-600 dark:text-emerald-400'>
+              <p className='text-2xl font-bold text-emerald-600 dark:text-emerald-400'>
                 {stats.member}
               </p>
             </div>
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Members Grid */}

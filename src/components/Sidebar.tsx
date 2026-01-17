@@ -43,13 +43,13 @@ const allNavItems = [
   },
   {
     href: '/attendance',
-    label: 'Absensi',
+    label: 'Kehadiran',
     icon: UserCheck,
     permission: 'menu.attendance',
   },
   {
     href: '/manage-attendance',
-    label: 'Kelola Absensi',
+    label: 'Kelola Kehadiran',
     icon: ClipboardList,
     permission: 'admin.attendance',
   },

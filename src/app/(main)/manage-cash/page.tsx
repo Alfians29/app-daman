@@ -15,6 +15,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { FilterBar } from '@/components/ui/FilterBar';
 import { SkeletonPage } from '@/components/ui/Skeleton';
@@ -478,50 +479,52 @@ export default function AdminCashPage() {
       />
 
       {/* Summary Cards */}
-      <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
-        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
+      <div className='grid grid-cols-1 sm:grid-cols-3 gap-4 animate-fadeIn'>
+        <Card>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
-              <Wallet className='w-5 h-5 text-blue-600 dark:text-blue-400' />
+            <div className='w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
+              <Wallet className='w-6 h-6 text-blue-600 dark:text-blue-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500 dark:text-gray-400'>Saldo</p>
-              <p className='text-lg font-bold text-blue-600 dark:text-blue-400'>
+              <p className='text-xs text-blue-500 dark:text-blue-400'>
+                Saldo Kas
+              </p>
+              <p className='text-2xl font-bold text-blue-600 dark:text-blue-400'>
                 {formatCurrency(totalIncome - totalExpense)}
               </p>
             </div>
           </div>
-        </div>
-        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
+        </Card>
+        <Card>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center'>
-              <ArrowDownCircle className='w-5 h-5 text-emerald-600 dark:text-emerald-400' />
+            <div className='w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center'>
+              <ArrowDownCircle className='w-6 h-6 text-emerald-600 dark:text-emerald-400' />
             </div>
             <div>
               <p className='text-xs text-gray-500 dark:text-gray-400'>
                 Total Pemasukan
               </p>
-              <p className='text-lg font-bold text-emerald-600 dark:text-emerald-400'>
+              <p className='text-2xl font-bold text-emerald-600 dark:text-emerald-400'>
                 {formatCurrency(totalIncome)}
               </p>
             </div>
           </div>
-        </div>
-        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
+        </Card>
+        <Card>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center'>
-              <ArrowUpCircle className='w-5 h-5 text-red-600 dark:text-red-400' />
+            <div className='w-12 h-12 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center'>
+              <ArrowUpCircle className='w-6 h-6 text-red-600 dark:text-red-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500 dark:text-gray-400'>
+              <p className='text-xs text-red-500 dark:text-red-400'>
                 Total Pengeluaran
               </p>
-              <p className='text-lg font-bold text-red-600 dark:text-red-400'>
+              <p className='text-2xl font-bold text-red-600 dark:text-red-400'>
                 {formatCurrency(totalExpense)}
               </p>
             </div>
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Search & Filter */}
@@ -563,165 +566,179 @@ export default function AdminCashPage() {
       />
 
       {/* Table */}
-      <div className='bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden'>
-        <div className='overflow-x-auto'>
-          <table className='w-full'>
-            <thead className='bg-gray-50 dark:bg-gray-700/50'>
-              <tr>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
-                  Tanggal
-                </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
-                  Anggota
-                </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
-                  Kategori
-                </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
-                  Deskripsi
-                </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
-                  Tipe
-                </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
-                  Diinput Oleh
-                </th>
-                <th className='text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
-                  Jumlah
-                </th>
-                <th className='text-center px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
-                  Aksi
-                </th>
-              </tr>
-            </thead>
-            <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
-              {filteredEntries.length === 0 ? (
+      <div
+        className='animate-fadeIn'
+        style={{ animationDelay: '0.1s', animationFillMode: 'both' }}
+      >
+        <Card>
+          <div className='flex items-center justify-between mb-4'>
+            <h3 className='font-semibold text-gray-800 dark:text-gray-100'>
+              Daftar Transaksi
+            </h3>
+            <span className='text-sm text-gray-500 dark:text-gray-400'>
+              {filteredEntries.length} transaksi
+            </span>
+          </div>
+          <div className='overflow-x-auto'>
+            <table className='w-full'>
+              <thead className='bg-gray-50 dark:bg-gray-800'>
                 <tr>
-                  <td
-                    colSpan={8}
-                    className='px-4 py-8 text-center text-gray-500 dark:text-gray-400'
-                  >
-                    Tidak ada transaksi ditemukan
-                  </td>
+                  <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
+                    Tanggal
+                  </th>
+                  <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
+                    Anggota
+                  </th>
+                  <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
+                    Kategori
+                  </th>
+                  <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
+                    Deskripsi
+                  </th>
+                  <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
+                    Tipe
+                  </th>
+                  <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
+                    Diinput Oleh
+                  </th>
+                  <th className='text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
+                    Jumlah
+                  </th>
+                  <th className='text-center px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
+                    Aksi
+                  </th>
                 </tr>
-              ) : (
-                filteredEntries
-                  .slice(
-                    (currentPage - 1) * itemsPerPage,
-                    currentPage * itemsPerPage
-                  )
-                  .map((entry) => (
-                    <tr
-                      key={entry.id}
-                      className='hover:bg-gray-50 dark:hover:bg-gray-700/50'
+              </thead>
+              <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
+                {filteredEntries.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      className='px-4 py-12 text-center text-gray-500 dark:text-gray-400'
                     >
-                      <td className='px-4 py-3 text-sm text-gray-600 dark:text-gray-300'>
-                        {new Date(entry.date).toLocaleDateString('id-ID')}
-                      </td>
-                      <td className='px-4 py-3 text-sm text-gray-600 dark:text-gray-300'>
-                        {entry.member?.name || '-'}
-                      </td>
-                      <td className='px-4 py-3'>
-                        <span className='inline-flex px-2 py-1 text-xs font-medium rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'>
-                          {entry.transactionCategory || 'Lain-lain'}
-                        </span>
-                      </td>
-                      <td className='px-4 py-3 text-sm text-gray-800 dark:text-gray-200'>
-                        {entry.description || '-'}
-                      </td>
-                      <td className='px-4 py-3'>
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-medium rounded-lg ${
+                      <Wallet className='w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-2' />
+                      <p>Tidak ada transaksi ditemukan</p>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredEntries
+                    .slice(
+                      (currentPage - 1) * itemsPerPage,
+                      currentPage * itemsPerPage
+                    )
+                    .map((entry) => (
+                      <tr
+                        key={entry.id}
+                        className='hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                      >
+                        <td className='px-4 py-3 text-sm text-gray-600 dark:text-gray-300'>
+                          {new Date(entry.date).toLocaleDateString('id-ID')}
+                        </td>
+                        <td className='px-4 py-3 text-sm text-gray-600 dark:text-gray-300'>
+                          {entry.member?.name || '-'}
+                        </td>
+                        <td className='px-4 py-3'>
+                          <span className='inline-flex px-2 py-1 text-xs font-medium rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'>
+                            {entry.transactionCategory || 'Lain-lain'}
+                          </span>
+                        </td>
+                        <td className='px-4 py-3 text-sm text-gray-800 dark:text-gray-200'>
+                          {entry.description || '-'}
+                        </td>
+                        <td className='px-4 py-3'>
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-medium rounded-lg ${
+                              entry.category === 'INCOME'
+                                ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                                : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
+                            }`}
+                          >
+                            {entry.category === 'INCOME'
+                              ? 'Pemasukan'
+                              : 'Pengeluaran'}
+                          </span>
+                        </td>
+                        <td className='px-4 py-3 text-sm text-gray-700 dark:text-gray-300'>
+                          {entry.createdBy?.nickname ||
+                            entry.createdBy?.name ||
+                            '-'}
+                        </td>
+                        <td
+                          className={`px-4 py-3 text-sm font-medium text-right ${
                             entry.category === 'INCOME'
-                              ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
-                              : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : 'text-red-600 dark:text-red-400'
                           }`}
                         >
-                          {entry.category === 'INCOME'
-                            ? 'Pemasukan'
-                            : 'Pengeluaran'}
-                        </span>
-                      </td>
-                      <td className='px-4 py-3 text-sm text-gray-700 dark:text-gray-300'>
-                        {entry.createdBy?.nickname ||
-                          entry.createdBy?.name ||
-                          '-'}
-                      </td>
-                      <td
-                        className={`px-4 py-3 text-sm font-medium text-right ${
-                          entry.category === 'INCOME'
-                            ? 'text-emerald-600 dark:text-emerald-400'
-                            : 'text-red-600 dark:text-red-400'
-                        }`}
-                      >
-                        {entry.category === 'INCOME' ? '+' : '-'}
-                        {formatCurrency(Number(entry.amount))}
-                      </td>
-                      <td className='px-4 py-3'>
-                        <div className='flex items-center justify-center gap-2'>
-                          <button
-                            onClick={() => openEditModal(entry)}
-                            disabled={isPending}
-                            className='p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-white dark:hover:bg-blue-600/50 rounded-lg transition-colors disabled:opacity-50'
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => openDeleteModal(entry)}
-                            disabled={isPending}
-                            className='p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:text-white dark:hover:bg-red-600/50 rounded-lg transition-colors disabled:opacity-50'
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        {Math.ceil(filteredEntries.length / itemsPerPage) > 1 && (
-          <div className='flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-700'>
-            <p className='text-sm text-gray-500 dark:text-gray-400'>
-              Menampilkan {(currentPage - 1) * itemsPerPage + 1} -{' '}
-              {Math.min(currentPage * itemsPerPage, filteredEntries.length)}{' '}
-              dari {filteredEntries.length} data
-            </p>
-            <div className='flex items-center gap-2'>
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className='p-2 rounded-lg border border-gray-200 hover:bg-gray-100 disabled:opacity-50'
-              >
-                <ChevronLeft className='w-4 h-4' />
-              </button>
-              <span className='text-sm text-gray-600 dark:text-gray-400'>
-                {currentPage} /{' '}
-                {Math.ceil(filteredEntries.length / itemsPerPage)}
-              </span>
-              <button
-                onClick={() =>
-                  setCurrentPage((p) =>
-                    Math.min(
-                      Math.ceil(filteredEntries.length / itemsPerPage),
-                      p + 1
-                    )
-                  )
-                }
-                disabled={
-                  currentPage ===
-                  Math.ceil(filteredEntries.length / itemsPerPage)
-                }
-                className='p-2 rounded-lg border border-gray-200 hover:bg-gray-100 disabled:opacity-50'
-              >
-                <ChevronRight className='w-4 h-4' />
-              </button>
-            </div>
+                          {entry.category === 'INCOME' ? '+' : '-'}
+                          {formatCurrency(Number(entry.amount))}
+                        </td>
+                        <td className='px-4 py-3'>
+                          <div className='flex items-center justify-center gap-2'>
+                            <button
+                              onClick={() => openEditModal(entry)}
+                              disabled={isPending}
+                              className='p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-white dark:hover:bg-blue-600/50 rounded-lg transition-colors disabled:opacity-50'
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button
+                              onClick={() => openDeleteModal(entry)}
+                              disabled={isPending}
+                              className='p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:text-white dark:hover:bg-red-600/50 rounded-lg transition-colors disabled:opacity-50'
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
+
+          {/* Pagination */}
+          {Math.ceil(filteredEntries.length / itemsPerPage) > 1 && (
+            <div className='flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-700'>
+              <p className='text-sm text-gray-500 dark:text-gray-400'>
+                Menampilkan {(currentPage - 1) * itemsPerPage + 1} -{' '}
+                {Math.min(currentPage * itemsPerPage, filteredEntries.length)}{' '}
+                dari {filteredEntries.length} data
+              </p>
+              <div className='flex items-center gap-2'>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className='p-2 rounded-lg border border-gray-200 hover:bg-gray-100 disabled:opacity-50'
+                >
+                  <ChevronLeft className='w-4 h-4' />
+                </button>
+                <span className='text-sm text-gray-600 dark:text-gray-400'>
+                  {currentPage} /{' '}
+                  {Math.ceil(filteredEntries.length / itemsPerPage)}
+                </span>
+                <button
+                  onClick={() =>
+                    setCurrentPage((p) =>
+                      Math.min(
+                        Math.ceil(filteredEntries.length / itemsPerPage),
+                        p + 1
+                      )
+                    )
+                  }
+                  disabled={
+                    currentPage ===
+                    Math.ceil(filteredEntries.length / itemsPerPage)
+                  }
+                  className='p-2 rounded-lg border border-gray-200 hover:bg-gray-100 disabled:opacity-50'
+                >
+                  <ChevronRight className='w-4 h-4' />
+                </button>
+              </div>
+            </div>
+          )}
+        </Card>
       </div>
 
       {/* Add/Edit Modal */}

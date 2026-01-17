@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
           department: true,
           usernameTelegram: true,
           isActive: true,
-          role: { select: { id: true, name: true } },
+          role: { select: { id: true, name: true, color: true } },
           // image excluded in slim mode
         },
         orderBy: { createdAt: 'desc' },

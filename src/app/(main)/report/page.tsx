@@ -649,8 +649,8 @@ export default function ReportPage() {
                         {period === '1bulan'
                           ? '1 Bln'
                           : period === '6bulan'
-                          ? '6 Bln'
-                          : 'Semua'}
+                            ? '6 Bln'
+                            : 'Semua'}
                       </button>
                     ))}
                   </div>
@@ -693,10 +693,10 @@ export default function ReportPage() {
                             item.rank === 1
                               ? 'bg-linear-to-r from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-700'
                               : item.rank === 2
-                              ? 'bg-linear-to-r from-gray-50 to-slate-50 dark:from-gray-800 dark:to-slate-800 border border-gray-200 dark:border-gray-600'
-                              : item.rank === 3
-                              ? 'bg-linear-to-r from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/20 border border-orange-200 dark:border-orange-700'
-                              : 'bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700'
+                                ? 'bg-linear-to-r from-gray-50 to-slate-50 dark:from-gray-800 dark:to-slate-800 border border-gray-200 dark:border-gray-600'
+                                : item.rank === 3
+                                  ? 'bg-linear-to-r from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/20 border border-orange-200 dark:border-orange-700'
+                                  : 'bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700'
                           }`}
                         >
                           <div
@@ -706,10 +706,10 @@ export default function ReportPage() {
                               item.rank === 1
                                 ? 'bg-amber-500 text-white'
                                 : item.rank === 2
-                                ? 'bg-gray-400 text-white'
-                                : item.rank === 3
-                                ? 'bg-orange-400 text-white'
-                                : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-200'
+                                  ? 'bg-gray-400 text-white'
+                                  : item.rank === 3
+                                    ? 'bg-orange-400 text-white'
+                                    : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-200'
                             }`}
                           >
                             {isZero ? '-' : item.rank}
@@ -730,8 +730,8 @@ export default function ReportPage() {
                                   item.rank === 1
                                     ? 'text-amber-600'
                                     : item.rank === 2
-                                    ? 'text-gray-600'
-                                    : 'text-orange-600'
+                                      ? 'text-gray-600'
+                                      : 'text-orange-600'
                                 }`}
                               >
                                 {item.value.toLocaleString('id-ID')}
@@ -1018,8 +1018,8 @@ export default function ReportPage() {
                     report
                       ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
                       : isLibur
-                      ? 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-900/40'
-                      : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700'
+                        ? 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-900/40'
+                        : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700'
                   }`}
                 >
                   <div className='flex items-start gap-3'>

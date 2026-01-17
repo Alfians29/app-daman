@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { getShiftColorClasses } from '@/lib/utils';
 import Link from 'next/link';
@@ -11,14 +11,16 @@ import {
   Wallet,
   Calendar,
   Clock,
-  Sun,
-  Moon,
   Sunrise,
+  Sun,
+  Sunset,
+  Moon,
   CheckCircle,
   ArrowRight,
   ArrowDownCircle,
   ArrowUpCircle,
   Trophy,
+  Quote,
 } from 'lucide-react';
 import { AttendanceChart } from '@/components/charts/AttendanceChart';
 import { CashBookChart } from '@/components/charts/CashBookChart';
@@ -58,7 +60,16 @@ export default function Dashboard() {
     '1bulan' | '6bulan' | '1tahun'
   >('1tahun');
   const [periodType, setPeriodType] = useState<'monthly' | '16-15'>('16-15');
+  const [currentTime, setCurrentTime] = useState(new Date());
   const { user: authUser, isLoading: authLoading } = useCurrentUser();
+
+  // Live clock update every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Get current year for data filtering
   const now = new Date();
@@ -181,26 +192,28 @@ export default function Dashboard() {
   };
 
   const getGreeting = () => {
-    if (hour >= 5 && hour < 12) return { text: 'Selamat Pagi', icon: Sunrise };
-    if (hour >= 12 && hour < 17) return { text: 'Selamat Siang', icon: Sun };
-    if (hour >= 17 && hour < 21) return { text: 'Selamat Sore', icon: Sun };
+    if (hour >= 5 && hour < 11) return { text: 'Selamat Pagi', icon: Sunrise };
+    if (hour >= 11 && hour < 15) return { text: 'Selamat Siang', icon: Sun };
+    if (hour >= 15 && hour < 18) return { text: 'Selamat Sore', icon: Sunset };
     return { text: 'Selamat Malam', icon: Moon };
   };
 
   // Fun quotes for dashboard
   const funQuotes = [
-    'Semangat kerja! 💪',
+    'Semangat kerja! 💪🏼',
     'Jangan lupa ngopi dulu! ☕',
-    'Hari yang produktif menanti! 🚀',
-    'Keep up the good work! ⭐',
+    'Hari yang produktif menanti! 📈',
+    'Keep up the good work! 🎯',
     'Senyum dulu sebelum kerja! 😊',
     'Stretching dulu biar fresh! 🧘',
-    'You got this! 🔥',
-    'Tetap semangat ya! 💯',
+    'You got this! 🏆',
+    'Tetap semangat ya! ✨',
     'Kerjaan banyak? Santai aja dulu~ 🌴',
-    'Gas terus! 🎯',
-    'Less stress, more success! ✨',
+    'Gas terus! ⚡',
+    'Less stress, more success! 🌿',
     'Minum air putih dulu ya! 💧',
+    'Hustle mode: ON! 🎮',
+    'Jadilah versi terbaik dari dirimu! 🌟',
   ];
 
   // Random nickname variations
@@ -213,6 +226,79 @@ export default function Dashboard() {
     'Kak ',
     'Bestie ',
     'Komandan ',
+    'Kapten ',
+    'Chief ',
+    'Sobat ',
+    'Rekan ',
+    'Partner ',
+    'Legend ',
+  ];
+
+  // Motivational quotes from famous people
+  const motivationalQuotes = [
+    {
+      quote:
+        'Kesuksesan adalah hasil dari persiapan, kerja keras, dan belajar dari kegagalan.',
+      author: 'Colin Powell',
+    },
+    {
+      quote:
+        'Satu-satunya cara untuk melakukan pekerjaan hebat adalah mencintai apa yang kamu lakukan.',
+      author: 'Steve Jobs',
+    },
+    {
+      quote: 'Jangan takut gagal. Takutlah tidak mencoba.',
+      author: 'Michael Jordan',
+    },
+    {
+      quote:
+        'Masa depan milik mereka yang percaya pada keindahan mimpi-mimpi mereka.',
+      author: 'Eleanor Roosevelt',
+    },
+    {
+      quote: 'Kesempatan tidak terjadi begitu saja, kamu yang menciptakannya.',
+      author: 'Chris Grosser',
+    },
+    {
+      quote: 'Kerja keras mengalahkan bakat ketika bakat tidak bekerja keras.',
+      author: 'Tim Notke',
+    },
+    {
+      quote:
+        'Sukses biasanya datang kepada mereka yang terlalu sibuk untuk mencarinya.',
+      author: 'Henry David Thoreau',
+    },
+    {
+      quote: 'Jangan biarkan kemarin mengambil terlalu banyak hari ini.',
+      author: 'Will Rogers',
+    },
+    {
+      quote: 'Cara memulai adalah berhenti berbicara dan mulai melakukan.',
+      author: 'Walt Disney',
+    },
+    {
+      quote: 'Percaya kamu bisa dan kamu sudah setengah jalan.',
+      author: 'Theodore Roosevelt',
+    },
+    {
+      quote:
+        'Kesuksesan bukan final, kegagalan bukan fatal. Keberanian untuk melanjutkan yang penting.',
+      author: 'Winston Churchill',
+    },
+    {
+      quote:
+        'Hidup ini 10% apa yang terjadi padamu dan 90% bagaimana kamu meresponnya.',
+      author: 'Charles R. Swindoll',
+    },
+    {
+      quote: 'Tampaknya selalu mustahil sampai semuanya selesai.',
+      author: 'Nelson Mandela',
+    },
+    {
+      quote:
+        'Imajinasi lebih penting daripada pengetahuan. Pengetahuan terbatas, imajinasi melingkupi dunia.',
+      author: 'Albert Einstein',
+    },
   ];
 
   // Get random quote and nickname prefix (unique per user, regenerates daily)
@@ -234,6 +320,20 @@ export default function Dashboard() {
       .split('')
       .reduce((acc, char) => acc + char.charCodeAt(0), dayIndex * 7);
     return nicknameVariations[hash % nicknameVariations.length];
+  }, [authUser?.id]);
+
+  // Random motivational quote (changes daily, unique per user)
+  const motivationalQuote = useMemo(() => {
+    const dayIndex = new Date().getDate();
+    const monthIndex = new Date().getMonth();
+    const userId = authUser?.id || 'guest';
+    const hash = userId
+      .split('')
+      .reduce(
+        (acc, char) => acc + char.charCodeAt(0),
+        dayIndex + monthIndex * 31
+      );
+    return motivationalQuotes[hash % motivationalQuotes.length];
   }, [authUser?.id]);
 
   const greeting = getGreeting();
@@ -369,30 +469,75 @@ export default function Dashboard() {
         PAGI_MALAM: Clock,
         LIBUR: Calendar,
       };
+      // Map color to dot color
+      const dotColorMap: Record<string, string> = {
+        green: 'bg-green-500',
+        blue: 'bg-blue-500',
+        purple: 'bg-purple-500',
+        amber: 'bg-amber-500',
+        cyan: 'bg-cyan-500',
+        red: 'bg-red-500',
+        pink: 'bg-pink-500',
+        orange: 'bg-orange-500',
+        teal: 'bg-teal-500',
+        indigo: 'bg-indigo-500',
+      };
       return {
         bg: colorClasses.bg,
         text: colorClasses.text,
         icon: iconMap[keterangan] || Calendar,
+        dot: dotColorMap[shiftSetting.color] || 'bg-gray-500',
       };
     }
 
     // Fallback to default styles
     const defaultStyles: Record<
       string,
-      { bg: string; text: string; icon: typeof Sun }
+      { bg: string; text: string; icon: typeof Sun; dot: string }
     > = {
-      PAGI: { bg: 'bg-blue-100', text: 'text-blue-700', icon: Sun },
-      MALAM: { bg: 'bg-gray-200', text: 'text-gray-700', icon: Moon },
-      PIKET_PAGI: { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: Sun },
-      PIKET_MALAM: { bg: 'bg-purple-100', text: 'text-purple-700', icon: Moon },
-      PAGI_MALAM: { bg: 'bg-amber-100', text: 'text-amber-700', icon: Clock },
-      LIBUR: { bg: 'bg-red-100', text: 'text-red-700', icon: Calendar },
+      PAGI: {
+        bg: 'bg-blue-100',
+        text: 'text-blue-700',
+        icon: Sun,
+        dot: 'bg-blue-500',
+      },
+      MALAM: {
+        bg: 'bg-gray-200',
+        text: 'text-gray-700',
+        icon: Moon,
+        dot: 'bg-gray-500',
+      },
+      PIKET_PAGI: {
+        bg: 'bg-emerald-100',
+        text: 'text-emerald-700',
+        icon: Sun,
+        dot: 'bg-emerald-500',
+      },
+      PIKET_MALAM: {
+        bg: 'bg-purple-100',
+        text: 'text-purple-700',
+        icon: Moon,
+        dot: 'bg-purple-500',
+      },
+      PAGI_MALAM: {
+        bg: 'bg-amber-100',
+        text: 'text-amber-700',
+        icon: Clock,
+        dot: 'bg-amber-500',
+      },
+      LIBUR: {
+        bg: 'bg-red-100',
+        text: 'text-red-700',
+        icon: Calendar,
+        dot: 'bg-red-500',
+      },
     };
     return (
       defaultStyles[keterangan] || {
         bg: 'bg-gray-100',
         text: 'text-gray-500',
         icon: Calendar,
+        dot: 'bg-gray-500',
       }
     );
   };
@@ -421,15 +566,19 @@ export default function Dashboard() {
       {/* Greeting Header */}
       <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
         {currentUser && (
-          <div className='flex items-center gap-4'>
+          <div className='relative inline-flex items-center gap-4 bg-linear-to-r from-[#E57373] to-[#EF5350] dark:from-[#7f1d1d] dark:to-[#991b1b] px-5 py-4 rounded-2xl shadow-lg text-white animate-fadeIn overflow-hidden'>
+            {/* Decorative circles */}
+            <div className='absolute -top-6 -right-6 w-20 h-20 bg-white/10 rounded-full' />
+            <div className='absolute -bottom-4 -left-4 w-16 h-16 bg-white/10 rounded-full' />
+
             {currentUser.image ? (
               <img
                 src={currentUser.image}
                 alt={currentUser.name}
-                className='w-14 h-14 rounded-full object-cover'
+                className='relative z-10 w-14 h-14 rounded-full object-cover ring-2 ring-white/50 shadow-md'
               />
             ) : (
-              <div className='w-14 h-14 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+              <div className='relative z-10 w-14 h-14 rounded-full bg-white/20 flex items-center justify-center ring-2 ring-white/50 shadow-md'>
                 <span className='text-xl font-bold text-white'>
                   {currentUser.name
                     .split(' ')
@@ -440,30 +589,57 @@ export default function Dashboard() {
                 </span>
               </div>
             )}
-            <div>
+            <div className='relative z-10'>
               <div className='flex items-center gap-2'>
-                <GreetingIcon className='w-5 h-5 text-amber-500' />
-                <span className='text-gray-500 dark:text-gray-400'>
-                  {greeting.text},
-                </span>
+                <GreetingIcon className='w-5 h-5 text-amber-300' />
+                <span className='text-white'>{greeting.text},</span>
               </div>
-              <h1 className='text-2xl font-bold text-gray-800 dark:text-white'>
+              <h1 className='text-2xl font-bold text-white'>
                 {nicknamePrefix}
                 {currentUser.nickname || currentUser.name}!
               </h1>
-              <p className='text-sm text-gray-500 dark:text-gray-400'>
-                {randomQuote}
-              </p>
+              <p className='text-sm text-white/90'>{randomQuote}</p>
             </div>
           </div>
         )}
-        <div className='text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-4 py-2 rounded-xl shadow-sm dark:shadow-black/20'>
-          {today.toLocaleDateString('id-ID', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}
+
+        {/* Motivational Quote */}
+        <div
+          className='hidden lg:flex flex-1 items-center justify-center px-6 animate-fadeIn'
+          style={{ animationDelay: '0.1s', animationFillMode: 'both' }}
+        >
+          <div className='text-center max-w-md'>
+            <Quote className='w-8 h-8 text-[#E57373]/30 mx-auto mb-2 rotate-180' />
+            <p className='text-gray-600 dark:text-gray-400 italic text-sm leading-relaxed'>
+              "{motivationalQuote.quote}"
+            </p>
+            <p className='text-xs text-gray-400 dark:text-gray-500 mt-2 font-medium'>
+              — {motivationalQuote.author}
+            </p>
+          </div>
+        </div>
+
+        <div
+          className='relative text-sm bg-linear-to-r from-[#E57373] to-[#EF5350] dark:from-[#7f1d1d] dark:to-[#991b1b] px-4 py-2 rounded-xl shadow-lg flex items-center gap-3 animate-fadeIn overflow-hidden'
+          style={{ animationDelay: '0.2s', animationFillMode: 'both' }}
+        >
+          {/* Decorative circle */}
+          <div className='absolute -top-4 -right-4 w-12 h-12 bg-white/10 rounded-full' />
+
+          <span className='relative z-10 text-white'>
+            {today.toLocaleDateString('id-ID', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </span>
+          <span className='relative z-10 text-white/50'>|</span>
+          <span className='relative z-10 text-white tabular-nums'>
+            {String(currentTime.getHours()).padStart(2, '0')}:
+            {String(currentTime.getMinutes()).padStart(2, '0')}:
+            {String(currentTime.getSeconds()).padStart(2, '0')} WIB
+          </span>
         </div>
       </div>
 
@@ -478,7 +654,7 @@ export default function Dashboard() {
               {earliestMember && earliestAttendance ? (
                 <>
                   <p className='text-lg font-bold text-gray-800 dark:text-white mt-1'>
-                    {earliestMember.nickname || earliestMember.name}
+                    {earliestMember.name}
                   </p>
                   <p className='text-2xl font-bold text-emerald-600 dark:text-emerald-400'>
                     {earliestAttendance.jamAbsen}
@@ -520,7 +696,7 @@ export default function Dashboard() {
               {latestMember && latestAttendance ? (
                 <>
                   <p className='text-lg font-bold text-gray-800 dark:text-white mt-1'>
-                    {latestMember.nickname || latestMember.name}
+                    {latestMember.name}
                   </p>
                   <p className='text-2xl font-bold text-amber-600 dark:text-amber-400'>
                     {latestAttendance.jamAbsen}
@@ -556,7 +732,9 @@ export default function Dashboard() {
         <Card className='border-l-4 border-l-blue-500'>
           <div className='space-y-3'>
             <div className='flex items-center justify-between'>
-              <p className='text-xs text-gray-500 uppercase'>Progres Absensi</p>
+              <p className='text-xs text-gray-500 uppercase'>
+                Progres Kehadiran
+              </p>
               {/* Period Type Switch Buttons */}
               <div className='flex rounded-lg border border-gray-200 overflow-hidden'>
                 <button
@@ -647,14 +825,16 @@ export default function Dashboard() {
       {/* Personal Stats Row */}
       <div className='grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4'>
         <Card className='col-span-2 lg:col-span-1 relative'>
-          <span className='absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full animate-pulse' />
-          <div className='flex items-center gap-3'>
-            {todaySchedule ? (
-              (() => {
-                const style = getScheduleStyle(todaySchedule.keterangan);
-                const IconComponent = style.icon;
-                return (
-                  <>
+          {todaySchedule ? (
+            (() => {
+              const style = getScheduleStyle(todaySchedule.keterangan);
+              const IconComponent = style.icon;
+              return (
+                <>
+                  <span
+                    className={`absolute top-2 right-2 w-2 h-2 ${style.dot} rounded-full animate-pulse`}
+                  />
+                  <div className='flex items-center gap-3'>
                     <div
                       className={`w-12 h-12 rounded-xl ${style.bg} flex items-center justify-center`}
                     >
@@ -666,11 +846,14 @@ export default function Dashboard() {
                         {getKeteranganLabel(todaySchedule.keterangan)}
                       </p>
                     </div>
-                  </>
-                );
-              })()
-            ) : (
-              <>
+                  </div>
+                </>
+              );
+            })()
+          ) : (
+            <>
+              <span className='absolute top-2 right-2 w-2 h-2 bg-gray-400 rounded-full' />
+              <div className='flex items-center gap-3'>
                 <div className='w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center'>
                   <Calendar className='w-6 h-6 text-gray-400 dark:text-gray-500' />
                 </div>
@@ -682,9 +865,9 @@ export default function Dashboard() {
                     Tidak ada
                   </p>
                 </div>
-              </>
-            )}
-          </div>
+              </div>
+            </>
+          )}
         </Card>
         <Card className='relative'>
           <span className='absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full animate-pulse' />
@@ -710,7 +893,7 @@ export default function Dashboard() {
             </div>
             <div>
               <p className='text-xs text-gray-500 dark:text-gray-400'>
-                Total Absen
+                Total Kehadiran
               </p>
               <p className='text-xl font-bold text-blue-600 dark:text-blue-400'>
                 {userAttendance.length}
@@ -808,7 +991,7 @@ export default function Dashboard() {
                 Kehadiran Tim
               </h3>
               <p className='text-sm text-gray-500 dark:text-gray-400'>
-                Statistik bulanan
+                Kehadiran tim berdasarkan jadwal
               </p>
             </div>
             <div className='flex items-center gap-2'>
@@ -826,8 +1009,8 @@ export default function Dashboard() {
                     {period === '1bulan'
                       ? '1 Bln'
                       : period === '6bulan'
-                      ? '6 Bln'
-                      : '1 Thn'}
+                        ? '6 Bln'
+                        : '1 Thn'}
                   </button>
                 ))}
               </div>
@@ -870,8 +1053,8 @@ export default function Dashboard() {
                     {period === '1bulan'
                       ? '1 Bln'
                       : period === '6bulan'
-                      ? '6 Bln'
-                      : '1 Thn'}
+                        ? '6 Bln'
+                        : '1 Thn'}
                   </button>
                 ))}
               </div>
@@ -925,10 +1108,10 @@ export default function Dashboard() {
                         item.rank === 1
                           ? 'bg-linear-to-r from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-700'
                           : item.rank === 2
-                          ? 'bg-linear-to-r from-gray-50 to-slate-50 dark:from-gray-800 dark:to-slate-800 border border-gray-200 dark:border-gray-600'
-                          : item.rank === 3
-                          ? 'bg-linear-to-r from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/20 border border-orange-200 dark:border-orange-700'
-                          : 'bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700'
+                            ? 'bg-linear-to-r from-gray-50 to-slate-50 dark:from-gray-800 dark:to-slate-800 border border-gray-200 dark:border-gray-600'
+                            : item.rank === 3
+                              ? 'bg-linear-to-r from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/20 border border-orange-200 dark:border-orange-700'
+                              : 'bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700'
                       }`}
                     >
                       <div
@@ -938,10 +1121,10 @@ export default function Dashboard() {
                           item.rank === 1
                             ? 'bg-amber-500 text-white'
                             : item.rank === 2
-                            ? 'bg-gray-400 text-white'
-                            : item.rank === 3
-                            ? 'bg-orange-400 text-white'
-                            : 'bg-gray-200 text-gray-600'
+                              ? 'bg-gray-400 text-white'
+                              : item.rank === 3
+                                ? 'bg-orange-400 text-white'
+                                : 'bg-gray-200 text-gray-600'
                         }`}
                       >
                         {isZero ? '-' : item.rank}
@@ -962,8 +1145,8 @@ export default function Dashboard() {
                               item.rank === 1
                                 ? 'text-amber-600'
                                 : item.rank === 2
-                                ? 'text-gray-600'
-                                : 'text-orange-600'
+                                  ? 'text-gray-600'
+                                  : 'text-orange-600'
                             }`}
                           >
                             {item.totalValue.toLocaleString('id-ID')}
@@ -1033,7 +1216,7 @@ export default function Dashboard() {
               <h3 className='font-semibold text-gray-800 dark:text-gray-100'>
                 Jadwal Hari Ini
               </h3>
-              <p className='text-sm text-gray-500 dark:text-gray-400'>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>
                 {today.toLocaleDateString('id-ID', {
                   weekday: 'long',
                   day: 'numeric',

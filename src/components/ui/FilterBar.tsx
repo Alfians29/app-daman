@@ -132,7 +132,7 @@ export function FilterBar({
     selects?.some((s) => s.value && s.value !== 'all');
 
   return (
-    <div className='bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl border border-gray-100 dark:border-gray-700 shadow-lg shadow-gray-100/50 dark:shadow-black/20 p-4 space-y-4'>
+    <div className='bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl border border-gray-100 dark:border-gray-700 shadow-lg shadow-gray-100/50 dark:shadow-black/20 p-4 space-y-4 animate-fadeIn'>
       {/* Header with icon */}
       <div className='flex items-center justify-between'>
         <div className='flex items-center gap-2'>

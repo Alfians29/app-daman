@@ -208,8 +208,8 @@ export default function AttendancePage() {
           icon: s.shiftType.includes('MALAM')
             ? Moon
             : s.shiftType === 'LIBUR'
-            ? XCircle
-            : Sun,
+              ? XCircle
+              : Sun,
           color: s.color,
         }))
       : [
@@ -362,7 +362,7 @@ export default function AttendancePage() {
   return (
     <div className='space-y-6'>
       <PageHeader
-        title='Absensi'
+        title='Kehadiran'
         description={`Periode: ${periodLabel}`}
         icon={UserCheck}
         actions={
@@ -635,7 +635,7 @@ export default function AttendancePage() {
       <Card>
         <div className='flex items-center justify-between mb-4'>
           <h3 className='font-semibold text-gray-800 dark:text-gray-100'>
-            {showMyHistory ? 'Progress Absensi Saya' : 'Daftar Kehadiran'}
+            {showMyHistory ? 'Progress Kehadiran Saya' : 'Daftar Kehadiran'}
           </h3>
           <span className='text-sm text-gray-500 dark:text-gray-400'>
             {filteredRecords.length} data

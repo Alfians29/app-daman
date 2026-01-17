@@ -441,202 +441,221 @@ export default function AdminAttendancePage() {
       />
 
       {/* Summary Cards */}
-      <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
-        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
+      <div className='grid grid-cols-1 sm:grid-cols-3 gap-4 animate-fadeIn'>
+        <Card>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
-              <Calendar className='w-5 h-5 text-blue-600 dark:text-blue-400' />
+            <div className='w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
+              <Calendar className='w-6 h-6 text-blue-600 dark:text-blue-400' />
             </div>
             <div>
-              <p className='text-xs text-gray-500 dark:text-gray-400'>
+              <p className='text-xs text-blue-500 dark:text-blue-400'>
                 Total Anggota
               </p>
-              <p className='text-lg font-bold text-gray-800 dark:text-gray-100'>
+              <p className='text-2xl font-bold text-blue-800 dark:text-blue-300'>
                 {summary.total}
               </p>
             </div>
           </div>
-        </div>
-        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
+        </Card>
+        <Card>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center'>
-              <Check className='w-5 h-5 text-emerald-600 dark:text-emerald-400' />
+            <div className='w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center'>
+              <Check className='w-6 h-6 text-emerald-600 dark:text-emerald-400' />
             </div>
             <div>
               <p className='text-xs text-gray-500 dark:text-gray-400'>Hadir</p>
-              <p className='text-lg font-bold text-emerald-600 dark:text-emerald-400'>
+              <p className='text-2xl font-bold text-emerald-600 dark:text-emerald-400'>
                 {summary.hadir}
               </p>
             </div>
           </div>
-        </div>
-        <div className='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
+        </Card>
+        <Card>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center'>
-              <X className='w-5 h-5 text-red-600 dark:text-red-400' />
+            <div className='w-12 h-12 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center'>
+              <X className='w-6 h-6 text-red-600 dark:text-red-400' />
             </div>
             <div>
               <p className='text-xs text-red-500 dark:text-red-400'>Libur</p>
-              <p className='text-lg font-bold text-red-600 dark:text-red-400'>
+              <p className='text-2xl font-bold text-red-600 dark:text-red-400'>
                 {summary.libur}
               </p>
             </div>
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Date Filter */}
-      <Card>
-        <div className='flex flex-col sm:flex-row sm:items-center gap-4'>
-          <div className='flex items-center gap-3 flex-1'>
-            <Calendar className='w-5 h-5 text-[#E57373]' />
-            <input
-              type='date'
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className='px-4 py-2 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl font-medium'
-            />
-            <span className='text-gray-600 dark:text-gray-300 font-medium hidden sm:block'>
-              {new Date(selectedDate).toLocaleDateString('id-ID', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })}
-            </span>
+      <div
+        className='animate-fadeIn'
+        style={{ animationDelay: '0.1s', animationFillMode: 'both' }}
+      >
+        <Card>
+          <div className='flex flex-col sm:flex-row sm:items-center gap-4'>
+            <div className='flex items-center gap-3 flex-1'>
+              <Calendar className='w-5 h-5 text-[#E57373]' />
+              <input
+                type='date'
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className='px-4 py-2 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl font-medium'
+              />
+              <span className='text-gray-600 dark:text-gray-300 font-medium hidden sm:block'>
+                {new Date(selectedDate).toLocaleDateString('id-ID', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </span>
+            </div>
+            <div className='flex items-center gap-2'>
+              <button
+                onClick={() => setSelectedDate(getLocalDateString())}
+                className='px-3 py-2 text-sm font-medium text-[#E57373] dark:text-[#EF9A9A] bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-800/60 hover:text-[#C62828] dark:hover:text-white rounded-lg transition-colors'
+              >
+                Hari Ini
+              </button>
+              <button
+                onClick={() => navigateDate(-1)}
+                className='p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg'
+              >
+                <ChevronLeft className='w-5 h-5 text-gray-600 dark:text-gray-400' />
+              </button>
+              <button
+                onClick={() => navigateDate(1)}
+                className='p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg'
+              >
+                <ChevronRight className='w-5 h-5 text-gray-600 dark:text-gray-400' />
+              </button>
+            </div>
           </div>
-          <div className='flex items-center gap-2'>
-            <button
-              onClick={() => setSelectedDate(getLocalDateString())}
-              className='px-3 py-2 text-sm font-medium text-[#E57373] dark:text-[#EF9A9A] bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-800/60 hover:text-[#C62828] dark:hover:text-white rounded-lg transition-colors'
-            >
-              Hari Ini
-            </button>
-            <button
-              onClick={() => navigateDate(-1)}
-              className='p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg'
-            >
-              <ChevronLeft className='w-5 h-5 text-gray-600 dark:text-gray-400' />
-            </button>
-            <button
-              onClick={() => navigateDate(1)}
-              className='p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg'
-            >
-              <ChevronRight className='w-5 h-5 text-gray-600 dark:text-gray-400' />
-            </button>
-          </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
 
       {/* Table */}
-      <div className='bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden'>
-        <div className='overflow-x-auto'>
-          <table className='w-full'>
-            <thead className='bg-gray-50 dark:bg-gray-700/50'>
-              <tr>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
-                  Nama
-                </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
-                  Jam Absen
-                </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
-                  Keterangan
-                </th>
-                <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
-                  Status
-                </th>
-                <th className='text-center px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
-                  Aksi
-                </th>
-              </tr>
-            </thead>
-            <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
-              {filteredRecords.length === 0 ? (
+      <div
+        className='animate-fadeIn'
+        style={{ animationDelay: '0.2s', animationFillMode: 'both' }}
+      >
+        <Card>
+          <div className='flex items-center justify-between mb-4'>
+            <h3 className='font-semibold text-gray-800 dark:text-gray-100'>
+              Daftar Kehadiran
+            </h3>
+            <span className='text-sm text-gray-500 dark:text-gray-400'>
+              {filteredRecords.length} data
+            </span>
+          </div>
+          <div className='overflow-x-auto'>
+            <table className='w-full'>
+              <thead className='bg-gray-50 dark:bg-gray-800'>
                 <tr>
-                  <td
-                    colSpan={5}
-                    className='px-4 py-8 text-center text-gray-500 dark:text-gray-400'
-                  >
-                    Tidak ada data kehadiran untuk tanggal ini
-                  </td>
+                  <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
+                    Nama
+                  </th>
+                  <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
+                    Jam Absen
+                  </th>
+                  <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
+                    Keterangan
+                  </th>
+                  <th className='text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
+                    Status
+                  </th>
+                  <th className='text-center px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase'>
+                    Aksi
+                  </th>
                 </tr>
-              ) : (
-                filteredRecords.map((record) => (
-                  <tr
-                    key={record.id}
-                    className='hover:bg-gray-50 dark:hover:bg-gray-700/50'
-                  >
-                    <td className='px-4 py-3'>
-                      <div className='flex items-center gap-3'>
-                        {record.member?.image ? (
-                          <img
-                            src={record.member.image}
-                            alt={record.member.name || ''}
-                            className='w-8 h-8 rounded-full object-cover'
-                          />
-                        ) : (
-                          <div className='w-8 h-8 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center text-white text-xs font-medium'>
-                            {(record.member?.name || '?')
-                              .split(' ')
-                              .map((n) => n[0])
-                              .join('')
-                              .slice(0, 2)}
-                          </div>
-                        )}
-                        <span className='text-sm font-medium text-gray-800 dark:text-gray-200'>
-                          {record.member?.name || '-'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className='px-4 py-3 text-sm text-gray-600 dark:text-gray-300'>
-                      {record.jamAbsen}
-                    </td>
-                    <td className='px-4 py-3'>
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-lg ${getKeteranganColor(
-                          record.keterangan
-                        )}`}
-                      >
-                        {keteranganLabels[record.keterangan] ||
-                          record.keterangan}
-                      </span>
-                    </td>
-                    <td className='px-4 py-3'>
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-lg ${
-                          record.status === 'ONTIME'
-                            ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
-                            : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
-                        }`}
-                      >
-                        {record.status === 'ONTIME' ? 'Ontime' : 'Telat'}
-                      </span>
-                    </td>
-                    <td className='px-4 py-3'>
-                      <div className='flex items-center justify-center gap-2'>
-                        <button
-                          onClick={() => openEditModal(record)}
-                          disabled={isPending}
-                          className='p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-white dark:hover:bg-blue-600/50 rounded-lg transition-colors disabled:opacity-50'
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button
-                          onClick={() => openDeleteModal(record)}
-                          disabled={isPending}
-                          className='p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:text-white dark:hover:bg-red-600/50 rounded-lg transition-colors disabled:opacity-50'
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+              </thead>
+              <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
+                {filteredRecords.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className='px-4 py-12 text-center text-gray-500 dark:text-gray-400'
+                    >
+                      <Calendar className='w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-2' />
+                      <p>Tidak ada data kehadiran untuk tanggal ini</p>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  filteredRecords.map((record) => (
+                    <tr
+                      key={record.id}
+                      className='hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                    >
+                      <td className='px-4 py-3'>
+                        <div className='flex items-center gap-3'>
+                          {record.member?.image ? (
+                            <img
+                              src={record.member.image}
+                              alt={record.member.name || ''}
+                              className='w-8 h-8 rounded-full object-cover'
+                            />
+                          ) : (
+                            <div className='w-8 h-8 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center text-white text-xs font-medium'>
+                              {(record.member?.name || '?')
+                                .split(' ')
+                                .map((n) => n[0])
+                                .join('')
+                                .slice(0, 2)}
+                            </div>
+                          )}
+                          <span className='text-sm font-medium text-gray-800 dark:text-gray-200'>
+                            {record.member?.name || '-'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className='px-4 py-3 text-sm text-gray-600 dark:text-gray-300'>
+                        {record.jamAbsen}
+                      </td>
+                      <td className='px-4 py-3'>
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-medium rounded-lg ${getKeteranganColor(
+                            record.keterangan
+                          )}`}
+                        >
+                          {keteranganLabels[record.keterangan] ||
+                            record.keterangan}
+                        </span>
+                      </td>
+                      <td className='px-4 py-3'>
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-medium rounded-lg ${
+                            record.status === 'ONTIME'
+                              ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                              : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
+                          }`}
+                        >
+                          {record.status === 'ONTIME' ? 'Ontime' : 'Telat'}
+                        </span>
+                      </td>
+                      <td className='px-4 py-3'>
+                        <div className='flex items-center justify-center gap-2'>
+                          <button
+                            onClick={() => openEditModal(record)}
+                            disabled={isPending}
+                            className='p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-white dark:hover:bg-blue-600/50 rounded-lg transition-colors disabled:opacity-50'
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button
+                            onClick={() => openDeleteModal(record)}
+                            disabled={isPending}
+                            className='p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:text-white dark:hover:bg-red-600/50 rounded-lg transition-colors disabled:opacity-50'
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       </div>
 
       {/* Add/Edit Modal */}
