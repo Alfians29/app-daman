@@ -134,7 +134,7 @@ export default function ProfilePage() {
   const { attendance, isLoading: attLoading } = useUserAttendance(authUser?.id);
   const { activities, isLoading: activitiesLoading } = useUserActivities(
     authUser?.id,
-    10
+    10,
   );
 
   const isLoading =
@@ -179,10 +179,10 @@ export default function ProfilePage() {
       currentUser
         ? attendanceRecords.filter((r) => r.memberId === currentUser.id)
         : [],
-    [attendanceRecords, currentUser]
+    [attendanceRecords, currentUser],
   );
   const ontimeCount = userAttendance.filter(
-    (r) => r.status === 'ONTIME'
+    (r) => r.status === 'ONTIME',
   ).length;
   const lateCount = userAttendance.filter((r) => r.status === 'TELAT').length;
   const totalAttendance = userAttendance.length;
@@ -216,16 +216,17 @@ export default function ProfilePage() {
       const date = new Date(saturday);
       date.setDate(saturday.getDate() + i);
       const dateStr = `${date.getFullYear()}-${String(
-        date.getMonth() + 1
+        date.getMonth() + 1,
       ).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       const todayStr = `${today.getFullYear()}-${String(
-        today.getMonth() + 1
+        today.getMonth() + 1,
       ).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
       const schedule =
         scheduleEntries.find(
           (s) =>
-            s.memberId === currentUser.id && s.tanggal.split('T')[0] === dateStr
+            s.memberId === currentUser.id &&
+            s.tanggal.split('T')[0] === dateStr,
         ) || null;
 
       weekDays.push({
@@ -248,11 +249,11 @@ export default function ProfilePage() {
             .sort(
               (a, b) =>
                 new Date(b.createdAt).getTime() -
-                new Date(a.createdAt).getTime()
+                new Date(a.createdAt).getTime(),
             )
             .slice(0, 5)
         : [],
-    [recentActivities, currentUser]
+    [recentActivities, currentUser],
   );
 
   const handleEditProfile = async () => {
@@ -355,7 +356,7 @@ export default function ProfilePage() {
             maxWidth: 100,
             maxHeight: 100,
             maxSizeBytes: 300 * 1024, // 300KB max
-          }
+          },
         );
 
         const result = await usersAPI.update(currentUser.id, {
@@ -463,17 +464,21 @@ export default function ProfilePage() {
   return (
     <div className='space-y-6'>
       {/* Page Header with Gradient */}
-      <div className='relative overflow-hidden rounded-2xl bg-linear-to-r from-[#E57373] to-[#EF5350] dark:from-[#7f1d1d] dark:to-[#991b1b] p-6 text-white'>
-        <div className='absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2' />
-        <div className='absolute bottom-0 left-0 w-32 h-32 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2' />
+      <div className='bg-white dark:bg-gray-800 rounded-2xl card-shadow overflow-hidden animate-fadeIn'>
+        <div className='relative overflow-hidden bg-linear-to-r from-[#E57373] to-[#EF5350] dark:from-[#7f1d1d] dark:to-[#991b1b] p-6 text-white'>
+          <div className='absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full' />
+          <div className='absolute -bottom-10 -left-10 w-32 h-32 bg-white/10 rounded-full' />
 
-        <div className='relative flex items-center gap-4'>
-          <Sparkles className='w-8 h-8' />
-          <div>
-            <h1 className='text-2xl font-bold'>Profil Saya</h1>
-            <p className='text-white/80 text-sm'>
-              Kelola informasi dan pengaturan akun Anda
-            </p>
+          <div className='relative z-10 flex items-center gap-4'>
+            <div className='w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center'>
+              <Sparkles className='w-6 h-6' />
+            </div>
+            <div>
+              <h1 className='text-2xl font-bold'>Profil Saya</h1>
+              <p className='text-white/80 text-sm'>
+                Kelola informasi dan pengaturan akun Anda
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -549,7 +554,7 @@ export default function ProfilePage() {
                                 day: 'numeric',
                                 month: 'short',
                                 year: 'numeric',
-                              }
+                              },
                             )
                           : '-'}
                       </span>
@@ -560,7 +565,7 @@ export default function ProfilePage() {
                         Aktif{' '}
                         {userActivities[0]?.createdAt
                           ? new Date(
-                              userActivities[0].createdAt
+                              userActivities[0].createdAt,
                             ).toLocaleDateString('id-ID', {
                               day: 'numeric',
                               month: 'short',
@@ -811,12 +816,12 @@ export default function ProfilePage() {
                         activity.type.toUpperCase() === 'CREATE'
                           ? 'bg-emerald-100 dark:bg-emerald-900/30'
                           : activity.type.toUpperCase() === 'UPDATE'
-                          ? 'bg-blue-100 dark:bg-blue-900/30'
-                          : activity.type.toUpperCase() === 'LOGIN'
-                          ? 'bg-purple-100 dark:bg-purple-900/30'
-                          : activity.type.toUpperCase() === 'DELETE'
-                          ? 'bg-red-100 dark:bg-red-900/30'
-                          : 'bg-amber-100 dark:bg-amber-900/30'
+                            ? 'bg-blue-100 dark:bg-blue-900/30'
+                            : activity.type.toUpperCase() === 'LOGIN'
+                              ? 'bg-purple-100 dark:bg-purple-900/30'
+                              : activity.type.toUpperCase() === 'DELETE'
+                                ? 'bg-red-100 dark:bg-red-900/30'
+                                : 'bg-amber-100 dark:bg-amber-900/30'
                       }`}
                     >
                       {activity.type.toUpperCase() === 'CREATE' ? (
@@ -846,7 +851,7 @@ export default function ProfilePage() {
                             day: 'numeric',
                             month: 'short',
                             year: 'numeric',
-                          }
+                          },
                         )}{' '}
                         •{' '}
                         {new Date(activity.createdAt).toLocaleTimeString(
@@ -854,7 +859,7 @@ export default function ProfilePage() {
                           {
                             hour: '2-digit',
                             minute: '2-digit',
-                          }
+                          },
                         )}
                       </p>
                     </div>

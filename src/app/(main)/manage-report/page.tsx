@@ -90,7 +90,7 @@ export default function AdminReportPage() {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingReport, setDeletingReport] = useState<DailyReport | null>(
-    null
+    null,
   );
 
   // SWR hooks for cached data
@@ -144,7 +144,7 @@ export default function AdminReportPage() {
 
   const activeJobTypes = useMemo(
     () => jobTypes.filter((jt) => jt.isActive),
-    [jobTypes]
+    [jobTypes],
   );
 
   const filteredReports = useMemo(() => {
@@ -165,7 +165,7 @@ export default function AdminReportPage() {
         jobTypeId: t.jobTypeId || t.jobType?.id || '',
         keterangan: t.keterangan,
         value: t.value,
-      }))
+      })),
     );
     setShowEditModal(true);
   };
@@ -188,16 +188,16 @@ export default function AdminReportPage() {
   const updateTask = (
     taskId: string,
     field: 'jobTypeId' | 'keterangan' | 'value',
-    value: string | number
+    value: string | number,
   ) => {
     setEditingTasks(
-      editingTasks.map((t) => (t.id === taskId ? { ...t, [field]: value } : t))
+      editingTasks.map((t) => (t.id === taskId ? { ...t, [field]: value } : t)),
     );
   };
 
   const saveReport = async () => {
     const hasEmptyTask = editingTasks.some(
-      (t) => !t.jobTypeId || !t.keterangan.trim()
+      (t) => !t.jobTypeId || !t.keterangan.trim(),
     );
     if (hasEmptyTask) {
       toast.error('Lengkapi semua jenis pekerjaan dan keterangannya!');
@@ -271,7 +271,7 @@ export default function AdminReportPage() {
               // Always wrap in quotes and escape existing quotes for safety
               return `"${value.replace(/"/g, '""')}"`;
             })
-            .join(',')
+            .join(','),
         ),
       ].join('\n');
 
@@ -291,7 +291,7 @@ export default function AdminReportPage() {
       XLSX.utils.book_append_sheet(wb, ws, 'Report Harian');
       XLSX.writeFile(
         wb,
-        `report_harian_${exportStartDate}_${exportEndDate}.xlsx`
+        `report_harian_${exportStartDate}_${exportEndDate}.xlsx`,
       );
       toast.success('File Excel berhasil didownload!');
     }
@@ -430,7 +430,7 @@ export default function AdminReportPage() {
       />
 
       {/* Tabs */}
-      <div className='flex gap-2'>
+      <div className='flex gap-2 animate-fadeIn'>
         <button
           onClick={() => setActiveTab('reports')}
           className={`px-4 py-2 rounded-xl font-medium transition-colors ${
@@ -569,7 +569,7 @@ export default function AdminReportPage() {
                   ) : (
                     filteredReports.map((report) => {
                       const member = members.find(
-                        (m) => m.id === report.memberId
+                        (m) => m.id === report.memberId,
                       );
                       return (
                         <tr
@@ -735,7 +735,7 @@ export default function AdminReportPage() {
           subtitle={
             editingReport
               ? `${editingReport.member?.name} - ${formatDate(
-                  editingReport.tanggal
+                  editingReport.tanggal,
                 )}`
               : ''
           }
@@ -782,7 +782,7 @@ export default function AdminReportPage() {
                       updateTask(
                         task.id,
                         'value',
-                        parseInt(e.target.value) || 0
+                        parseInt(e.target.value) || 0,
                       )
                     }
                     placeholder='0'

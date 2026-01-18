@@ -49,9 +49,28 @@ export default function AboutPage() {
   // SWR hook for cached users data
   const { users, isLoading } = useUsers(false);
 
-  // Filter active members
+  // Custom NIK order for sorting
+  const nikOrder = [
+    '19930282', // ANDREW
+    '24010028', // ALFIAN
+    '24900021', // RAHARDIAN
+    '24980049', // NADA
+    '24980050', // MAHARANI
+    '24990037', // VIRA
+    '119889', // AFRIDA
+  ];
+
+  // Filter active members and sort by custom NIK order
   const teamMembers = useMemo(() => {
-    return (users as TeamMember[]).filter((m) => m.isActive);
+    const activeMembers = (users as TeamMember[]).filter((m) => m.isActive);
+    return activeMembers.sort((a, b) => {
+      const indexA = nikOrder.indexOf(a.nik);
+      const indexB = nikOrder.indexOf(b.nik);
+      // If NIK not in order list, put at end
+      const orderA = indexA === -1 ? 999 : indexA;
+      const orderB = indexB === -1 ? 999 : indexB;
+      return orderA - orderB;
+    });
   }, [users]);
 
   const filteredMembers = teamMembers.filter((member) => {
@@ -167,13 +186,13 @@ export default function AboutPage() {
             {Array.from(new Set(teamMembers.map((m) => m.department))).map(
               (dept) => {
                 const deptMembers = teamMembers.filter(
-                  (m) => m.department === dept
+                  (m) => m.department === dept,
                 );
                 const deptLeader = deptMembers.find(
-                  (m) => m.position === 'Team Leader'
+                  (m) => m.position === 'Team Leader',
                 );
                 const deptMemberList = deptMembers.filter(
-                  (m) => m.position === 'Member'
+                  (m) => m.position === 'Member',
                 );
 
                 return (
@@ -291,7 +310,7 @@ export default function AboutPage() {
                     )}
                   </div>
                 );
-              }
+              },
             )}
           </div>
         )}

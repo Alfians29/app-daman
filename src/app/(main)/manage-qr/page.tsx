@@ -192,7 +192,7 @@ export default function ManageQRPage() {
         worksheet,
         {
           header: 1,
-        }
+        },
       );
 
       const parsed: PreviewData[] = [];
@@ -218,7 +218,7 @@ export default function ManageQRPage() {
       const MAX_UPLOAD_LIMIT = 5000;
       if (parsed.length > MAX_UPLOAD_LIMIT) {
         toast.error(
-          `Maksimal ${MAX_UPLOAD_LIMIT} data per upload. File ini berisi ${parsed.length} data.`
+          `Maksimal ${MAX_UPLOAD_LIMIT} data per upload. File ini berisi ${parsed.length} data.`,
         );
         return;
       }
@@ -268,7 +268,7 @@ export default function ManageQRPage() {
         // Update detail modal if open
         if (selectedGroup) {
           const updatedEntries = selectedGroup.entries.filter(
-            (e) => e.id !== selectedEntry.id
+            (e) => e.id !== selectedEntry.id,
           );
           if (updatedEntries.length === 0) {
             setShowDetailModal(false);
@@ -302,7 +302,7 @@ export default function ManageQRPage() {
         toast.success(
           `Semua data QR ID ${selectedGroupId} berhasil dihapus (${
             result.deletedCount || 0
-          } data)`
+          } data)`,
         );
         mutateQR();
         setShowDetailModal(false);
@@ -373,7 +373,7 @@ export default function ManageQRPage() {
       />
 
       {/* Instructions Card */}
-      <div className='bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-xl p-4'>
+      <div className='bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-xl p-4 animate-fadeIn'>
         <div className='flex items-start gap-3'>
           <FileSpreadsheet className='w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0' />
           <div>

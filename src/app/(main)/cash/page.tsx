@@ -80,6 +80,8 @@ export default function CashBookPage() {
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const [progressYear, setProgressYear] = useState(2026); // Kas starts from 2026
+  const KAS_START_YEAR = 2026;
   const itemsPerPage = 10;
 
   const { user: authUser, isLoading: authLoading } = useCurrentUser();
@@ -90,7 +92,7 @@ export default function CashBookPage() {
   const { cashEntries: rawCashEntries, isLoading: cashLoading } = useCash(
     undefined,
     undefined,
-    true // slim mode
+    true, // slim mode
   );
   const { settings: cashSettings, isLoading: settingsLoading } =
     useCashSettings();
@@ -171,18 +173,40 @@ export default function CashBookPage() {
     return paidMonths;
   };
 
+  // Calculate available years that have kas data
+  const availableYears = useMemo(() => {
+    const years = new Set<number>();
+    years.add(KAS_START_YEAR); // Always include start year
+
+    cashEntries.forEach((entry) => {
+      if (entry.transactionCategory === 'Kas Bulanan') {
+        const desc = entry.description || '';
+        // Extract year from description (e.g., "Kas bulan Januari 2026")
+        const yearMatch = desc.match(/\d{4}/);
+        if (yearMatch) {
+          years.add(parseInt(yearMatch[0]));
+        }
+        // Also check payment date year
+        const paymentYear = new Date(entry.date).getFullYear();
+        years.add(paymentYear);
+      }
+    });
+
+    return Array.from(years).sort((a, b) => a - b);
+  }, [cashEntries]);
+
   // Generate yearly payment progress from cash entries
   const yearlyPaymentProgress = useMemo(() => {
-    const currentYear = new Date().getFullYear();
+    const targetYear = progressYear;
 
     return monthNames.map((month, index) => {
       const monthIndex = String(index + 1).padStart(2, '0');
-      const targetMonth = `${currentYear}-${monthIndex}`;
+      const targetMonth = `${targetYear}-${monthIndex}`;
 
       const memberPayments = teamMembers.map((member) => {
         // Find all kas payments for this member
         const kasPayments = cashEntries.filter(
-          (e) => e.memberId === member.id && isKasPayment(e)
+          (e) => e.memberId === member.id && isKasPayment(e),
         );
 
         // Check if any payment covers this month (by parsing description)
@@ -190,8 +214,18 @@ export default function CashBookPage() {
         let amountForThisMonth = 0;
 
         kasPayments.forEach((e) => {
-          const paidMonths = getMonthsFromDescription(e.description || '');
-          if (paidMonths.includes(monthIndex)) {
+          const desc = e.description || '';
+          const paidMonths = getMonthsFromDescription(desc);
+
+          // Check if description contains the target year (e.g., "Kas bulan Januari 2026")
+          // or if no year in description, use the payment date's year
+          const paymentYear = new Date(e.date).getFullYear();
+          const descHasYear = /\d{4}/.test(desc);
+          const yearFromDesc = descHasYear
+            ? parseInt(desc.match(/\d{4}/)?.[0] || '0')
+            : paymentYear;
+
+          if (paidMonths.includes(monthIndex) && yearFromDesc === targetYear) {
             isPaidForThisMonth = true;
             // Divide amount by number of months in this payment
             amountForThisMonth +=
@@ -224,7 +258,7 @@ export default function CashBookPage() {
         memberPayments,
       };
     });
-  }, [cashEntries, teamMembers, monthlyFee]);
+  }, [cashEntries, teamMembers, monthlyFee, progressYear]);
 
   // Yearly stats
   const yearlyStats = useMemo(() => {
@@ -261,17 +295,17 @@ export default function CashBookPage() {
         (t) =>
           t.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
           (t.member?.name?.toLowerCase() || '').includes(
-            searchQuery.toLowerCase()
-          )
+            searchQuery.toLowerCase(),
+          ),
       );
     if (dateFrom) transactions = transactions.filter((t) => t.date >= dateFrom);
     if (dateTo) transactions = transactions.filter((t) => t.date <= dateTo);
     if (filterCategory !== 'all')
       transactions = transactions.filter(
-        (t) => t.category.toLowerCase() === filterCategory.toLowerCase()
+        (t) => t.category.toLowerCase() === filterCategory.toLowerCase(),
       );
     return transactions.sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
   }, [
     cashEntries,
@@ -286,7 +320,7 @@ export default function CashBookPage() {
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
   const paginatedTransactions = filteredTransactions.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
 
   const totalCashIn = cashEntries
@@ -298,14 +332,14 @@ export default function CashBookPage() {
   const totalCash = totalCashIn - totalCashOut;
 
   const myTransactions = cashEntries.filter(
-    (t) => currentUser && t.memberId === currentUser.id
+    (t) => currentUser && t.memberId === currentUser.id,
   );
   const myTotalContribution = myTransactions
     .filter((t) => t.category.toLowerCase() === 'income')
     .reduce((sum, t) => sum + Number(t.amount), 0);
   const myPaidMonths = yearlyPaymentProgress.filter((m) => {
     const memberPayment = m.memberPayments.find(
-      (p) => currentUser && p.member.id === currentUser.id
+      (p) => currentUser && p.member.id === currentUser.id,
     );
     return memberPayment?.paid;
   }).length;
@@ -323,7 +357,9 @@ export default function CashBookPage() {
 
   if (isLoading) return <SkeletonPage />;
 
-  const currentMonth = new Date().getMonth();
+  // Only show current month highlight if viewing current year
+  const currentMonth =
+    progressYear === new Date().getFullYear() ? new Date().getMonth() : -1;
 
   return (
     <div className='space-y-6'>
@@ -475,9 +511,32 @@ export default function CashBookPage() {
         <Card>
           <div className='flex items-center justify-between mb-4'>
             <div>
-              <h3 className='font-semibold text-gray-800 dark:text-gray-100'>
-                Progress Kas Tahunan {new Date().getFullYear()}
-              </h3>
+              <div className='flex items-center gap-3'>
+                <h3 className='font-semibold text-gray-800 dark:text-gray-100'>
+                  Progress Kas Tahunan
+                </h3>
+                <div className='flex items-center gap-1'>
+                  <button
+                    onClick={() => setProgressYear((y) => y - 1)}
+                    disabled={!availableYears.includes(progressYear - 1)}
+                    className='p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed'
+                    title='Tahun sebelumnya'
+                  >
+                    <ChevronLeft className='w-5 h-5 text-gray-500' />
+                  </button>
+                  <span className='px-3 py-1 bg-[#E57373] text-white text-sm font-bold rounded-lg min-w-[60px] text-center'>
+                    {progressYear}
+                  </span>
+                  <button
+                    onClick={() => setProgressYear((y) => y + 1)}
+                    disabled={!availableYears.includes(progressYear + 1)}
+                    className='p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed'
+                    title='Tahun berikutnya'
+                  >
+                    <ChevronRight className='w-5 h-5 text-gray-500' />
+                  </button>
+                </div>
+              </div>
               <p className='text-sm text-gray-500 dark:text-gray-400'>
                 Klik bulan untuk melihat detail pembayaran
               </p>
@@ -508,10 +567,10 @@ export default function CashBookPage() {
                   yearlyStats.percentPaid >= 100
                     ? 'bg-emerald-500'
                     : yearlyStats.percentPaid >= 75
-                    ? 'bg-blue-500'
-                    : yearlyStats.percentPaid >= 50
-                    ? 'bg-amber-500'
-                    : 'bg-red-400'
+                      ? 'bg-blue-500'
+                      : yearlyStats.percentPaid >= 50
+                        ? 'bg-amber-500'
+                        : 'bg-red-400'
                 }`}
                 style={{ width: `${yearlyStats.percentPaid}%` }}
               />
@@ -533,10 +592,10 @@ export default function CashBookPage() {
                 monthData.percent >= 100
                   ? '#10b981'
                   : isCurrent
-                  ? '#E57373'
-                  : isPast
-                  ? '#f59e0b'
-                  : '#9ca3af';
+                    ? '#E57373'
+                    : isPast
+                      ? '#f59e0b'
+                      : '#9ca3af';
               const circumference = 2 * Math.PI * 24;
               const strokeDashoffset =
                 circumference - (monthData.percent / 100) * circumference;
@@ -549,10 +608,10 @@ export default function CashBookPage() {
                     isCurrent
                       ? 'border-[#E57373] bg-red-50 dark:bg-red-900/30'
                       : monthData.percent >= 100
-                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30'
-                      : isPast
-                      ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/30'
-                      : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700'
+                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30'
+                        : isPast
+                          ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/30'
+                          : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700'
                   }`}
                 >
                   <p
@@ -595,8 +654,8 @@ export default function CashBookPage() {
                           monthData.percent >= 100
                             ? 'text-emerald-600 dark:text-emerald-400'
                             : isCurrent
-                            ? 'text-[#E57373]'
-                            : 'text-gray-700 dark:text-gray-200'
+                              ? 'text-[#E57373]'
+                              : 'text-gray-700 dark:text-gray-200'
                         }`}
                       >
                         {monthData.percent}%
@@ -898,8 +957,8 @@ export default function CashBookPage() {
                       selectedMonthData.percent >= 100
                         ? 'bg-emerald-500'
                         : selectedMonthData.percent >= 50
-                        ? 'bg-amber-500'
-                        : 'bg-red-400'
+                          ? 'bg-amber-500'
+                          : 'bg-red-400'
                     }`}
                     style={{ width: `${selectedMonthData.percent}%` }}
                   />

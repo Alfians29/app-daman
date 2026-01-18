@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useTransition } from 'react';
+import { useState, useMemo, useTransition, useEffect } from 'react';
 import {
   Plus,
   Edit2,
@@ -106,7 +106,8 @@ export default function AdminCashPage() {
   // Cash settings modal
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [tempMonthlyFee, setTempMonthlyFee] = useState<number>(15000);
-  const currentYear = new Date().getFullYear();
+  const [modalYear, setModalYear] = useState(2026); // Kas starts from 2026
+  const KAS_START_YEAR = 2026;
 
   // SWR hooks for cached data
   // Using slim mode for cash to reduce payload size
@@ -300,7 +301,7 @@ export default function AdminCashPage() {
               // Always wrap in quotes and escape existing quotes for safety
               return `"${value.replace(/"/g, '""')}"`;
             })
-            .join(',')
+            .join(','),
         ),
       ].join('\n');
 
@@ -330,7 +331,7 @@ export default function AdminCashPage() {
       const result = await cashSettingsAPI.save(
         'monthly_fee',
         String(tempMonthlyFee),
-        'Tarif kas bulanan per orang'
+        'Tarif kas bulanan per orang',
       );
       if (result.success) {
         mutateSettings();
@@ -350,11 +351,11 @@ export default function AdminCashPage() {
 
     // Auto-generate description
     const selectedLabels = MONTHS.filter((m) =>
-      newMonths.includes(m.value)
+      newMonths.includes(m.value),
     ).map((m) => m.label);
     const description =
       selectedLabels.length > 0
-        ? `Kas bulan ${selectedLabels.join(', ')} ${currentYear}`
+        ? `Kas bulan ${selectedLabels.join(', ')} ${modalYear}`
         : '';
 
     // Auto-calculate amount
@@ -367,6 +368,20 @@ export default function AdminCashPage() {
       amount,
     });
   };
+
+  // Update description when modalYear changes
+  useEffect(() => {
+    if (
+      formData.selectedMonths.length > 0 &&
+      formData.transactionCategory === 'Kas Bulanan'
+    ) {
+      const selectedLabels = MONTHS.filter((m) =>
+        formData.selectedMonths.includes(m.value),
+      ).map((m) => m.label);
+      const description = `Kas bulan ${selectedLabels.join(', ')} ${modalYear}`;
+      setFormData((prev) => ({ ...prev, description }));
+    }
+  }, [modalYear]);
 
   const resetForm = () => {
     setFormData({
@@ -624,7 +639,7 @@ export default function AdminCashPage() {
                   filteredEntries
                     .slice(
                       (currentPage - 1) * itemsPerPage,
-                      currentPage * itemsPerPage
+                      currentPage * itemsPerPage,
                     )
                     .map((entry) => (
                       <tr
@@ -723,8 +738,8 @@ export default function AdminCashPage() {
                     setCurrentPage((p) =>
                       Math.min(
                         Math.ceil(filteredEntries.length / itemsPerPage),
-                        p + 1
-                      )
+                        p + 1,
+                      ),
                     )
                   }
                   disabled={
@@ -822,9 +837,31 @@ export default function AdminCashPage() {
             {/* Conditional: Multi-month picker for Kas Bulanan */}
             {formData.transactionCategory === 'Kas Bulanan' ? (
               <div>
-                <label className='block text-xs text-gray-500 mb-2'>
-                  Pilih Bulan Pembayaran ({currentYear})
-                </label>
+                <div className='flex items-center justify-between mb-2'>
+                  <label className='block text-xs text-gray-500'>
+                    Pilih Bulan Pembayaran
+                  </label>
+                  <div className='flex items-center gap-1'>
+                    <button
+                      type='button'
+                      onClick={() => setModalYear((y) => y - 1)}
+                      disabled={modalYear <= KAS_START_YEAR}
+                      className='p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed'
+                    >
+                      <ChevronLeft className='w-4 h-4 text-gray-500' />
+                    </button>
+                    <span className='px-2 py-0.5 bg-[#E57373] text-white text-xs font-bold rounded-lg min-w-[50px] text-center'>
+                      {modalYear}
+                    </span>
+                    <button
+                      type='button'
+                      onClick={() => setModalYear((y) => y + 1)}
+                      className='p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors'
+                    >
+                      <ChevronRight className='w-4 h-4 text-gray-500' />
+                    </button>
+                  </div>
+                </div>
                 <div className='grid grid-cols-4 gap-2'>
                   {MONTHS.map((month) => (
                     <button
