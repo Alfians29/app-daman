@@ -106,7 +106,7 @@ export default function LoginPage() {
           {/* Logo with glassmorphism */}
           <div className='rounded-3xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center mb-8 shadow-2xl p-6'>
             <Image
-              src='/logoputih.png'
+              src='/logo-login.png'
               alt='Logo'
               width={150}
               height={150}
@@ -212,7 +212,8 @@ export default function LoginPage() {
         <div className='absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900' />
 
         {/* Decorative floating elements */}
-        <div className='absolute top-0 left-0 w-full h-full pointer-events-none'>
+        <div className='absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden'>
+          {/* Large blurred circles */}
           <div
             className='absolute top-[5%] right-[10%] w-32 h-32 bg-[#E57373]/10 rounded-full blur-3xl'
             style={{ animation: 'float 8s ease-in-out infinite' }}
@@ -222,12 +223,48 @@ export default function LoginPage() {
             style={{ animation: 'float 10s ease-in-out infinite reverse' }}
           />
           <div
+            className='absolute top-[50%] right-[5%] w-40 h-40 bg-[#E57373]/8 rounded-full blur-3xl'
+            style={{ animation: 'float 12s ease-in-out infinite 2s' }}
+          />
+
+          {/* Small floating dots */}
+          <div
             className='absolute top-[40%] left-[10%] w-4 h-4 bg-[#E57373]/30 rounded-full'
             style={{ animation: 'float 4s ease-in-out infinite' }}
           />
           <div
             className='absolute bottom-[30%] right-[15%] w-3 h-3 bg-[#E57373]/20 rounded-full'
             style={{ animation: 'float 5s ease-in-out infinite 1s' }}
+          />
+          <div
+            className='absolute top-[15%] left-[20%] w-2 h-2 bg-[#E57373]/40 rounded-full'
+            style={{ animation: 'float 3s ease-in-out infinite 0.5s' }}
+          />
+          <div
+            className='absolute bottom-[45%] right-[8%] w-3 h-3 bg-[#E57373]/25 rounded-full'
+            style={{ animation: 'float 6s ease-in-out infinite 2s' }}
+          />
+          <div
+            className='absolute top-[70%] left-[15%] w-2 h-2 bg-[#E57373]/35 rounded-full'
+            style={{ animation: 'float 4s ease-in-out infinite 1.5s' }}
+          />
+          <div
+            className='absolute top-[25%] right-[25%] w-2 h-2 bg-[#E57373]/30 rounded-full'
+            style={{ animation: 'float 5s ease-in-out infinite 0.8s' }}
+          />
+
+          {/* Medium floating circles */}
+          <div
+            className='absolute top-[60%] right-[20%] w-6 h-6 bg-[#E57373]/15 rounded-full blur-sm'
+            style={{ animation: 'float 7s ease-in-out infinite 1s' }}
+          />
+          <div
+            className='absolute bottom-[20%] left-[25%] w-5 h-5 bg-[#E57373]/20 rounded-full blur-sm'
+            style={{ animation: 'float 6s ease-in-out infinite reverse 0.5s' }}
+          />
+          <div
+            className='absolute top-[8%] left-[40%] w-4 h-4 bg-[#E57373]/25 rounded-full blur-sm'
+            style={{ animation: 'float 5s ease-in-out infinite 1.2s' }}
           />
         </div>
 
