@@ -105,7 +105,7 @@ export default function ReportPage() {
   const lastDay = new Date(currentYear, currentMonth, 0).getDate();
   const dateTo = `${currentYear}-${String(currentMonth).padStart(
     2,
-    '0'
+    '0',
   )}-${String(lastDay).padStart(2, '0')}`;
 
   // SWR hooks for cached data
@@ -115,7 +115,7 @@ export default function ReportPage() {
   const { schedules, isLoading: schedLoading } = useSchedule(
     currentMonth,
     currentYear,
-    true // slim mode
+    true, // slim mode
   );
   const { jobTypes: rawJobTypes, isLoading: jobsLoading } = useJobTypes();
   const {
@@ -136,7 +136,8 @@ export default function ReportPage() {
   const teamMembers = useMemo(() => {
     return (users as TeamMember[])
       .filter(
-        (u: TeamMember) => u.isActive && u.department === 'Data Management - TA'
+        (u: TeamMember) =>
+          u.isActive && u.department === 'Data Management - TA',
       )
       .sort((a, b) => a.nik.localeCompare(b.nik));
   }, [users]);
@@ -191,7 +192,7 @@ export default function ReportPage() {
 
   const getMemberSchedule = (memberId: string, date: string) =>
     scheduleEntries.find(
-      (s) => s.memberId === memberId && s.tanggal.split('T')[0] === date
+      (s) => s.memberId === memberId && s.tanggal.split('T')[0] === date,
     );
 
   // Separate SWR for user's all-time schedule (for history view)
@@ -205,19 +206,19 @@ export default function ReportPage() {
   const canEditReport = (report: DailyReport) => {
     const createdAt = new Date(report.createdAt);
     const diffDays = Math.floor(
-      (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24)
+      (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24),
     );
     return diffDays < 3 && report.memberId === currentUser?.id;
   };
 
   const hasReportForDate = (memberId: string, date: string) =>
     reports.some(
-      (r) => r.memberId === memberId && r.tanggal.split('T')[0] === date
+      (r) => r.memberId === memberId && r.tanggal.split('T')[0] === date,
     );
 
   const reportsForDate = useMemo(
     () => reports.filter((r) => r.tanggal.split('T')[0] === selectedDate),
-    [reports, selectedDate]
+    [reports, selectedDate],
   );
 
   const memberReportData = useMemo(() => {
@@ -240,7 +241,7 @@ export default function ReportPage() {
   // Get current user's report history from dedicated hook (all-time data)
   const userReportsHistory = useMemo(() => {
     return (userAllReports as DailyReport[]).sort(
-      (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
+      (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime(),
     );
   }, [userAllReports]);
 
@@ -253,12 +254,12 @@ export default function ReportPage() {
     if (summaryPeriod === '1bulan') {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       filteredReports = userReportsHistory.filter(
-        (r) => new Date(r.tanggal) >= startOfMonth
+        (r) => new Date(r.tanggal) >= startOfMonth,
       );
     } else if (summaryPeriod === '6bulan') {
       const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
       filteredReports = userReportsHistory.filter(
-        (r) => new Date(r.tanggal) >= sixMonthsAgo
+        (r) => new Date(r.tanggal) >= sixMonthsAgo,
       );
     }
 
@@ -359,10 +360,10 @@ export default function ReportPage() {
   const updateTask = (
     taskId: string,
     field: 'jobType' | 'keterangan' | 'value',
-    value: string | number
+    value: string | number,
   ) =>
     setTasks(
-      tasks.map((t) => (t.id === taskId ? { ...t, [field]: value } : t))
+      tasks.map((t) => (t.id === taskId ? { ...t, [field]: value } : t)),
     );
 
   const saveReport = async () => {
@@ -570,7 +571,7 @@ export default function ReportPage() {
       {showMyHistory ? (
         <>
           {/* Personal Summary Stats */}
-          <div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
+          <div className='grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fadeIn'>
             <Card>
               <div className='flex items-center gap-3 h-full'>
                 <div className='w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
@@ -835,12 +836,12 @@ export default function ReportPage() {
                     userReportsHistory
                       .slice(
                         (historyPage - 1) * historyItemsPerPage,
-                        historyPage * historyItemsPerPage
+                        historyPage * historyItemsPerPage,
                       )
                       .map((report) => {
                         // Use getUserScheduleForHistory for all-time schedule data
                         const schedule = getUserScheduleForHistory(
-                          report.tanggal.split('T')[0]
+                          report.tanggal.split('T')[0],
                         );
                         return (
                           <tr
@@ -877,7 +878,7 @@ export default function ReportPage() {
                                 {
                                   hour: '2-digit',
                                   minute: '2-digit',
-                                }
+                                },
                               )}
                             </td>
                             <td className='px-4 py-3 text-center'>
@@ -919,10 +920,10 @@ export default function ReportPage() {
                       setHistoryPage((p) =>
                         Math.min(
                           Math.ceil(
-                            userReportsHistory.length / historyItemsPerPage
+                            userReportsHistory.length / historyItemsPerPage,
                           ),
-                          p + 1
-                        )
+                          p + 1,
+                        ),
                       )
                     }
                     disabled={
@@ -1119,7 +1120,7 @@ export default function ReportPage() {
           subtitle={
             viewingReport
               ? `${viewingReport.member?.name || 'Member'} - ${formatDate(
-                  viewingReport.tanggal
+                  viewingReport.tanggal,
                 )}`
               : ''
           }
@@ -1165,7 +1166,7 @@ export default function ReportPage() {
                       hour: '2-digit',
                       minute: '2-digit',
                       second: '2-digit',
-                    }
+                    },
                   )}
                 </p>
               </div>
@@ -1272,7 +1273,7 @@ export default function ReportPage() {
                         updateTask(
                           task.id,
                           'value',
-                          parseInt(e.target.value) || 0
+                          parseInt(e.target.value) || 0,
                         )
                       }
                       placeholder='0'

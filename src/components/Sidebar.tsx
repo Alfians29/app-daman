@@ -159,7 +159,7 @@ export default function Sidebar() {
               name?: string;
               nickname?: string;
               image?: string | null;
-            }
+            },
           );
         }
       }
@@ -177,7 +177,7 @@ export default function Sidebar() {
 
   // Filter menu items based on permissions
   const filteredNavItems = allNavItems.filter((item) =>
-    hasPermission(item.permission)
+    hasPermission(item.permission),
   );
 
   const isActive = (href: string) => {
@@ -264,20 +264,26 @@ export default function Sidebar() {
         href={item.href}
         className={`
           flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
-          transition-all duration-200 group relative
+          transition-all duration-200 group relative overflow-hidden
           ${
             active
-              ? 'bg-[#E57373] dark:bg-[#991b1b] text-white shadow-lg shadow-red-200/50 dark:shadow-red-900/30'
+              ? 'bg-linear-to-r from-[#E57373] to-[#EF5350] dark:from-[#7f1d1d] dark:to-[#991b1b] text-white shadow-lg shadow-red-200/50 dark:shadow-red-900/30'
               : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white'
           }
         `}
       >
-        <Icon size={20} />
-        <span className='flex-1'>{item.label}</span>
+        {/* Decorative circle for active state */}
+        {active && (
+          <div className='absolute -top-3 -right-3 w-10 h-10 bg-white/10 rounded-full' />
+        )}
+        <span className='relative z-10'>
+          <Icon size={20} />
+        </span>
+        <span className='relative z-10 flex-1'>{item.label}</span>
         {active && (
           <ChevronRight
             size={16}
-            className='opacity-70 group-hover:translate-x-0.5 transition-transform'
+            className='relative z-10 opacity-70 group-hover:translate-x-0.5 transition-transform'
           />
         )}
       </Link>
@@ -323,13 +329,15 @@ export default function Sidebar() {
         {/* Logo */}
         <div className='h-16 flex items-center px-5 border-b border-gray-100 dark:border-gray-700'>
           <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-lg bg-[#E57373] dark:bg-[#991b1b] flex items-center justify-center shadow-lg shadow-red-200/50 dark:shadow-none overflow-hidden p-1.5'>
+            <div className='relative w-10 h-10 rounded-xl bg-linear-to-r from-[#E57373] to-[#EF5350] dark:from-[#7f1d1d] dark:to-[#991b1b] flex items-center justify-center shadow-lg shadow-red-200/50 dark:shadow-none overflow-hidden p-1.5'>
+              {/* Decorative circle */}
+              <div className='absolute -top-2 -right-2 w-6 h-6 bg-white/20 rounded-full' />
               <Image
-                src='/logoputih.png'
+                src='/logo-sidebar.png'
                 alt='Logo'
                 width={32}
                 height={32}
-                className='object-contain'
+                className='relative z-10 object-contain'
                 loading='eager'
               />
             </div>
@@ -360,7 +368,7 @@ export default function Sidebar() {
         >
           {/* User Menu Dropdown */}
           {isUserMenuOpen && (
-            <div className='absolute bottom-full left-3 right-3 mb-2 bg-white dark:bg-gray-700 rounded-xl shadow-xl border border-gray-100 dark:border-gray-600 overflow-hidden'>
+            <div className='absolute bottom-full left-3 right-3 mb-2 z-50 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-600 overflow-hidden'>
               {/* Theme Toggle */}
               <div className='flex items-center justify-between gap-3 px-4 py-3'>
                 <div className='flex items-center gap-3'>

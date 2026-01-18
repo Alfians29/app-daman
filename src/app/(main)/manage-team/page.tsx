@@ -132,19 +132,38 @@ export default function AdminTeamPage() {
     }
   }, [roles, formData.roleId]);
 
-  const filteredMembers = useMemo(
-    () =>
-      members.filter((member) => {
-        const matchesSearch =
-          member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          member.nik.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          member.username.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesPosition =
-          filterPosition === 'all' || member.position === filterPosition;
-        return matchesSearch && matchesPosition;
-      }),
-    [members, searchQuery, filterPosition]
-  );
+  // Custom NIK order for sorting
+  const nikOrder = [
+    '19930282', // ANDREW
+    '24010028', // ALFIAN
+    '24900021', // RAHARDIAN
+    '24980049', // NADA
+    '24980050', // MAHARANI
+    '24990037', // VIRA
+    '119889', // AFRIDA
+  ];
+
+  const filteredMembers = useMemo(() => {
+    const filtered = members.filter((member) => {
+      const matchesSearch =
+        member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        member.nik.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        member.username.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesPosition =
+        filterPosition === 'all' || member.position === filterPosition;
+      return matchesSearch && matchesPosition;
+    });
+
+    // Sort by custom NIK order
+    return filtered.sort((a, b) => {
+      const indexA = nikOrder.indexOf(a.nik);
+      const indexB = nikOrder.indexOf(b.nik);
+      // If NIK not in order list, put at end
+      const orderA = indexA === -1 ? 999 : indexA;
+      const orderB = indexB === -1 ? 999 : indexB;
+      return orderA - orderB;
+    });
+  }, [members, searchQuery, filterPosition]);
 
   // Add member
   const handleAdd = async () => {
@@ -481,7 +500,7 @@ export default function AdminTeamPage() {
                   </span>
                   <span
                     className={`px-2 py-0.5 text-xs font-medium rounded-lg ${getRoleColorClasses(
-                      member.role?.color
+                      member.role?.color,
                     )}`}
                   >
                     <Shield className='w-3 h-3 inline mr-1' />

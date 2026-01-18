@@ -39,7 +39,7 @@ export default function LoginPage() {
           JSON.stringify({
             ...result.data,
             loginAt: Date.now(),
-          })
+          }),
         );
         toast.success('Login berhasil!');
         window.location.href = '/';
@@ -236,7 +236,7 @@ export default function LoginPage() {
           <div className='lg:hidden text-center mb-8'>
             <div className='inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-[#E57373] to-[#C62828] shadow-lg shadow-red-200 mb-4 p-4'>
               <Image
-                src='/logoputih.png'
+                src='/logo-login.png'
                 alt='Logo'
                 width={55}
                 height={55}
