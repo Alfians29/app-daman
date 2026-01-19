@@ -80,7 +80,7 @@ export default function Dashboard() {
   const { users, isLoading: usersLoading } = useUsers(false);
   const { chartData, isLoading: chartLoading } = useDashboardCharts(
     currentYear,
-    authUser?.id
+    authUser?.id,
   );
 
   const isLoading = authLoading || usersLoading || chartLoading;
@@ -171,7 +171,7 @@ export default function Dashboard() {
   const today = new Date();
   // Use local date string for comparison (YYYY-MM-DD format)
   const todayStr = `${today.getFullYear()}-${String(
-    today.getMonth() + 1
+    today.getMonth() + 1,
   ).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const hour = today.getHours();
 
@@ -187,7 +187,7 @@ export default function Dashboard() {
     const d = new Date(dateValue);
     return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(
       2,
-      '0'
+      '0',
     )}-${String(d.getUTCDate()).padStart(2, '0')}`;
   };
 
@@ -216,21 +216,21 @@ export default function Dashboard() {
     'Jadilah versi terbaik dari dirimu! 🌟',
   ];
 
-  // Random nickname variations
+  // Random nickname variations populer Indonesia
   const nicknameVariations = [
     '', // Normal nickname
     'Bos ',
-    'Kawan ',
-    'Master ',
-    'Sahabat ',
-    'Kak ',
     'Bestie ',
+    'Kak ',
+    'Rekan ',
     'Komandan ',
+    'Sobat ',
+    'Kawan ',
+    'Partner ',
+    'Sahabat ',
+    'Master ',
     'Kapten ',
     'Chief ',
-    'Sobat ',
-    'Rekan ',
-    'Partner ',
     'Legend ',
   ];
 
@@ -302,39 +302,45 @@ export default function Dashboard() {
   ];
 
   // Get random quote and nickname prefix (unique per user, regenerates daily)
+  // Use todayStr to ensure quotes change daily and differ per user
   const randomQuote = useMemo(() => {
-    const dayIndex = new Date().getDate();
     const userId = authUser?.id || 'guest';
-    // Simple hash: combine userId char codes with day
-    const hash = userId
+    // Create a numeric seed from date string (YYYY-MM-DD) + userId
+    const dateHash = todayStr
       .split('')
-      .reduce((acc, char) => acc + char.charCodeAt(0), dayIndex);
+      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const userHash = userId
+      .split('')
+      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const hash = dateHash + userHash;
     return funQuotes[hash % funQuotes.length];
-  }, [authUser?.id]);
+  }, [authUser?.id, todayStr]);
 
   const nicknamePrefix = useMemo(() => {
-    const dayIndex = new Date().getDate();
     const userId = authUser?.id || 'guest';
-    // Different offset for variety
-    const hash = userId
+    // Different offset (multiply by 7) for variety from randomQuote
+    const dateHash =
+      todayStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) * 7;
+    const userHash = userId
       .split('')
-      .reduce((acc, char) => acc + char.charCodeAt(0), dayIndex * 7);
+      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const hash = dateHash + userHash;
     return nicknameVariations[hash % nicknameVariations.length];
-  }, [authUser?.id]);
+  }, [authUser?.id, todayStr]);
 
   // Random motivational quote (changes daily, unique per user)
   const motivationalQuote = useMemo(() => {
-    const dayIndex = new Date().getDate();
-    const monthIndex = new Date().getMonth();
     const userId = authUser?.id || 'guest';
-    const hash = userId
+    // Different offset (multiply by 13) for variety from other quotes
+    const dateHash =
+      todayStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) *
+      13;
+    const userHash = userId
       .split('')
-      .reduce(
-        (acc, char) => acc + char.charCodeAt(0),
-        dayIndex + monthIndex * 31
-      );
+      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const hash = dateHash + userHash;
     return motivationalQuotes[hash % motivationalQuotes.length];
-  }, [authUser?.id]);
+  }, [authUser?.id, todayStr]);
 
   const greeting = getGreeting();
   const GreetingIcon = greeting.icon;
@@ -352,21 +358,21 @@ export default function Dashboard() {
     (s: Schedule) =>
       currentUser &&
       s.memberId === currentUser.id &&
-      getDateStr(s.tanggal) === todayStr
+      getDateStr(s.tanggal) === todayStr,
   );
 
   // Filter: Only TA members for attendance/schedule stats
   const taTeamMembers = teamMembers.filter(
-    (m) => m.department === 'Data Management - TA'
+    (m) => m.department === 'Data Management - TA',
   );
   const taMemberIds = new Set(taTeamMembers.map((m) => m.id));
 
   // Today attendance - filtered by TA department
   const todayAttendance = attendanceRecords.filter(
-    (r) => getDateStr(r.tanggal) === todayStr && taMemberIds.has(r.memberId)
+    (r) => getDateStr(r.tanggal) === todayStr && taMemberIds.has(r.memberId),
   );
   const sortedByTime = [...todayAttendance].sort((a, b) =>
-    (a.jamAbsen || '99:99').localeCompare(b.jamAbsen || '99:99')
+    (a.jamAbsen || '99:99').localeCompare(b.jamAbsen || '99:99'),
   );
   const earliestAttendance = sortedByTime[0];
   const latestAttendance =
@@ -421,11 +427,11 @@ export default function Dashboard() {
       // Extract date portion from ISO string (first 10 chars: YYYY-MM-DD)
       const recordDateStr = r.tanggal.substring(0, 10);
       return recordDateStr >= periodStartStr && recordDateStr <= periodEndStr;
-    }
+    },
   ).length;
   const attendanceProgressPercent = Math.min(
     100,
-    Math.round((userPeriodAttendance / minWorkingDays) * 100)
+    Math.round((userPeriodAttendance / minWorkingDays) * 100),
   );
 
   const formatPeriodLabel = () => {
@@ -1245,7 +1251,7 @@ export default function Dashboard() {
                     (s.keterangan === keterangan ||
                       (s.keterangan === 'PAGI_MALAM' &&
                         (keterangan === 'PAGI' || keterangan === 'MALAM'))) &&
-                    taMemberIds.has(s.memberId)
+                    taMemberIds.has(s.memberId),
                 )
                 .map((s) => taTeamMembers.find((m) => m.id === s.memberId))
                 .filter(Boolean);
@@ -1295,7 +1301,7 @@ export default function Dashboard() {
                   )}
                 </div>
               );
-            }
+            },
           )}
         </div>
       </Card>
