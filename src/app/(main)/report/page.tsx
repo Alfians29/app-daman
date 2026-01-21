@@ -14,6 +14,8 @@ import {
   Trash2,
   Trophy,
   BarChart3,
+  RotateCcw,
+  Check,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -97,6 +99,17 @@ export default function ReportPage() {
   >('semua');
   const historyItemsPerPage = 10;
 
+  // Progress-style date range filter (null = all data)
+  const [progressStartDate, setProgressStartDate] = useState<string | null>(
+    null
+  );
+  const [progressEndDate, setProgressEndDate] = useState<string | null>(null);
+  const [tempStartDate, setTempStartDate] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  });
+  const [tempEndDate, setTempEndDate] = useState(getLocalDateString());
+
   // Get current month/year for filtering
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
@@ -105,7 +118,7 @@ export default function ReportPage() {
   const lastDay = new Date(currentYear, currentMonth, 0).getDate();
   const dateTo = `${currentYear}-${String(currentMonth).padStart(
     2,
-    '0',
+    '0'
   )}-${String(lastDay).padStart(2, '0')}`;
 
   // SWR hooks for cached data
@@ -115,7 +128,7 @@ export default function ReportPage() {
   const { schedules, isLoading: schedLoading } = useSchedule(
     currentMonth,
     currentYear,
-    true, // slim mode
+    true // slim mode
   );
   const { jobTypes: rawJobTypes, isLoading: jobsLoading } = useJobTypes();
   const {
@@ -136,8 +149,7 @@ export default function ReportPage() {
   const teamMembers = useMemo(() => {
     return (users as TeamMember[])
       .filter(
-        (u: TeamMember) =>
-          u.isActive && u.department === 'Data Management - TA',
+        (u: TeamMember) => u.isActive && u.department === 'Data Management - TA'
       )
       .sort((a, b) => a.nik.localeCompare(b.nik));
   }, [users]);
@@ -192,7 +204,7 @@ export default function ReportPage() {
 
   const getMemberSchedule = (memberId: string, date: string) =>
     scheduleEntries.find(
-      (s) => s.memberId === memberId && s.tanggal.split('T')[0] === date,
+      (s) => s.memberId === memberId && s.tanggal.split('T')[0] === date
     );
 
   // Separate SWR for user's all-time schedule (for history view)
@@ -206,19 +218,19 @@ export default function ReportPage() {
   const canEditReport = (report: DailyReport) => {
     const createdAt = new Date(report.createdAt);
     const diffDays = Math.floor(
-      (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24),
+      (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24)
     );
     return diffDays < 3 && report.memberId === currentUser?.id;
   };
 
   const hasReportForDate = (memberId: string, date: string) =>
     reports.some(
-      (r) => r.memberId === memberId && r.tanggal.split('T')[0] === date,
+      (r) => r.memberId === memberId && r.tanggal.split('T')[0] === date
     );
 
   const reportsForDate = useMemo(
     () => reports.filter((r) => r.tanggal.split('T')[0] === selectedDate),
-    [reports, selectedDate],
+    [reports, selectedDate]
   );
 
   const memberReportData = useMemo(() => {
@@ -241,51 +253,51 @@ export default function ReportPage() {
   // Get current user's report history from dedicated hook (all-time data)
   const userReportsHistory = useMemo(() => {
     return (userAllReports as DailyReport[]).sort(
-      (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime(),
+      (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
     );
   }, [userAllReports]);
 
+  // Filtered history based on date range filter
+  const filteredUserReportsHistory = useMemo(() => {
+    if (!progressStartDate || !progressEndDate) {
+      return userReportsHistory; // No filter, return all
+    }
+    return userReportsHistory.filter((r) => {
+      const date = r.tanggal.substring(0, 10);
+      return date >= progressStartDate && date <= progressEndDate;
+    });
+  }, [userReportsHistory, progressStartDate, progressEndDate]);
+
   // Personal summary stats
   const personalSummary = useMemo(() => {
-    // Filter reports based on selected period
-    const now = new Date();
+    // Filter reports based on date range (null = all data)
     let filteredReports = userReportsHistory;
 
-    if (summaryPeriod === '1bulan') {
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      filteredReports = userReportsHistory.filter(
-        (r) => new Date(r.tanggal) >= startOfMonth,
-      );
-    } else if (summaryPeriod === '6bulan') {
-      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-      filteredReports = userReportsHistory.filter(
-        (r) => new Date(r.tanggal) >= sixMonthsAgo,
-      );
+    if (progressStartDate && progressEndDate) {
+      filteredReports = userReportsHistory.filter((r) => {
+        const date = r.tanggal.substring(0, 10);
+        return date >= progressStartDate && date <= progressEndDate;
+      });
     }
 
     const totalReports = filteredReports.length;
     let totalValue = 0;
+
+    // Initialize all active job types with 0 value
     const jobTypeMap: Record<string, { name: string; value: number }> = {};
+    jobTypes.forEach((jt) => {
+      jobTypeMap[jt.id] = { name: jt.name, value: 0 };
+    });
 
     filteredReports.forEach((report) => {
       report.tasks.forEach((task) => {
         totalValue += task.value;
-        const jobTypeName =
-          typeof task.jobType === 'object'
-            ? (task.jobType as any).name
-            : task.jobType;
         const jobTypeId =
           typeof task.jobType === 'object'
             ? (task.jobType as any).id || (task as any).jobTypeId
             : (task as any).jobTypeId || task.jobType;
 
-        if (jobTypeId) {
-          if (!jobTypeMap[jobTypeId]) {
-            jobTypeMap[jobTypeId] = {
-              name: jobTypeName || 'Unknown',
-              value: 0,
-            };
-          }
+        if (jobTypeId && jobTypeMap[jobTypeId]) {
           jobTypeMap[jobTypeId].value += task.value;
         }
       });
@@ -318,7 +330,7 @@ export default function ReportPage() {
       topJob,
       leaderboard,
     };
-  }, [userReportsHistory, summaryPeriod]);
+  }, [userReportsHistory, progressStartDate, progressEndDate, jobTypes]);
 
   const navigateDate = (days: number) => {
     const date = new Date(selectedDate);
@@ -360,10 +372,10 @@ export default function ReportPage() {
   const updateTask = (
     taskId: string,
     field: 'jobType' | 'keterangan' | 'value',
-    value: string | number,
+    value: string | number
   ) =>
     setTasks(
-      tasks.map((t) => (t.id === taskId ? { ...t, [field]: value } : t)),
+      tasks.map((t) => (t.id === taskId ? { ...t, [field]: value } : t))
     );
 
   const saveReport = async () => {
@@ -570,11 +582,11 @@ export default function ReportPage() {
       {/* My History View */}
       {showMyHistory ? (
         <>
-          {/* Personal Summary Stats */}
-          <div className='grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fadeIn'>
-            <Card>
+          {/* Personal Summary Stats - 3 Cards matching manage-report Progress */}
+          <div className='grid grid-cols-1 sm:grid-cols-3 gap-4 animate-fadeIn'>
+            <Card className='h-full'>
               <div className='flex items-center gap-3 h-full'>
-                <div className='w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center'>
+                <div className='w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0'>
                   <FileText className='w-6 h-6 text-blue-600 dark:text-blue-400' />
                 </div>
                 <div>
@@ -587,9 +599,9 @@ export default function ReportPage() {
                 </div>
               </div>
             </Card>
-            <Card>
+            <Card className='h-full'>
               <div className='flex items-center gap-3 h-full'>
-                <div className='w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center'>
+                <div className='w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0'>
                   <BarChart3 className='w-6 h-6 text-emerald-600 dark:text-emerald-400' />
                 </div>
                 <div>
@@ -602,58 +614,61 @@ export default function ReportPage() {
                 </div>
               </div>
             </Card>
-            <Card>
-              <div className='flex items-center gap-3'>
-                <div className='w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center'>
-                  <Trophy className='w-6 h-6 text-amber-600 dark:text-amber-400' />
-                </div>
-                <div className='flex-1 min-w-0'>
-                  <p className='text-xs text-gray-500 dark:text-gray-400'>
-                    Top Pekerjaan
-                  </p>
-                  {personalSummary.topJob ? (
-                    <>
-                      <p className='font-bold text-gray-800 dark:text-gray-100 truncate'>
-                        {personalSummary.topJob.name}
-                      </p>
-                      <p className='text-sm text-amber-600 dark:text-amber-400 font-medium'>
-                        {personalSummary.topJob.value.toLocaleString('id-ID')}{' '}
-                        nilai
-                      </p>
-                    </>
-                  ) : (
-                    <p className='text-gray-400 dark:text-gray-500'>-</p>
-                  )}
-                </div>
-              </div>
-            </Card>
-            <Card>
+            <Card className='h-full'>
               <div className='flex items-center gap-3 h-full'>
-                <div className='w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center'>
+                <div className='w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center shrink-0'>
                   <Calendar className='w-6 h-6 text-purple-600 dark:text-purple-400' />
                 </div>
                 <div className='flex-1 min-w-0'>
-                  <p className='text-xs text-gray-500 dark:text-gray-400'>
+                  <p className='text-xs text-gray-500 dark:text-gray-400 mb-1'>
                     Filter Periode
                   </p>
-                  <div className='flex gap-1 mt-1'>
-                    {(['1bulan', '6bulan', 'semua'] as const).map((period) => (
+                  <div className='flex items-center gap-2'>
+                    <div className='flex items-center gap-2 flex-1'>
+                      <input
+                        type='date'
+                        value={tempStartDate}
+                        onChange={(e) => setTempStartDate(e.target.value)}
+                        className='w-full min-w-0 px-2 py-1 text-sm font-medium border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all'
+                      />
+                      <span className='text-gray-400 dark:text-gray-500 shrink-0'>
+                        -
+                      </span>
+                      <input
+                        type='date'
+                        value={tempEndDate}
+                        onChange={(e) => setTempEndDate(e.target.value)}
+                        className='w-full min-w-0 px-2 py-1 text-sm font-medium border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all'
+                      />
+                    </div>
+                    {/* Smart button: Reset if filter active & dates match, otherwise Apply */}
+                    {progressStartDate &&
+                    progressEndDate &&
+                    tempStartDate === progressStartDate &&
+                    tempEndDate === progressEndDate ? (
                       <button
-                        key={period}
-                        onClick={() => setSummaryPeriod(period)}
-                        className={`px-3 py-1.5 text-sm font-semibold rounded-lg transition-all ${
-                          summaryPeriod === period
-                            ? 'bg-[#E57373] dark:bg-[#7f1d1d] text-white hover:bg-[#EF5350] dark:hover:bg-[#991b1b]'
-                            : 'bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-500'
-                        }`}
+                        onClick={() => {
+                          setProgressStartDate(null);
+                          setProgressEndDate(null);
+                        }}
+                        title='Reset Filter'
+                        className='w-8 h-8 flex items-center justify-center bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 hover:bg-red-100 hover:text-red-500 dark:hover:bg-red-900/30 dark:hover:text-red-400 rounded-lg transition-all shrink-0'
                       >
-                        {period === '1bulan'
-                          ? '1 Bln'
-                          : period === '6bulan'
-                            ? '6 Bln'
-                            : 'Semua'}
+                        <RotateCcw className='w-4 h-4' />
                       </button>
-                    ))}
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setProgressStartDate(tempStartDate);
+                          setProgressEndDate(tempEndDate);
+                        }}
+                        disabled={tempStartDate > tempEndDate}
+                        title='Terapkan Filter'
+                        className='w-8 h-8 flex items-center justify-center bg-[#E57373] dark:bg-[#7f1d1d] text-white hover:bg-[#EF5350] dark:hover:bg-[#991b1b] rounded-lg disabled:opacity-50 transition-all shrink-0'
+                      >
+                        <Check className='w-4 h-4' />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -797,7 +812,7 @@ export default function ReportPage() {
                 Riwayat Report Saya
               </h3>
               <span className='text-sm text-gray-500 dark:text-gray-400'>
-                {userReportsHistory.length} data
+                {filteredUserReportsHistory.length} data
               </span>
             </div>
             <div className='overflow-x-auto'>
@@ -822,7 +837,7 @@ export default function ReportPage() {
                   </tr>
                 </thead>
                 <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
-                  {userReportsHistory.length === 0 ? (
+                  {filteredUserReportsHistory.length === 0 ? (
                     <tr>
                       <td
                         colSpan={5}
@@ -833,15 +848,15 @@ export default function ReportPage() {
                       </td>
                     </tr>
                   ) : (
-                    userReportsHistory
+                    filteredUserReportsHistory
                       .slice(
                         (historyPage - 1) * historyItemsPerPage,
-                        historyPage * historyItemsPerPage,
+                        historyPage * historyItemsPerPage
                       )
                       .map((report) => {
                         // Use getUserScheduleForHistory for all-time schedule data
                         const schedule = getUserScheduleForHistory(
-                          report.tanggal.split('T')[0],
+                          report.tanggal.split('T')[0]
                         );
                         return (
                           <tr
@@ -878,7 +893,7 @@ export default function ReportPage() {
                                 {
                                   hour: '2-digit',
                                   minute: '2-digit',
-                                },
+                                }
                               )}
                             </td>
                             <td className='px-4 py-3 text-center'>
@@ -905,7 +920,9 @@ export default function ReportPage() {
               <div className='flex items-center justify-between mt-4 pt-4 border-t border-gray-200 dark:border-gray-700'>
                 <p className='text-sm text-gray-500 dark:text-gray-400'>
                   Halaman {historyPage} dari{' '}
-                  {Math.ceil(userReportsHistory.length / historyItemsPerPage)}
+                  {Math.ceil(
+                    filteredUserReportsHistory.length / historyItemsPerPage
+                  )}
                 </p>
                 <div className='flex items-center gap-2'>
                   <button
@@ -920,15 +937,18 @@ export default function ReportPage() {
                       setHistoryPage((p) =>
                         Math.min(
                           Math.ceil(
-                            userReportsHistory.length / historyItemsPerPage,
+                            filteredUserReportsHistory.length /
+                              historyItemsPerPage
                           ),
-                          p + 1,
-                        ),
+                          p + 1
+                        )
                       )
                     }
                     disabled={
                       historyPage ===
-                      Math.ceil(userReportsHistory.length / historyItemsPerPage)
+                      Math.ceil(
+                        filteredUserReportsHistory.length / historyItemsPerPage
+                      )
                     }
                     className='p-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50'
                   >
@@ -1120,7 +1140,7 @@ export default function ReportPage() {
           subtitle={
             viewingReport
               ? `${viewingReport.member?.name || 'Member'} - ${formatDate(
-                  viewingReport.tanggal,
+                  viewingReport.tanggal
                 )}`
               : ''
           }
@@ -1166,7 +1186,7 @@ export default function ReportPage() {
                       hour: '2-digit',
                       minute: '2-digit',
                       second: '2-digit',
-                    },
+                    }
                   )}
                 </p>
               </div>
@@ -1273,7 +1293,7 @@ export default function ReportPage() {
                         updateTask(
                           task.id,
                           'value',
-                          parseInt(e.target.value) || 0,
+                          parseInt(e.target.value) || 0
                         )
                       }
                       placeholder='0'

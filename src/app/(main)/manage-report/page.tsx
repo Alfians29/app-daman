@@ -13,6 +13,8 @@ import {
   Settings,
   Check,
   Loader2,
+  BarChart3,
+  RotateCcw,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -75,7 +77,9 @@ export default function AdminReportPage() {
     Array<{ id: string; jobTypeId: string; keterangan: string; value: number }>
   >([]);
 
-  const [activeTab, setActiveTab] = useState<'reports' | 'jobTypes'>('reports');
+  const [activeTab, setActiveTab] = useState<
+    'reports' | 'progress' | 'jobTypes'
+  >('reports');
 
   const [showJobTypeModal, setShowJobTypeModal] = useState(false);
   const [editingJobType, setEditingJobType] = useState<JobType | null>(null);
@@ -90,8 +94,21 @@ export default function AdminReportPage() {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingReport, setDeletingReport] = useState<DailyReport | null>(
-    null,
+    null
   );
+
+  // Progress tab date range state (applied filter) - null means show all data
+  const [progressStartDate, setProgressStartDate] = useState<string | null>(
+    null
+  );
+  const [progressEndDate, setProgressEndDate] = useState<string | null>(null);
+
+  // Temporary input states for date filter (placeholder shows current month)
+  const [tempStartDate, setTempStartDate] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  });
+  const [tempEndDate, setTempEndDate] = useState(getLocalDateString());
 
   // SWR hooks for cached data
   // Using slim mode for reports to reduce payload size
@@ -144,7 +161,7 @@ export default function AdminReportPage() {
 
   const activeJobTypes = useMemo(
     () => jobTypes.filter((jt) => jt.isActive),
-    [jobTypes],
+    [jobTypes]
   );
 
   const filteredReports = useMemo(() => {
@@ -157,6 +174,130 @@ export default function AdminReportPage() {
       });
   }, [reports, selectedDate, memberMap]);
 
+  // Calculate total progress per user - grouped by user
+  const progressData = useMemo(() => {
+    // If filter is not applied (null), show all data
+    const filtered =
+      progressStartDate && progressEndDate
+        ? reports.filter((r) => {
+            const date = r.tanggal.substring(0, 10);
+            return date >= progressStartDate && date <= progressEndDate;
+          })
+        : reports;
+
+    // Group by memberId first, then by jobType
+    const userMap = new Map<
+      string,
+      {
+        memberId: string;
+        memberName: string;
+        jobs: Map<string, { jobTypeName: string; totalValue: number }>;
+        totalValue: number;
+        totalReports: number;
+      }
+    >();
+
+    filtered.forEach((r) => {
+      let user = userMap.get(r.memberId);
+      if (!user) {
+        user = {
+          memberId: r.memberId,
+          memberName: r.member?.name || 'Unknown',
+          jobs: new Map(),
+          totalValue: 0,
+          totalReports: 0,
+        };
+        userMap.set(r.memberId, user);
+      }
+      user.totalReports += 1;
+
+      r.tasks.forEach((task) => {
+        const existingJob = user!.jobs.get(task.jobTypeId);
+        if (existingJob) {
+          existingJob.totalValue += task.value;
+        } else {
+          user!.jobs.set(task.jobTypeId, {
+            jobTypeName: task.jobType?.name || '-',
+            totalValue: task.value,
+          });
+        }
+        user!.totalValue += task.value;
+      });
+    });
+
+    // Convert to array and sort by total value descending
+    return Array.from(userMap.values())
+      .map((user) => ({
+        memberId: user.memberId,
+        memberName: user.memberName,
+        totalValue: user.totalValue,
+        totalReports: user.totalReports,
+        jobs: Array.from(user.jobs.entries())
+          .map(([jobTypeId, job]) => ({
+            jobTypeId,
+            jobTypeName: job.jobTypeName,
+            totalValue: job.totalValue,
+          }))
+          .sort((a, b) => b.totalValue - a.totalValue),
+      }))
+      .sort((a, b) => b.totalValue - a.totalValue); // Sort by total value
+  }, [reports, progressStartDate, progressEndDate]);
+
+  // Summary stats for all users
+  const allUsersSummary = useMemo(() => {
+    const totalReports = progressData.reduce(
+      (sum, u) => sum + u.totalReports,
+      0
+    );
+    const totalValue = progressData.reduce((sum, u) => sum + u.totalValue, 0);
+
+    // Job type leaderboard - include ALL active job types
+    const jobMap = new Map<string, { name: string; value: number }>();
+
+    // Initialize all active job types with 0 value
+    activeJobTypes.forEach((jt) => {
+      jobMap.set(jt.id, { name: jt.name, value: 0 });
+    });
+
+    // Aggregate values from progress data
+    progressData.forEach((user) => {
+      user.jobs.forEach((job) => {
+        const existing = jobMap.get(job.jobTypeId);
+        if (existing) {
+          existing.value += job.totalValue;
+        }
+      });
+    });
+
+    const sortedJobs = Array.from(jobMap.entries())
+      .map(([id, data]) => ({ id, ...data }))
+      .sort((a, b) => b.value - a.value);
+
+    // Build leaderboard with ranking
+    let currentRank = 1;
+    let prevValue: number | null = null;
+    const leaderboard = sortedJobs.map((item, index) => {
+      if (item.value === 0) {
+        return { rank: null as number | null, ...item };
+      }
+      if (prevValue !== null && item.value === prevValue) {
+        return { rank: currentRank, ...item };
+      }
+      currentRank = index + 1;
+      prevValue = item.value;
+      return { rank: currentRank, ...item };
+    });
+
+    const topJob = leaderboard[0] || null;
+
+    return {
+      totalReports,
+      totalValue,
+      topJob,
+      leaderboard,
+    };
+  }, [progressData, activeJobTypes]);
+
   const openEditModal = (report: DailyReport) => {
     setEditingReport(report);
     setEditingTasks(
@@ -165,7 +306,7 @@ export default function AdminReportPage() {
         jobTypeId: t.jobTypeId || t.jobType?.id || '',
         keterangan: t.keterangan,
         value: t.value,
-      })),
+      }))
     );
     setShowEditModal(true);
   };
@@ -188,16 +329,16 @@ export default function AdminReportPage() {
   const updateTask = (
     taskId: string,
     field: 'jobTypeId' | 'keterangan' | 'value',
-    value: string | number,
+    value: string | number
   ) => {
     setEditingTasks(
-      editingTasks.map((t) => (t.id === taskId ? { ...t, [field]: value } : t)),
+      editingTasks.map((t) => (t.id === taskId ? { ...t, [field]: value } : t))
     );
   };
 
   const saveReport = async () => {
     const hasEmptyTask = editingTasks.some(
-      (t) => !t.jobTypeId || !t.keterangan.trim(),
+      (t) => !t.jobTypeId || !t.keterangan.trim()
     );
     if (hasEmptyTask) {
       toast.error('Lengkapi semua jenis pekerjaan dan keterangannya!');
@@ -271,7 +412,7 @@ export default function AdminReportPage() {
               // Always wrap in quotes and escape existing quotes for safety
               return `"${value.replace(/"/g, '""')}"`;
             })
-            .join(','),
+            .join(',')
         ),
       ].join('\n');
 
@@ -291,7 +432,7 @@ export default function AdminReportPage() {
       XLSX.utils.book_append_sheet(wb, ws, 'Report Harian');
       XLSX.writeFile(
         wb,
-        `report_harian_${exportStartDate}_${exportEndDate}.xlsx`,
+        `report_harian_${exportStartDate}_${exportEndDate}.xlsx`
       );
       toast.success('File Excel berhasil didownload!');
     }
@@ -443,6 +584,17 @@ export default function AdminReportPage() {
           Report
         </button>
         <button
+          onClick={() => setActiveTab('progress')}
+          className={`px-4 py-2 rounded-xl font-medium transition-colors ${
+            activeTab === 'progress'
+              ? 'bg-[#E57373] dark:bg-[#7f1d1d] text-white'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+          }`}
+        >
+          <BarChart3 className='w-4 h-4 inline mr-2' />
+          Progress
+        </button>
+        <button
           onClick={() => setActiveTab('jobTypes')}
           className={`px-4 py-2 rounded-xl font-medium transition-colors ${
             activeTab === 'jobTypes'
@@ -569,7 +721,7 @@ export default function AdminReportPage() {
                   ) : (
                     filteredReports.map((report) => {
                       const member = members.find(
-                        (m) => m.id === report.memberId,
+                        (m) => m.id === report.memberId
                       );
                       return (
                         <tr
@@ -663,6 +815,294 @@ export default function AdminReportPage() {
         </>
       )}
 
+      {/* Progress Tab */}
+      {activeTab === 'progress' && (
+        <>
+          {/* Summary Stats - 3 Cards */}
+          <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
+            <Card className='h-full'>
+              <div className='flex items-center gap-3 h-full'>
+                <div className='w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0'>
+                  <FileText className='w-6 h-6 text-blue-600 dark:text-blue-400' />
+                </div>
+                <div>
+                  <p className='text-xs text-gray-500 dark:text-gray-400'>
+                    Total Report
+                  </p>
+                  <p className='text-2xl font-bold text-blue-600 dark:text-blue-400'>
+                    {allUsersSummary.totalReports}
+                  </p>
+                </div>
+              </div>
+            </Card>
+            <Card className='h-full'>
+              <div className='flex items-center gap-3 h-full'>
+                <div className='w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0'>
+                  <BarChart3 className='w-6 h-6 text-emerald-600 dark:text-emerald-400' />
+                </div>
+                <div>
+                  <p className='text-xs text-gray-500 dark:text-gray-400'>
+                    Total Nilai
+                  </p>
+                  <p className='text-2xl font-bold text-emerald-600 dark:text-emerald-400'>
+                    {allUsersSummary.totalValue.toLocaleString('id-ID')}
+                  </p>
+                </div>
+              </div>
+            </Card>
+            <Card className='h-full'>
+              <div className='flex items-center gap-3 h-full'>
+                <div className='w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center shrink-0'>
+                  <Calendar className='w-6 h-6 text-purple-600 dark:text-purple-400' />
+                </div>
+                <div className='flex-1 min-w-0'>
+                  <p className='text-xs text-gray-500 dark:text-gray-400 mb-1'>
+                    Filter Periode
+                  </p>
+                  <div className='flex items-center gap-2'>
+                    <div className='flex items-center gap-2 flex-1'>
+                      <input
+                        type='date'
+                        value={tempStartDate}
+                        onChange={(e) => setTempStartDate(e.target.value)}
+                        className='w-full min-w-0 px-2 py-1 text-sm font-medium border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all'
+                      />
+                      <span className='text-gray-400 dark:text-gray-500 shrink-0'>
+                        -
+                      </span>
+                      <input
+                        type='date'
+                        value={tempEndDate}
+                        onChange={(e) => setTempEndDate(e.target.value)}
+                        className='w-full min-w-0 px-2 py-1 text-sm font-medium border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all'
+                      />
+                    </div>
+                    {/* Smart button: Reset if filter active & dates match, otherwise Apply */}
+                    {progressStartDate &&
+                    progressEndDate &&
+                    tempStartDate === progressStartDate &&
+                    tempEndDate === progressEndDate ? (
+                      <button
+                        onClick={() => {
+                          setProgressStartDate(null);
+                          setProgressEndDate(null);
+                        }}
+                        title='Reset Filter'
+                        className='w-8 h-8 flex items-center justify-center bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 hover:bg-red-100 hover:text-red-500 dark:hover:bg-red-900/30 dark:hover:text-red-400 rounded-lg transition-all shrink-0'
+                      >
+                        <RotateCcw className='w-4 h-4' />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setProgressStartDate(tempStartDate);
+                          setProgressEndDate(tempEndDate);
+                        }}
+                        disabled={tempStartDate > tempEndDate}
+                        title='Terapkan Filter'
+                        className='w-8 h-8 flex items-center justify-center bg-[#E57373] dark:bg-[#7f1d1d] text-white hover:bg-[#EF5350] dark:hover:bg-[#991b1b] rounded-lg disabled:opacity-50 transition-all shrink-0'
+                      >
+                        <Check className='w-4 h-4' />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Job Type Leaderboard */}
+          {allUsersSummary.leaderboard.length > 0 && (
+            <Card>
+              <div className='flex items-center gap-3 mb-4'>
+                <div className='w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center'>
+                  <BarChart3 className='w-5 h-5 text-amber-600 dark:text-amber-400' />
+                </div>
+                <div>
+                  <h3 className='font-semibold text-gray-800 dark:text-gray-100'>
+                    Leaderboard Pekerjaan
+                  </h3>
+                  <p className='text-xs text-gray-500 dark:text-gray-400'>
+                    Ranking berdasarkan total nilai
+                  </p>
+                </div>
+              </div>
+
+              <div className='grid grid-cols-2 gap-4'>
+                {/* Left column */}
+                <div className='space-y-2'>
+                  {allUsersSummary.leaderboard
+                    .slice(0, Math.ceil(allUsersSummary.leaderboard.length / 2))
+                    .map((item) => {
+                      const isTop3 = item.rank !== null && item.rank <= 3;
+                      const isZero = item.rank === null;
+                      return (
+                        <div
+                          key={item.id}
+                          className={`flex items-center gap-3 rounded-xl ${isTop3 ? 'p-3' : 'p-2'} ${
+                            item.rank === 1
+                              ? 'bg-linear-to-r from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-700'
+                              : item.rank === 2
+                                ? 'bg-linear-to-r from-gray-50 to-slate-50 dark:from-gray-800 dark:to-slate-800 border border-gray-200 dark:border-gray-600'
+                                : item.rank === 3
+                                  ? 'bg-linear-to-r from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/20 border border-orange-200 dark:border-orange-700'
+                                  : 'bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700'
+                          }`}
+                        >
+                          <div
+                            className={`rounded-full flex items-center justify-center font-bold ${isTop3 ? 'w-10 h-10 text-lg' : 'w-7 h-7 text-sm'} ${
+                              item.rank === 1
+                                ? 'bg-amber-500 text-white'
+                                : item.rank === 2
+                                  ? 'bg-gray-400 text-white'
+                                  : item.rank === 3
+                                    ? 'bg-orange-400 text-white'
+                                    : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-200'
+                            }`}
+                          >
+                            {isZero ? '-' : item.rank}
+                          </div>
+                          <div className='flex-1 min-w-0'>
+                            <p
+                              className={`font-medium truncate ${isTop3 ? 'text-gray-800 dark:text-gray-100' : 'text-gray-700 dark:text-gray-200 text-sm'}`}
+                            >
+                              {item.name}
+                            </p>
+                            {isTop3 && (
+                              <p
+                                className={`text-lg font-bold ${item.rank === 1 ? 'text-amber-600' : item.rank === 2 ? 'text-gray-600' : 'text-orange-600'}`}
+                              >
+                                {item.value.toLocaleString('id-ID')}
+                              </p>
+                            )}
+                          </div>
+                          {!isTop3 && (
+                            <p
+                              className={`text-sm font-bold ${isZero ? 'text-gray-400 dark:text-gray-500' : 'text-gray-600 dark:text-gray-300'}`}
+                            >
+                              {item.value.toLocaleString('id-ID')}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+
+                {/* Right column */}
+                <div className='space-y-2'>
+                  {allUsersSummary.leaderboard
+                    .slice(Math.ceil(allUsersSummary.leaderboard.length / 2))
+                    .map((item) => {
+                      const isZero = item.rank === null;
+                      return (
+                        <div
+                          key={item.id}
+                          className='flex items-center gap-2 p-2 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700'
+                        >
+                          <div className='w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-sm font-medium text-gray-600 dark:text-gray-200'>
+                            {isZero ? '-' : item.rank}
+                          </div>
+                          <div className='flex-1 min-w-0'>
+                            <p className='text-sm font-medium text-gray-700 dark:text-gray-200 truncate'>
+                              {item.name}
+                            </p>
+                          </div>
+                          <p
+                            className={`text-sm font-bold ${isZero ? 'text-gray-400 dark:text-gray-500' : 'text-gray-600 dark:text-gray-300'}`}
+                          >
+                            {item.value.toLocaleString('id-ID')}
+                          </p>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* User Progress Table */}
+          <Card>
+            <h3 className='font-semibold text-gray-800 dark:text-gray-100 mb-4'>
+              Rekap Per User
+            </h3>
+            <div className='space-y-3'>
+              {progressData.length === 0 ? (
+                <div className='py-12 text-center text-gray-500 dark:text-gray-400'>
+                  <BarChart3 className='w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-2' />
+                  <p>Tidak ada data ditemukan</p>
+                </div>
+              ) : (
+                progressData.map((user) => {
+                  const member = members.find((m) => m.id === user.memberId);
+                  return (
+                    <div
+                      key={user.memberId}
+                      className='p-4 rounded-xl border bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                    >
+                      <div className='flex items-center justify-between mb-3'>
+                        <div className='flex items-center gap-3'>
+                          {member?.image ? (
+                            <img
+                              src={member.image}
+                              alt={user.memberName}
+                              className='w-10 h-10 rounded-full object-cover'
+                            />
+                          ) : (
+                            <div className='w-10 h-10 rounded-full bg-linear-to-br from-[#E57373] to-[#C62828] flex items-center justify-center'>
+                              <span className='text-sm font-bold text-white'>
+                                {user.memberName
+                                  .split(' ')
+                                  .map((n) => n[0])
+                                  .join('')
+                                  .slice(0, 2)
+                                  .toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                          <div>
+                            <p className='font-medium text-gray-800 dark:text-gray-100'>
+                              {user.memberName}
+                            </p>
+                            <p className='text-xs text-gray-500 dark:text-gray-400'>
+                              {user.totalReports} report • {user.jobs.length}{' '}
+                              jenis pekerjaan
+                            </p>
+                          </div>
+                        </div>
+                        <div className='text-right'>
+                          <p className='text-xs text-gray-500 dark:text-gray-400'>
+                            Total Nilai
+                          </p>
+                          <p className='text-lg font-bold text-emerald-600 dark:text-emerald-400'>
+                            {user.totalValue.toLocaleString('id-ID')}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className='flex flex-wrap gap-2'>
+                        {user.jobs.map((job) => (
+                          <div
+                            key={job.jobTypeId}
+                            className='flex items-center gap-2 py-1 px-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg'
+                          >
+                            <span className='text-xs font-medium text-gray-600 dark:text-gray-300'>
+                              {job.jobTypeName}
+                            </span>
+                            <span className='text-xs font-bold text-emerald-600 dark:text-emerald-400'>
+                              {job.totalValue.toLocaleString('id-ID')}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </Card>
+        </>
+      )}
+
       {/* Job Types Tab */}
       {activeTab === 'jobTypes' && (
         <Card>
@@ -735,7 +1175,7 @@ export default function AdminReportPage() {
           subtitle={
             editingReport
               ? `${editingReport.member?.name} - ${formatDate(
-                  editingReport.tanggal,
+                  editingReport.tanggal
                 )}`
               : ''
           }
@@ -782,7 +1222,7 @@ export default function AdminReportPage() {
                       updateTask(
                         task.id,
                         'value',
-                        parseInt(e.target.value) || 0,
+                        parseInt(e.target.value) || 0
                       )
                     }
                     placeholder='0'
