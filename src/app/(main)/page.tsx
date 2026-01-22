@@ -200,20 +200,20 @@ export default function Dashboard() {
 
   // Fun quotes for dashboard
   const funQuotes = [
-    'Semangat kerja! 💪🏼',
-    'Jangan lupa ngopi dulu! ☕',
-    'Hari yang produktif menanti! 📈',
-    'Keep up the good work! 🎯',
-    'Senyum dulu sebelum kerja! 😊',
-    'Stretching dulu biar fresh! 🧘',
-    'You got this! 🏆',
-    'Tetap semangat ya! ✨',
-    'Kerjaan banyak? Santai aja dulu~ 🌴',
-    'Gas terus! ⚡',
-    'Less stress, more success! 🌿',
-    'Minum air putih dulu ya! 💧',
-    'Hustle mode: ON! 🎮',
-    'Jadilah versi terbaik dari dirimu! 🌟',
+    'Semangat kerja!',
+    'Jangan lupa ngopi dulu!',
+    'Hari yang produktif menanti!',
+    'Keep up the good work!',
+    'Senyum dulu sebelum kerja!',
+    'Stretching dulu biar fresh!',
+    'You got this!',
+    'Tetap semangat ya!',
+    'Kerjaan banyak? Santai aja dulu~',
+    'Gas terus!',
+    'Less stress, more success!',
+    'Minum air putih dulu ya!',
+    'Hustle mode: ON!',
+    'Jadilah versi terbaik dari dirimu!',
   ];
 
   // Random nickname variations populer Indonesia
@@ -478,6 +478,7 @@ export default function Dashboard() {
       // Map color to dot color
       const dotColorMap: Record<string, string> = {
         green: 'bg-green-500',
+        emerald: 'bg-emerald-500',
         blue: 'bg-blue-500',
         purple: 'bg-purple-500',
         amber: 'bg-amber-500',
@@ -487,6 +488,7 @@ export default function Dashboard() {
         orange: 'bg-orange-500',
         teal: 'bg-teal-500',
         indigo: 'bg-indigo-500',
+        gray: 'bg-gray-500',
       };
       return {
         bg: colorClasses.bg,

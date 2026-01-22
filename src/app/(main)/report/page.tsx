@@ -16,6 +16,7 @@ import {
   BarChart3,
   RotateCcw,
   Check,
+  AlertCircle,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -101,7 +102,7 @@ export default function ReportPage() {
 
   // Progress-style date range filter (null = all data)
   const [progressStartDate, setProgressStartDate] = useState<string | null>(
-    null
+    null,
   );
   const [progressEndDate, setProgressEndDate] = useState<string | null>(null);
   const [tempStartDate, setTempStartDate] = useState(() => {
@@ -118,7 +119,7 @@ export default function ReportPage() {
   const lastDay = new Date(currentYear, currentMonth, 0).getDate();
   const dateTo = `${currentYear}-${String(currentMonth).padStart(
     2,
-    '0'
+    '0',
   )}-${String(lastDay).padStart(2, '0')}`;
 
   // SWR hooks for cached data
@@ -128,7 +129,7 @@ export default function ReportPage() {
   const { schedules, isLoading: schedLoading } = useSchedule(
     currentMonth,
     currentYear,
-    true // slim mode
+    true, // slim mode
   );
   const { jobTypes: rawJobTypes, isLoading: jobsLoading } = useJobTypes();
   const {
@@ -149,7 +150,8 @@ export default function ReportPage() {
   const teamMembers = useMemo(() => {
     return (users as TeamMember[])
       .filter(
-        (u: TeamMember) => u.isActive && u.department === 'Data Management - TA'
+        (u: TeamMember) =>
+          u.isActive && u.department === 'Data Management - TA',
       )
       .sort((a, b) => a.nik.localeCompare(b.nik));
   }, [users]);
@@ -204,7 +206,7 @@ export default function ReportPage() {
 
   const getMemberSchedule = (memberId: string, date: string) =>
     scheduleEntries.find(
-      (s) => s.memberId === memberId && s.tanggal.split('T')[0] === date
+      (s) => s.memberId === memberId && s.tanggal.split('T')[0] === date,
     );
 
   // Separate SWR for user's all-time schedule (for history view)
@@ -218,19 +220,19 @@ export default function ReportPage() {
   const canEditReport = (report: DailyReport) => {
     const createdAt = new Date(report.createdAt);
     const diffDays = Math.floor(
-      (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24)
+      (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24),
     );
     return diffDays < 3 && report.memberId === currentUser?.id;
   };
 
   const hasReportForDate = (memberId: string, date: string) =>
     reports.some(
-      (r) => r.memberId === memberId && r.tanggal.split('T')[0] === date
+      (r) => r.memberId === memberId && r.tanggal.split('T')[0] === date,
     );
 
   const reportsForDate = useMemo(
     () => reports.filter((r) => r.tanggal.split('T')[0] === selectedDate),
-    [reports, selectedDate]
+    [reports, selectedDate],
   );
 
   const memberReportData = useMemo(() => {
@@ -253,20 +255,71 @@ export default function ReportPage() {
   // Get current user's report history from dedicated hook (all-time data)
   const userReportsHistory = useMemo(() => {
     return (userAllReports as DailyReport[]).sort(
-      (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
+      (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime(),
     );
   }, [userAllReports]);
 
+  // Type for history item (either a report or a missing report date)
+  type HistoryItem =
+    | { type: 'report'; data: DailyReport }
+    | { type: 'missing'; date: string; schedule: Schedule };
+
+  // Combined history: reports + missing report dates based on schedule
+  const combinedHistory = useMemo((): HistoryItem[] => {
+    const today = getLocalDateString();
+
+    // Get all report dates for quick lookup
+    const reportDates = new Set(
+      userReportsHistory.map((r) => r.tanggal.substring(0, 10)),
+    );
+
+    // Get scheduled work days (not LIBUR) that don't have reports
+    // Only include dates up to today (not future dates)
+    const missingReportDates: HistoryItem[] = (userSchedules as Schedule[])
+      .filter((s) => {
+        const scheduleDate = s.tanggal.split('T')[0];
+        // Only past or today, not LIBUR, and no report exists
+        return (
+          scheduleDate <= today &&
+          s.keterangan !== 'LIBUR' &&
+          !reportDates.has(scheduleDate)
+        );
+      })
+      .map((s) => ({
+        type: 'missing' as const,
+        date: s.tanggal.split('T')[0],
+        schedule: s,
+      }));
+
+    // Convert reports to HistoryItem
+    const reportItems: HistoryItem[] = userReportsHistory.map((r) => ({
+      type: 'report' as const,
+      data: r,
+    }));
+
+    // Combine and sort by date (descending)
+    const combined = [...reportItems, ...missingReportDates].sort((a, b) => {
+      const dateA =
+        a.type === 'report' ? a.data.tanggal.substring(0, 10) : a.date;
+      const dateB =
+        b.type === 'report' ? b.data.tanggal.substring(0, 10) : b.date;
+      return dateB.localeCompare(dateA);
+    });
+
+    return combined;
+  }, [userReportsHistory, userSchedules]);
+
   // Filtered history based on date range filter
-  const filteredUserReportsHistory = useMemo(() => {
+  const filteredUserReportsHistory = useMemo((): HistoryItem[] => {
     if (!progressStartDate || !progressEndDate) {
-      return userReportsHistory; // No filter, return all
+      return combinedHistory; // No filter, return all
     }
-    return userReportsHistory.filter((r) => {
-      const date = r.tanggal.substring(0, 10);
+    return combinedHistory.filter((item) => {
+      const date =
+        item.type === 'report' ? item.data.tanggal.substring(0, 10) : item.date;
       return date >= progressStartDate && date <= progressEndDate;
     });
-  }, [userReportsHistory, progressStartDate, progressEndDate]);
+  }, [combinedHistory, progressStartDate, progressEndDate]);
 
   // Personal summary stats
   const personalSummary = useMemo(() => {
@@ -372,10 +425,10 @@ export default function ReportPage() {
   const updateTask = (
     taskId: string,
     field: 'jobType' | 'keterangan' | 'value',
-    value: string | number
+    value: string | number,
   ) =>
     setTasks(
-      tasks.map((t) => (t.id === taskId ? { ...t, [field]: value } : t))
+      tasks.map((t) => (t.id === taskId ? { ...t, [field]: value } : t)),
     );
 
   const saveReport = async () => {
@@ -851,12 +904,53 @@ export default function ReportPage() {
                     filteredUserReportsHistory
                       .slice(
                         (historyPage - 1) * historyItemsPerPage,
-                        historyPage * historyItemsPerPage
+                        historyPage * historyItemsPerPage,
                       )
-                      .map((report) => {
-                        // Use getUserScheduleForHistory for all-time schedule data
+                      .map((item, index) => {
+                        if (item.type === 'missing') {
+                          // Missing report row
+                          return (
+                            <tr
+                              key={`missing-${item.date}`}
+                              className='hover:bg-red-50/50 dark:hover:bg-red-900/20 bg-red-50/30 dark:bg-red-900/10'
+                            >
+                              <td className='px-4 py-3 text-sm text-gray-700 dark:text-gray-300'>
+                                {formatDate(item.date)}
+                              </td>
+                              <td className='px-4 py-3'>
+                                <span
+                                  className={`inline-flex px-2 py-1 text-xs font-medium rounded-lg ${
+                                    getScheduleBadge(item.schedule.keterangan)
+                                      .bg
+                                  } ${
+                                    getScheduleBadge(item.schedule.keterangan)
+                                      .text
+                                  }`}
+                                >
+                                  {getKeteranganLabel(item.schedule.keterangan)}
+                                </span>
+                              </td>
+                              <td className='px-4 py-3'>
+                                <span className='inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'>
+                                  <AlertCircle className='w-3 h-3' />
+                                  Belum Report
+                                </span>
+                              </td>
+                              <td className='px-4 py-3 text-sm text-gray-400 dark:text-gray-500'>
+                                -
+                              </td>
+                              <td className='px-4 py-3 text-center'>
+                                <span className='text-xs text-gray-400 dark:text-gray-500'>
+                                  -
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        }
+                        // Report row
+                        const report = item.data;
                         const schedule = getUserScheduleForHistory(
-                          report.tanggal.split('T')[0]
+                          report.tanggal.split('T')[0],
                         );
                         return (
                           <tr
@@ -893,7 +987,7 @@ export default function ReportPage() {
                                 {
                                   hour: '2-digit',
                                   minute: '2-digit',
-                                }
+                                },
                               )}
                             </td>
                             <td className='px-4 py-3 text-center'>
@@ -916,12 +1010,12 @@ export default function ReportPage() {
             </div>
 
             {/* Pagination */}
-            {Math.ceil(userReportsHistory.length / historyItemsPerPage) > 1 && (
+            {Math.ceil(combinedHistory.length / historyItemsPerPage) > 1 && (
               <div className='flex items-center justify-between mt-4 pt-4 border-t border-gray-200 dark:border-gray-700'>
                 <p className='text-sm text-gray-500 dark:text-gray-400'>
                   Halaman {historyPage} dari{' '}
                   {Math.ceil(
-                    filteredUserReportsHistory.length / historyItemsPerPage
+                    filteredUserReportsHistory.length / historyItemsPerPage,
                   )}
                 </p>
                 <div className='flex items-center gap-2'>
@@ -938,16 +1032,16 @@ export default function ReportPage() {
                         Math.min(
                           Math.ceil(
                             filteredUserReportsHistory.length /
-                              historyItemsPerPage
+                              historyItemsPerPage,
                           ),
-                          p + 1
-                        )
+                          p + 1,
+                        ),
                       )
                     }
                     disabled={
                       historyPage ===
                       Math.ceil(
-                        filteredUserReportsHistory.length / historyItemsPerPage
+                        filteredUserReportsHistory.length / historyItemsPerPage,
                       )
                     }
                     className='p-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50'
@@ -1140,7 +1234,7 @@ export default function ReportPage() {
           subtitle={
             viewingReport
               ? `${viewingReport.member?.name || 'Member'} - ${formatDate(
-                  viewingReport.tanggal
+                  viewingReport.tanggal,
                 )}`
               : ''
           }
@@ -1186,7 +1280,7 @@ export default function ReportPage() {
                       hour: '2-digit',
                       minute: '2-digit',
                       second: '2-digit',
-                    }
+                    },
                   )}
                 </p>
               </div>
@@ -1293,7 +1387,7 @@ export default function ReportPage() {
                         updateTask(
                           task.id,
                           'value',
-                          parseInt(e.target.value) || 0
+                          parseInt(e.target.value) || 0,
                         )
                       }
                       placeholder='0'
